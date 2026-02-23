@@ -15,6 +15,15 @@ By the end of this module you will be able to:
 - Connect containers across pods and across user-defined networks.
 - Understand how networking interacts with Quadlet (systemd) deployments.
 
+## Minimum Path (If You Are Short on Time)
+
+If you only do a small slice of this module, do these:
+
+- Publish a port and verify with `podman port` (Section 3).
+- Create a user-defined network and verify DNS name resolution (Sections 4-5).
+- Practice the multi-network isolation pattern (Section 6).
+- Run the troubleshooting checklist once (Section 13).
+
 ---
 
 ## 1  How Container Networking Works (Mental Model)
@@ -917,7 +926,7 @@ podman run --rm \
 
 ---
 
-## 15  Checkpoint
+## Checkpoint
 
 You should be able to answer the following without looking at commands:
 
@@ -931,7 +940,7 @@ You should be able to answer the following without looking at commands:
 
 ---
 
-## 16  Quick Quiz
+## Quick Quiz
 
 1. You have two containers on the default `podman` network. Container A tries to `curl http://container-b/`. It fails with "could not resolve host". What is the most likely cause and fix?
 

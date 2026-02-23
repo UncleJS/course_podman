@@ -79,8 +79,6 @@ Notes:
 
 ## Lab A: Create and Mount a Secret
 
-## Lab A: Create and Mount a Secret
-
 1) Create a secret from stdin (example only):
 
 ```bash

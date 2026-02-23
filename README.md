@@ -16,6 +16,7 @@ This is a course-in-a-repo for taking a learner from zero container knowledge to
 - `cheatsheets/`: quick references
 - `examples/`: example YAML and unit files
 - `ASSESSMENTS.md`: practical exams and rubrics
+- `FAQ.md`: common gotchas and fast fixes
 
 Suggested path:
 
@@ -32,3 +33,7 @@ Suggested path:
 
 - Secrets are delivered as files mounted at runtime (not environment variables).
 - Production baseline uses rootless Podman + systemd user services (Quadlet-first).
+
+## Suggested Pacing
+
+See `COURSE_OUTLINE.md` for rough time estimates per module.

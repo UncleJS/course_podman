@@ -22,6 +22,13 @@ By the end of this module you will be able to:
 - Keep secrets out of build layers and out of the build context.
 - Debug common build and runtime failures (missing files, permissions, wrong arch).
 
+## Minimum Path (If You Are Short on Time)
+
+- Do Lab A (build + run a tiny image).
+- Add a `.containerignore` and switch from `COPY . .` to explicit copies.
+- Do the non-root lab (Lab B).
+- Build a multi-stage image once (Go example or `examples/build/hello-bun`).
+
 ---
 
 ## 1  Images, Layers, and the Build Mental Model
@@ -383,7 +390,7 @@ Try the repo-backed example:
 - `examples/build/hello-bun/server.ts`
 
 ```Dockerfile
-FROM oven/bun:1.2.0 AS build
+FROM docker.io/oven/bun:1.2.0 AS build
 WORKDIR /app
 
 # Install deps separately for caching
@@ -393,7 +400,7 @@ RUN bun install --frozen-lockfile
 COPY . ./
 RUN bun run build
 
-FROM oven/bun:1.2.0 AS runtime
+FROM docker.io/oven/bun:1.2.0 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 

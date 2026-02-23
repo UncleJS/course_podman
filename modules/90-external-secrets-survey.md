@@ -146,6 +146,18 @@ If you start with Podman secrets (local-first), the clean migration is:
 
 This avoids rewriting applications that already expect file-based secrets.
 
+## Checkpoint
+
+- You can explain the tradeoffs between: systemd credentials, SOPS, and Vault-class secret managers.
+- You can describe a bootstrap story for a new host (how it gets the ability to decrypt/fetch).
+- You can describe a file-based delivery pattern that keeps apps unchanged.
+
+## Quick Quiz
+
+1) In one sentence: why is base64 not encryption?
+
+2) What question best distinguishes SOPS-style encrypted files from Vault-style leased secrets?
+
 ## Further Reading
 
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials

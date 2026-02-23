@@ -27,3 +27,26 @@ Assumptions:
 14. Maintenance and auto-updates (policy, `podman auto-update`, safe rollouts)
 80. Capstone (Quadlet stack with secrets, backups, upgrades, rollback)
 90. External secrets survey (thorough intro; optional implementation paths)
+
+## Suggested Pacing (Rough Estimates)
+
+These are rough time boxes for a first pass (reading + doing the labs).
+
+- Module 0: 30-60 min
+- Module 1: 30-45 min
+- Module 2: 60-90 min
+- Module 3: 60-90 min
+- Module 4: 60-90 min
+- Module 5: 60-90 min
+- Module 6: 2-3 hours
+- Module 7: 45-60 min
+- Module 8: 2-3 hours
+- Module 9: 60-90 min
+- Module 10: 45-75 min
+- Module 11: 2-3 hours
+- Module 11a: 45-75 min
+- Module 12: 60-120 min
+- Module 13: 60-120 min
+- Module 14: 45-75 min
+- Module 80 (Capstone): 3-6 hours
+- Module 90 (Survey): 45-90 min

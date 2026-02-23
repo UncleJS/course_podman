@@ -128,3 +128,15 @@ podman secret rm db_password_v1
 - Quadlet and Podman systemd integration: https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+
+## Checkpoint
+
+- You can run a Quadlet-managed service that reads a secret from `/run/secrets/...`.
+- You can rotate a secret by switching the referenced secret name and restarting.
+- You can verify journald logs do not contain secret values.
+
+## Quick Quiz
+
+1) Why is it safer to mount secrets as files than to pass them in environment variables?
+
+2) Why should you keep the old secret around until after verification?

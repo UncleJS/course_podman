@@ -269,6 +269,19 @@ podman secret rm mariadb_root_password
 - Password rotation often implies updating both the secret and the DB user credentials.
 - Keep the old password available until the new one is verified.
 
+## Checkpoint
+
+- You can bring the stack up via Quadlet and it survives reboot.
+- DB has no published host ports; only the UI is exposed.
+- You can produce a backup file and restore it successfully.
+- You can upgrade using digest pinning and roll back to a previous digest.
+
+## Quick Quiz
+
+1) Why is it important to test restore, not just backup?
+
+2) What is the operational advantage of deploying by digest rather than by tag?
+
 ## Further Reading
 
 - `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html

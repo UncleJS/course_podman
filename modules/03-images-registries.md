@@ -100,6 +100,17 @@ podman tag docker.io/library/alpine:latest localhost:5000/alpine:course
 podman push localhost:5000/alpine:course
 ```
 
+If the push fails with a TLS/HTTPS error:
+
+- Some Podman configurations require explicit insecure-registry configuration for plain HTTP registries.
+- For this lab only, you can bypass verification:
+
+```bash
+podman push --tls-verify=false localhost:5000/alpine:course
+```
+
+Treat `--tls-verify=false` as a learning-only flag, not a production habit.
+
 3) Remove your local copy and pull from the local registry:
 
 ```bash

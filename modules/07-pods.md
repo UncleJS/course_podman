@@ -71,8 +71,6 @@ podman pod rm -f webpod
 
 ## Checkpoint
 
-## Checkpoint
-
 - You can use a sidecar for debugging without exposing new ports.
 - You understand pods are not Kubernetes, but the idea rhymes.
 
