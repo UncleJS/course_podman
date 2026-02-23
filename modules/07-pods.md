@@ -81,3 +81,9 @@ podman pod rm -f webpod
 1) Why does a pod show an extra container?
 
 2) When would you prefer a network over a pod?
+
+## Further Reading
+
+- `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
+- Kubernetes Pods concept: https://kubernetes.io/docs/concepts/workloads/pods/
+- Sidecar containers (Kubernetes): https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/

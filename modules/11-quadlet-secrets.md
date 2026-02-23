@@ -121,3 +121,10 @@ journalctl --user -u example-app.service -n 100 --no-pager
 ```bash
 podman secret rm db_password_v1
 ```
+
+## Further Reading
+
+- `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html
+- Quadlet and Podman systemd integration: https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
+- systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
+- OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html

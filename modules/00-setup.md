@@ -133,3 +133,11 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - `podman info` runs without errors.
 - `podman run --rm ...` works rootless.
 - cgroups version reports `v2`.
+
+## Further Reading
+
+- Podman install docs: https://podman.io/docs/installation
+- Rootless Podman tutorial: https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
+- cgroups v2 (kernel docs): https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html
+- `loginctl` (linger for user services): https://www.freedesktop.org/software/systemd/man/latest/loginctl.html
+- SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux

@@ -192,3 +192,11 @@ See:
 - You can start/stop a container via systemd user services.
 - You can find logs in journald.
 - You can debug why a unit did not generate.
+
+## Further Reading
+
+- Quadlet and Podman systemd integration: https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
+- `podman-quadlet(1)`: https://docs.podman.io/en/latest/markdown/podman-quadlet.1.html
+- systemd unit basics: https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
+- systemd user services: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+- journald: https://www.freedesktop.org/software/systemd/man/latest/journald.html

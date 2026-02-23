@@ -162,3 +162,10 @@ systemctl --user restart <service>
 1) What is the difference between `podman logs` and `journalctl --user -u ...`?
 
 2) What do you do when a container exits too quickly to exec into it?
+
+## Further Reading
+
+- `podman-events(1)`: https://docs.podman.io/en/latest/markdown/podman-events.1.html
+- `podman-stats(1)`: https://docs.podman.io/en/latest/markdown/podman-stats.1.html
+- systemd journalctl: https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
+- `systemd-analyze(1)` (verify, generators): https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html

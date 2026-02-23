@@ -268,3 +268,11 @@ podman secret rm mariadb_root_password
 
 - Password rotation often implies updating both the secret and the DB user credentials.
 - Keep the old password available until the new one is verified.
+
+## Further Reading
+
+- `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html
+- Quadlet and Podman systemd integration: https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
+- MariaDB logical backup (`mysqldump`): https://mariadb.com/kb/en/mysqldump/
+- Adminer project docs: https://www.adminer.org/
+- systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html

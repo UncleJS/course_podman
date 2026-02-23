@@ -1,0 +1,25 @@
+FROM docker.io/oven/bun:1.2.0 AS build
+
+WORKDIR /app
+
+COPY server.ts /app/server.ts
+RUN bun build /app/server.ts --outdir /app/dist --target bun
+
+FROM docker.io/oven/bun:1.2.0
+
+LABEL org.opencontainers.image.title="hello-bun"
+LABEL org.opencontainers.image.description="tiny Bun HTTP server"
+
+WORKDIR /app
+
+COPY --from=build /app/dist/ /app/dist/
+COPY healthcheck.ts /app/healthcheck.ts
+
+ENV PORT=3000
+USER bun
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD ["bun", "/app/healthcheck.ts"]
+
+CMD ["bun", "/app/dist/server.js"]

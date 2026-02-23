@@ -149,3 +149,11 @@ Note:
 1) If you deploy by tag, what can change without you changing your config?
 
 2) What is the advantage of a digest in incident response?
+
+## Further Reading
+
+- OCI image spec (tags vs digests context): https://github.com/opencontainers/image-spec
+- `podman-pull(1)`: https://docs.podman.io/en/latest/markdown/podman-pull.1.html
+- `podman-image(1)`: https://docs.podman.io/en/latest/markdown/podman-image.1.html
+- Registries config (`registries.conf`): https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md
+- Docker Registry HTTP API V2: https://distribution.github.io/distribution/spec/api/

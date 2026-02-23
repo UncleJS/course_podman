@@ -94,3 +94,10 @@ If your org already standardized on compose files:
 1) Why should your DB usually not publish a port to the host?
 
 2) What makes a stack script "safe" to run repeatedly?
+
+## Further Reading
+
+- `podman-network(1)`: https://docs.podman.io/en/latest/markdown/podman-network.1.html
+- `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
+- `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
+- Compose Specification (for mapping concepts): https://compose-spec.io/

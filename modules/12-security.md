@@ -119,3 +119,10 @@ Supply chain habits:
 1) Why is `--privileged` almost always the wrong answer?
 
 2) Why is digest pinning useful even if you trust the upstream?
+
+## Further Reading
+
+- Linux capabilities (man7): https://man7.org/linux/man-pages/man7/capabilities.7.html
+- `seccomp(2)` (man7): https://man7.org/linux/man-pages/man2/seccomp.2.html
+- SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
+- Podman security docs: https://github.com/containers/podman/blob/main/docs/tutorials/security.md

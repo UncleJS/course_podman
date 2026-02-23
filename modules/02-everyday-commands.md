@@ -143,3 +143,11 @@ podman image prune
 1) What is the difference between `podman run` and `podman start`?
 
 2) Where do you look first if a container exits immediately?
+
+## Further Reading
+
+- `podman-run(1)`: https://docs.podman.io/en/latest/markdown/podman-run.1.html
+- `podman-ps(1)`: https://docs.podman.io/en/latest/markdown/podman-ps.1.html
+- `podman-logs(1)`: https://docs.podman.io/en/latest/markdown/podman-logs.1.html
+- `podman-exec(1)`: https://docs.podman.io/en/latest/markdown/podman-exec.1.html
+- `podman-inspect(1)`: https://docs.podman.io/en/latest/markdown/podman-inspect.1.html

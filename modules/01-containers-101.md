@@ -95,3 +95,11 @@ What to look for in `inspect`:
 1) If you delete a container, do you delete its image?
 
 2) If a container runs as UID 0 inside, does that mean it is host root?
+
+## Further Reading
+
+- OCI image spec: https://github.com/opencontainers/image-spec
+- OCI runtime spec: https://github.com/opencontainers/runtime-spec
+- Linux namespaces (man7): https://man7.org/linux/man-pages/man7/namespaces.7.html
+- Linux control groups (man7): https://man7.org/linux/man-pages/man7/cgroups.7.html
+- Podman overview docs: https://podman.io/docs

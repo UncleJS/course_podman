@@ -104,3 +104,9 @@ Treat auto-update as an operational feature, not a convenience hack.
 1) Why can auto-update increase risk for stateful services?
 
 2) What must exist before you turn on auto-update in production?
+
+## Further Reading
+
+- `podman-auto-update(1)`: https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html
+- systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
+- systemd service restart policies: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html

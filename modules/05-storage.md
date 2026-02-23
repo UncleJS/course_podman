@@ -156,3 +156,10 @@ Stretch:
 - You can choose volume vs bind mount intentionally.
 - You can explain when `:Z` matters on Fedora/RHEL.
 - You can use `podman unshare` to debug permission issues.
+
+## Further Reading
+
+- `podman-volume(1)`: https://docs.podman.io/en/latest/markdown/podman-volume.1.html
+- Rootless storage and UID mapping: https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
+- SELinux mount labeling for containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
+- `subuid(5)` and `subgid(5)` (man7): https://man7.org/linux/man-pages/man5/subuid.5.html

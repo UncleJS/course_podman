@@ -145,3 +145,11 @@ If you start with Podman secrets (local-first), the clean migration is:
 - your service consumes that file (mount) or uses systemd credentials
 
 This avoids rewriting applications that already expect file-based secrets.
+
+## Further Reading
+
+- systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
+- Mozilla SOPS: https://github.com/getsops/sops
+- age (file encryption tool often used with SOPS): https://github.com/FiloSottile/age
+- HashiCorp Vault: https://www.vaultproject.io/
+- Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/

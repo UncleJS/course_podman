@@ -92,3 +92,10 @@ Treat it as a local runner for a subset of YAML.
 1) Why is base64 not a secret storage mechanism?
 
 2) What is the safest teardown command for resources created by `play kube`?
+
+## Further Reading
+
+- `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
+- `podman-kube-down(1)`: https://docs.podman.io/en/latest/markdown/podman-kube-down.1.html
+- Kubernetes objects overview: https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/
+- Kubernetes Secrets (base64 caveat): https://kubernetes.io/docs/concepts/configuration/secret/

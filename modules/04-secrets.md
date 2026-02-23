@@ -194,3 +194,10 @@ If you cannot use build secrets on your version:
 
 - You can create and mount a secret without leaking it.
 - You can describe a rotation plan that includes rollback.
+
+## Further Reading
+
+- `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html
+- OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+- systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
+- Kubernetes Secrets (base64 caveat context): https://kubernetes.io/docs/concepts/configuration/secret/
