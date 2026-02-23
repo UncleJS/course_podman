@@ -1,0 +1,8 @@
+[Unit]
+Description=Capstone backups volume
+
+[Volume]
+VolumeName=cap_backups
+
+[Install]
+WantedBy=default.target

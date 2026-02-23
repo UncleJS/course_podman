@@ -1,0 +1,8 @@
+[Unit]
+Description=Capstone MariaDB data volume
+
+[Volume]
+VolumeName=mariadb_data
+
+[Install]
+WantedBy=default.target

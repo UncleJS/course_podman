@@ -1,0 +1,18 @@
+[Unit]
+Description=Capstone Adminer
+Requires=capnet.network cap-mariadb.container
+After=capnet.network cap-mariadb.container
+
+[Container]
+Image=docker.io/library/adminer:4
+ContainerName=cap-adminer
+Network=capnet
+PublishPort=8082:8080
+Environment=ADMINER_DEFAULT_SERVER=db
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

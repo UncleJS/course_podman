@@ -1,0 +1,8 @@
+[Unit]
+Description=Course lab data volume
+
+[Volume]
+VolumeName=labdata
+
+[Install]
+WantedBy=default.target

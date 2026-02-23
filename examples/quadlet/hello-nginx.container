@@ -1,0 +1,12 @@
+[Unit]
+Description=Hello nginx (course)
+
+[Container]
+Image=docker.io/library/nginx:stable
+PublishPort=8081:80
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

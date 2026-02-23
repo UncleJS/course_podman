@@ -1,0 +1,8 @@
+[Unit]
+Description=Capstone network
+
+[Network]
+NetworkName=capnet
+
+[Install]
+WantedBy=default.target

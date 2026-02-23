@@ -1,0 +1,16 @@
+[Unit]
+Description=Capstone MariaDB backup
+Requires=capnet.network cap-mariadb.container cap-backups.volume
+After=capnet.network cap-mariadb.container cap-backups.volume
+
+[Container]
+Image=docker.io/library/mariadb:11
+ContainerName=cap-backup
+Network=capnet
+Volume=cap_backups:/backups
+Secret=mariadb_root_password
+Environment=TZ=UTC
+Exec=sh -lc 'set -eu; ts=$(date -u +%Y%m%dT%H%M%SZ); export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysqldump -h db -u root --all-databases > "/backups/all-${ts}.sql"'
+
+[Service]
+Type=oneshot

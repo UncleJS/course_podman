@@ -1,0 +1,13 @@
+[Unit]
+Description=Webpod via podman play kube (course)
+
+[Kube]
+Yaml=./webpod.yaml
+SetWorkingDirectory=unit
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

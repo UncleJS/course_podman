@@ -1,0 +1,20 @@
+[Unit]
+Description=Capstone MariaDB
+Requires=capnet.network mariadb-data.volume
+After=capnet.network mariadb-data.volume
+
+[Container]
+Image=docker.io/library/mariadb:11
+ContainerName=cap-mariadb
+Network=capnet
+NetworkAlias=db
+Volume=mariadb_data:/var/lib/mysql
+Secret=mariadb_root_password
+Environment=MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

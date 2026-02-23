@@ -1,0 +1,8 @@
+[Unit]
+Description=Course lab network
+
+[Network]
+NetworkName=labnet
+
+[Install]
+WantedBy=default.target

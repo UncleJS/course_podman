@@ -1,0 +1,15 @@
+[Unit]
+Description=Nginx with registry auto-update (course)
+
+[Container]
+Image=docker.io/library/nginx:stable
+ContainerName=autoupdate-nginx
+PublishPort=8083:80
+AutoUpdate=registry
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target
