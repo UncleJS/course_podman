@@ -27,22 +27,22 @@ Practical guidance:
 Create/list/inspect:
 
 ```bash
-podman volume create dbdata
-podman volume ls
-podman volume inspect dbdata
+podman volume create dbdata  # create a volume
+podman volume ls  # list volumes
+podman volume inspect dbdata  # inspect a volume
 ```
 
 Use a volume:
 
 ```bash
-podman run --rm -v dbdata:/data docker.io/library/alpine:latest sh -lc 'echo hi > /data/x'
-podman run --rm -v dbdata:/data docker.io/library/alpine:latest sh -lc 'cat /data/x'
+podman run --rm -v dbdata:/data docker.io/library/alpine:latest sh -lc 'echo hi > /data/x'  # run a container
+podman run --rm -v dbdata:/data docker.io/library/alpine:latest sh -lc 'cat /data/x'  # run a container
 ```
 
 Clean up (be careful; this deletes data):
 
 ```bash
-podman volume rm dbdata
+podman volume rm dbdata  # delete the volume (data loss)
 ```
 
 ## Bind Mounts
@@ -56,15 +56,15 @@ Bind mounts are great for:
 Example:
 
 ```bash
-mkdir -p ./mnt-demo
-echo hi > ./mnt-demo/hello.txt
-podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/hello.txt
+mkdir -p ./mnt-demo  # create directory
+echo hi > ./mnt-demo/hello.txt  # print text
+podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/hello.txt  # run a container
 ```
 
 Read-only bind mount:
 
 ```bash
-podman run --rm -v ./mnt-demo:/mnt:Z,ro docker.io/library/alpine:latest sh -lc 'cat /mnt/hello.txt; echo nope > /mnt/x'
+podman run --rm -v ./mnt-demo:/mnt:Z,ro docker.io/library/alpine:latest sh -lc 'cat /mnt/hello.txt; echo nope > /mnt/x'  # run a container
 ```
 
 SELinux note (Fedora/RHEL):
@@ -77,9 +77,9 @@ If SELinux is enforcing and you omit labels, mounts can fail with "permission de
 ## Inspect Mounts
 
 ```bash
-podman run -d --name mount1 -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest sleep 300
-podman inspect mount1 --format '{{json .Mounts}}' | less
-podman rm -f mount1
+podman run -d --name mount1 -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest sleep 300  # run a container
+podman inspect mount1 --format '{{json .Mounts}}' | less  # inspect container/image metadata
+podman rm -f mount1  # cleanup the container
 ```
 
 ## Rootless Permission Pitfalls
@@ -96,8 +96,8 @@ Common causes:
 Debug steps:
 
 ```bash
-podman unshare id
-podman unshare ls -la <path>
+podman unshare id  # run a command inside the user namespace
+podman unshare ls -la <path>  # run a command inside the user namespace
 ```
 
 Fix patterns:
@@ -107,7 +107,7 @@ Fix patterns:
 - If you must, adjust ownership inside the user namespace:
 
 ```bash
-podman unshare chown -R 1000:1000 <path>
+podman unshare chown -R 1000:1000 <path>  # run a command inside the user namespace
 ```
 
 Do not blindly `chmod 777`.
@@ -119,13 +119,13 @@ If SELinux is Enforcing, try this to learn the failure mode:
 1) Attempt a bind mount without labels:
 
 ```bash
-podman run --rm -v ./mnt-demo:/mnt docker.io/library/alpine:latest cat /mnt/hello.txt
+podman run --rm -v ./mnt-demo:/mnt docker.io/library/alpine:latest cat /mnt/hello.txt  # run a container
 ```
 
 2) If you get permission denied, fix it by adding `:Z`:
 
 ```bash
-podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/hello.txt
+podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/hello.txt  # run a container
 ```
 
 Do not disable SELinux as a workaround.

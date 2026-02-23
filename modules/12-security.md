@@ -31,7 +31,7 @@ Also consider:
 Start with a simple container and drop all Linux capabilities:
 
 ```bash
-podman run --rm --cap-drop=ALL docker.io/library/alpine:latest id
+podman run --rm --cap-drop=ALL docker.io/library/alpine:latest id  # run a container
 ```
 
 If your workload breaks, add only the specific capabilities required.
@@ -43,13 +43,13 @@ Avoid using `--privileged` as a workaround.
 Example:
 
 ```bash
-podman run --rm --memory 256m --pids-limit 200 docker.io/library/alpine:latest sh -lc 'echo ok'
+podman run --rm --memory 256m --pids-limit 200 docker.io/library/alpine:latest sh -lc 'echo ok'  # run a container
 ```
 
 ## Lab: No-New-Privileges
 
 ```bash
-podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id
+podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # run a container
 ```
 
 ## Lab: Read-Only Root FS
@@ -57,10 +57,7 @@ podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest
 Run nginx with a read-only root filesystem (this may require a writable temp location depending on image behavior):
 
 ```bash
-podman run --rm -p 8080:80 --read-only \
-  --tmpfs /var/cache/nginx \
-  --tmpfs /var/run \
-  docker.io/library/nginx:stable
+podman run --rm -p 8080:80 --read-only --tmpfs /var/cache/nginx --tmpfs /var/run docker.io/library/nginx:stable  # run a container
 ```
 
 If it fails:
@@ -72,11 +69,7 @@ If it fails:
 Try pairing with "drop everything":
 
 ```bash
-podman run --rm -p 8080:80 --read-only --cap-drop=ALL \
-  --security-opt no-new-privileges \
-  --tmpfs /var/cache/nginx \
-  --tmpfs /var/run \
-  docker.io/library/nginx:stable
+podman run --rm -p 8080:80 --read-only --cap-drop=ALL --security-opt no-new-privileges --tmpfs /var/cache/nginx --tmpfs /var/run docker.io/library/nginx:stable  # run a container
 ```
 
 If it fails, treat the error as a map of required writes/capabilities and add back only what is necessary.

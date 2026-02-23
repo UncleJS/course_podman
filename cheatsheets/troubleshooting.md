@@ -3,16 +3,16 @@
 ## Fast Triage
 
 ```bash
-podman ps -a
-podman logs <name>
-podman inspect <name> | less
+podman ps -a                 # is it running? exit code?
+podman logs <name>           # app output / crash reason
+podman inspect <name> | less # config: mounts, ports, command, env
 ```
 
 ## systemd/Quadlet
 
 ```bash
-systemctl --user status <service>
-journalctl --user -u <service> -n 200 --no-pager
+systemctl --user status <service>                    # systemd view: active/failed
+journalctl --user -u <service> -n 200 --no-pager     # service logs from journald
 ```
 
 ## Network Checks

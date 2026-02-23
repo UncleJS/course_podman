@@ -33,13 +33,13 @@ Prereqs:
 If you want this service to start on boot (common for a server), enable lingering for your user:
 
 ```bash
-sudo loginctl enable-linger "$USER"
+sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
 1) Create the secret (example only):
 
 ```bash
-printf '%s' 'example-password' | podman secret create db_password -
+printf '%s' 'example-password' | podman secret create db_password -  # print text without trailing newline
 ```
 
 2) Create a Quadlet `.container` unit.
@@ -73,15 +73,15 @@ WantedBy=default.target
 3) Reload and start:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user start example-app.service
-systemctl --user status example-app.service
+systemctl --user daemon-reload          # regenerate units from Quadlet files
+systemctl --user start example-app.service   # start the service
+systemctl --user status example-app.service  # show status
 ```
 
 4) Verify logs do not contain secret values:
 
 ```bash
-journalctl --user -u example-app.service -n 50 --no-pager
+journalctl --user -u example-app.service -n 50 --no-pager  # view user-service logs
 ```
 
 ## Rotation
@@ -95,7 +95,7 @@ Rule: do not delete the old secret until the new service instance is verified.
 1) Create the new secret:
 
 ```bash
-printf '%s' 'new-value' | podman secret create db_password_v2 -
+printf '%s' 'new-value' | podman secret create db_password_v2 -  # print text without trailing newline
 ```
 
 2) Update the Quadlet file:
@@ -105,21 +105,21 @@ printf '%s' 'new-value' | podman secret create db_password_v2 -
 3) Restart:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user restart example-app.service
+systemctl --user daemon-reload               # regenerate units after editing the Quadlet file
+systemctl --user restart example-app.service # restart to pick up new secret reference
 ```
 
 4) Verify behavior:
 
 ```bash
-systemctl --user status example-app.service
-journalctl --user -u example-app.service -n 100 --no-pager
+systemctl --user status example-app.service                 # show status
+journalctl --user -u example-app.service -n 100 --no-pager  # view logs
 ```
 
 5) Remove the old secret only after verification:
 
 ```bash
-podman secret rm db_password_v1
+podman secret rm db_password_v1  # delete the old secret after verification
 ```
 
 ## Further Reading

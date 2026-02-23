@@ -12,7 +12,7 @@
 Run and remove when done:
 
 ```bash
-podman run --rm docker.io/library/alpine:latest echo hello
+podman run --rm docker.io/library/alpine:latest echo hello  # run a container
 ```
 
 Notes:
@@ -23,27 +23,27 @@ Notes:
 Run a long-lived container:
 
 ```bash
-podman run -d --name sleep1 docker.io/library/alpine:latest sleep 600
-podman ps
+podman run -d --name sleep1 docker.io/library/alpine:latest sleep 600  # run a container
+podman ps  # list containers
 ```
 
 Inspect exit codes:
 
 ```bash
-podman wait sleep1
-podman inspect sleep1 --format '{{.State.ExitCode}}'
+podman wait sleep1  # wait for a container to exit
+podman inspect sleep1 --format '{{.State.ExitCode}}'  # inspect container/image metadata
 ```
 
 View logs:
 
 ```bash
-podman logs sleep1
+podman logs sleep1  # show container logs
 ```
 
 Execute a command in a running container:
 
 ```bash
-podman exec -it sleep1 sh
+podman exec -it sleep1 sh  # run a command in a running container
 ```
 
 Tip:
@@ -53,9 +53,9 @@ Tip:
 Stop/start/remove:
 
 ```bash
-podman stop sleep1
-podman start sleep1
-podman rm -f sleep1
+podman stop sleep1  # stop a running container
+podman start sleep1  # start an existing container
+podman rm -f sleep1  # stop (if needed) and force remove the container
 ```
 
 ## Useful Flags (Learn These Early)
@@ -72,27 +72,27 @@ podman rm -f sleep1
 1) Start a container and create a file:
 
 ```bash
-podman run -it --name scratch docker.io/library/alpine:latest sh
+podman run -it --name scratch docker.io/library/alpine:latest sh  # run a container
 ```
 
 Inside the container:
 
 ```sh
-echo hi > /tmp/hello.txt
-exit
+echo hi > /tmp/hello.txt  # print text
+exit  # exit the shell
 ```
 
 2) Remove and recreate:
 
 ```bash
-podman rm scratch
-podman run -it --name scratch docker.io/library/alpine:latest sh
+podman rm scratch  # remove the container
+podman run -it --name scratch docker.io/library/alpine:latest sh  # run a container
 ```
 
 Inside:
 
 ```sh
-ls -la /tmp/hello.txt
+ls -la /tmp/hello.txt  # list files
 ```
 
 Expected: the file is gone.
@@ -102,10 +102,10 @@ Expected: the file is gone.
 1) Run the same image twice with different names:
 
 ```bash
-podman run -d --name a1 docker.io/library/alpine:latest sleep 300
-podman run -d --name a2 docker.io/library/alpine:latest sleep 300
-podman ps
-podman rm -f a1 a2
+podman run -d --name a1 docker.io/library/alpine:latest sleep 300  # run a container
+podman run -d --name a2 docker.io/library/alpine:latest sleep 300  # run a container
+podman ps  # list containers
+podman rm -f a1 a2  # cleanup both containers
 ```
 
 2) Try to reuse a name and observe the error.
@@ -117,20 +117,20 @@ This teaches you why stable naming matters.
 List containers and images:
 
 ```bash
-podman ps -a
-podman images
+podman ps -a  # list containers
+podman images  # list images
 ```
 
 Remove stopped containers:
 
 ```bash
-podman container prune
+podman container prune  # remove all stopped containers
 ```
 
 Remove unused images (be careful; it can remove bases you need):
 
 ```bash
-podman image prune
+podman image prune  # remove unused images (frees disk)
 ```
 
 ## Checkpoint

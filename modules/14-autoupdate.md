@@ -44,29 +44,29 @@ Use:
 Install:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-cp examples/quadlet/autoupdate-nginx.container ~/.config/containers/systemd/
-systemctl --user daemon-reload
-systemctl --user start autoupdate-nginx.service
+mkdir -p ~/.config/containers/systemd  # create directory
+cp examples/quadlet/autoupdate-nginx.container ~/.config/containers/systemd/  # copy file
+systemctl --user daemon-reload                   # regenerate units from Quadlet files
+systemctl --user start autoupdate-nginx.service  # start the service
 ```
 
 Run auto-update manually:
 
 ```bash
-podman auto-update
+podman auto-update  # pull updates and restart labeled units
 ```
 
 Watch what changed:
 
 ```bash
-systemctl --user status autoupdate-nginx.service
-journalctl --user -u autoupdate-nginx.service -n 100 --no-pager
+systemctl --user status autoupdate-nginx.service                 # show status
+journalctl --user -u autoupdate-nginx.service -n 100 --no-pager  # view logs
 ```
 
 On many systems there is also a timer unit you can enable (name varies by distro). If present:
 
 ```bash
-systemctl --user list-unit-files | grep auto-update
+systemctl --user list-unit-files | grep auto-update  # look for an auto-update timer
 ```
 
 If a timer exists and you choose to use it, enable it like a normal systemd unit.

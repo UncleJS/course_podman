@@ -15,28 +15,28 @@ This course targets Fedora/RHEL-like systems with systemd, using rootless Podman
 Fedora:
 
 ```bash
-sudo dnf install -y podman
+sudo dnf install -y podman  # install Podman
 ```
 
 RHEL (package availability depends on subscription/repos):
 
 ```bash
-sudo dnf install -y podman
+sudo dnf install -y podman  # install Podman
 ```
 
 Verify:
 
 ```bash
-podman --version
-podman info
+podman --version  # show Podman version
+podman info  # show Podman host configuration
 ```
 
 Record your versions (useful for debugging later):
 
 ```bash
-podman --version
-rpm -q podman 2>/dev/null || true
-uname -r
+podman --version  # show Podman version
+rpm -q podman 2>/dev/null || true  # show installed package version
+uname -r  # show kernel/system info
 ```
 
 ## cgroups v2 Check (Required)
@@ -46,7 +46,7 @@ Quadlet requires cgroups v2.
 Check:
 
 ```bash
-podman info --format '{{.Host.CgroupsVersion}}'
+podman info --format '{{.Host.CgroupsVersion}}'  # show Podman host configuration
 ```
 
 Expected: `v2`
@@ -58,13 +58,13 @@ Rootless Podman uses user namespaces. Your user typically needs subuid/subgid ra
 Check:
 
 ```bash
-grep "^$USER:" /etc/subuid /etc/subgid
+grep "^$USER:" /etc/subuid /etc/subgid  # filter output
 ```
 
 If those are missing, create them (example range; coordinate with your admin policy):
 
 ```bash
-sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"
+sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"  # grant subuid/subgid range for rootless
 ```
 
 Log out and back in after updating subuids/subgids.
@@ -76,7 +76,7 @@ SELinux is usually enabled on these systems. You do not need to understand the f
 Check status:
 
 ```bash
-getenforce
+getenforce  # show SELinux mode
 ```
 
 If SELinux is Enforcing, prefer:
@@ -87,7 +87,7 @@ If SELinux is Enforcing, prefer:
 ## First Container
 
 ```bash
-podman run --rm docker.io/library/alpine:latest uname -a
+podman run --rm docker.io/library/alpine:latest uname -a  # run a container
 ```
 
 If this works, you have:
@@ -114,8 +114,8 @@ Logs:
 Pick a working directory for labs:
 
 ```bash
-mkdir -p ~/course_podman-labs
-cd ~/course_podman-labs
+mkdir -p ~/course_podman-labs  # create directory
+cd ~/course_podman-labs  # change directory
 ```
 
 ## Recommended Shell Safety
@@ -123,7 +123,7 @@ cd ~/course_podman-labs
 These are optional but reduce accidents:
 
 ```bash
-set -o noclobber
+set -o noclobber  # prevent overwriting files with redirects
 ```
 
 Do not run this in shells where it would surprise you; it changes redirect behavior.

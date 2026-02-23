@@ -43,33 +43,29 @@ Threat model in one line:
 Create/list/inspect/remove:
 
 ```bash
-podman secret create db_password -
-podman secret ls
-podman secret inspect db_password
-podman secret rm db_password
+podman secret create db_password -  # create a secret
+podman secret ls  # list secrets
+podman secret inspect db_password  # inspect a secret
+podman secret rm db_password  # delete the secret by name
 ```
 
 Create a secret from a file:
 
 ```bash
-chmod 600 ./db_password.txt
-podman secret create db_password ./db_password.txt
+chmod 600 ./db_password.txt  # change permissions
+podman secret create db_password ./db_password.txt  # create a secret
 ```
 
 Use a secret at runtime:
 
 ```bash
-podman run --rm --secret db_password \
-  docker.io/library/busybox:latest \
-  sh -lc 'test -f /run/secrets/db_password && echo "secret file present"'
+podman run --rm --secret db_password docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db_password && echo "secret file present"'  # run a container
 ```
 
 You can change the target filename inside the container:
 
 ```bash
-podman run --rm --secret db_password,target=db.pass \
-  docker.io/library/busybox:latest \
-  sh -lc 'test -f /run/secrets/db.pass && echo OK'
+podman run --rm --secret db_password,target=db.pass docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db.pass && echo OK'  # run a container
 ```
 
 Notes:
@@ -82,21 +78,19 @@ Notes:
 1) Create a secret from stdin (example only):
 
 ```bash
-printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -
+printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -  # print text without trailing newline
 ```
 
 2) Run a container that confirms the secret file exists (without printing it):
 
 ```bash
-podman run --rm --secret db_password docker.io/library/busybox:latest \
-  sh -lc 'test -f /run/secrets/db_password && echo OK'
+podman run --rm --secret db_password docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db_password && echo OK'  # run a container
 ```
 
 3) Verify you are not relying on environment variables:
 
 ```bash
-podman run --rm --secret db_password docker.io/library/busybox:latest \
-  sh -lc 'env | wc -l'
+podman run --rm --secret db_password docker.io/library/busybox:latest sh -lc 'env | wc -l'  # run a container
 ```
 
 Checkpoint:
@@ -111,25 +105,25 @@ This lab builds the "prove it" habit.
 1) Start a long-lived container with the secret:
 
 ```bash
-podman run -d --name secret-demo --secret db_password docker.io/library/busybox:latest sleep 600
+podman run -d --name secret-demo --secret db_password docker.io/library/busybox:latest sleep 600  # run a container
 ```
 
 2) Check environment does not contain the secret:
 
 ```bash
-podman exec secret-demo sh -lc 'env | grep -i password || true'
+podman exec secret-demo sh -lc 'env | grep -i password || true'  # run a command in a running container
 ```
 
 3) Confirm the file exists:
 
 ```bash
-podman exec secret-demo sh -lc 'ls -la /run/secrets'
+podman exec secret-demo sh -lc 'ls -la /run/secrets'  # run a command in a running container
 ```
 
 4) Cleanup:
 
 ```bash
-podman rm -f secret-demo
+podman rm -f secret-demo  # stop and remove the demo container
 ```
 
 ## Lab B: Rotation Pattern (Versioned Secrets)
@@ -137,18 +131,16 @@ podman rm -f secret-demo
 Use versioned names and switch consumers:
 
 ```bash
-printf '%s' 'v1-value' | podman secret create db_password_v1 -
-printf '%s' 'v2-value' | podman secret create db_password_v2 -
+printf '%s' 'v1-value' | podman secret create db_password_v1 -  # print text without trailing newline
+printf '%s' 'v2-value' | podman secret create db_password_v2 -  # print text without trailing newline
 ```
 
 Run with v1, then update to v2:
 
 ```bash
-podman run --rm --secret db_password_v1 docker.io/library/busybox:latest \
-  sh -lc 'test -f /run/secrets/db_password_v1 && echo running-v1'
+podman run --rm --secret db_password_v1 docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db_password_v1 && echo running-v1'  # run a container
 
-podman run --rm --secret db_password_v2 docker.io/library/busybox:latest \
-  sh -lc 'test -f /run/secrets/db_password_v2 && echo running-v2'
+podman run --rm --secret db_password_v2 docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db_password_v2 && echo running-v2'  # run a container
 ```
 
 Guideline:
@@ -167,7 +159,7 @@ Goal: authenticate to a private resource during image build without leaking toke
 Because Podman/Buildah feature support varies by version, first check your toolchain:
 
 ```bash
-podman build --help | sed -n '1,120p'
+podman build --help | sed -n '1,120p'  # build an image
 ```
 
 If your Podman supports build secrets, prefer:

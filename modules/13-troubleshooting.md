@@ -14,25 +14,25 @@ This module is about turning "it doesn't work" into a short checklist.
 1) Confirm container state:
 
 ```bash
-podman ps -a
+podman ps -a  # state, exit codes, recent failures
 ```
 
 2) Read logs:
 
 ```bash
-podman logs <name>
+podman logs <name>  # app output / crash reason
 ```
 
 3) Inspect config:
 
 ```bash
-podman inspect <name> | less
+podman inspect <name> | less  # ports, mounts, env, command
 ```
 
 4) Reproduce interactively:
 
 ```bash
-podman run --rm -it <image> sh
+podman run --rm -it <image> sh  # reproduce interactively
 ```
 
 If the container exits too fast to exec into it:
@@ -45,31 +45,31 @@ If the container exits too fast to exec into it:
 Events (what Podman is doing):
 
 ```bash
-podman events
+podman events  # see Podman lifecycle events
 ```
 
 Live resource stats:
 
 ```bash
-podman stats
+podman stats  # live CPU/mem/io stats
 ```
 
 Show processes in a container:
 
 ```bash
-podman top <name>
+podman top <name>  # processes inside the container
 ```
 
 Disk usage:
 
 ```bash
-podman system df
+podman system df  # disk usage summary
 ```
 
 Cleanup (be careful on shared systems):
 
 ```bash
-podman system prune
+podman system prune  # remove unused objects (be careful)
 ```
 
 ## Failure Drills (With Expected Observations)
@@ -105,20 +105,20 @@ Do these on purpose; they make you faster in real incidents.
 Check status:
 
 ```bash
-systemctl --user status <service>
+systemctl --user status <service>  # systemd view: active/failed
 ```
 
 Logs:
 
 ```bash
-journalctl --user -u <service> -n 200 --no-pager
+journalctl --user -u <service> -n 200 --no-pager  # service logs from journald
 ```
 
 Reload after unit changes:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user restart <service>
+systemctl --user daemon-reload           # reload unit changes
+systemctl --user restart <service>       # restart the service
 ```
 
 ## Networking Checklist

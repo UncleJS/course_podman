@@ -5,14 +5,14 @@ This example demonstrates a multi-stage build that produces a small runtime imag
 ## Build
 
 ```bash
-podman build -t localhost/hello-go:1 examples/build/hello-go
+podman build -t localhost/hello-go:1 examples/build/hello-go  # build an image
 ```
 
 ## Run
 
 ```bash
-podman run --rm -p 8085:8080 localhost/hello-go:1
-curl -sS http://127.0.0.1:8085/
+podman run --rm -p 8085:8080 localhost/hello-go:1  # run a container
+curl -sS http://127.0.0.1:8085/  # verify HTTP endpoint
 ```
 
 ## Architecture note

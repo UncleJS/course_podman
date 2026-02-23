@@ -54,35 +54,35 @@ Use the provided example units:
 1) Create the DB root password as a Podman secret (example only):
 
 ```bash
-read -s -p 'MariaDB root password: ' P
-printf '\n'
-printf '%s' "$P" | podman secret create mariadb_root_password -
-unset P
+read -s -p 'MariaDB root password: ' P  # prompt for input
+printf '\n'  # print text without trailing newline
+printf '%s' "$P" | podman secret create mariadb_root_password -  # print text without trailing newline
+unset P  # unset an environment variable
 ```
 
 2) Install Quadlet units:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-cp examples/quadlet/capnet.network ~/.config/containers/systemd/
-cp examples/quadlet/mariadb-data.volume ~/.config/containers/systemd/
-cp examples/quadlet/cap-backups.volume ~/.config/containers/systemd/
-cp examples/quadlet/cap-mariadb.container ~/.config/containers/systemd/
-cp examples/quadlet/cap-adminer.container ~/.config/containers/systemd/
+mkdir -p ~/.config/containers/systemd  # create directory
+cp examples/quadlet/capnet.network ~/.config/containers/systemd/  # copy file
+cp examples/quadlet/mariadb-data.volume ~/.config/containers/systemd/  # copy file
+cp examples/quadlet/cap-backups.volume ~/.config/containers/systemd/  # copy file
+cp examples/quadlet/cap-mariadb.container ~/.config/containers/systemd/  # copy file
+cp examples/quadlet/cap-adminer.container ~/.config/containers/systemd/  # copy file
 ```
 
 3) Enable linger (boot start):
 
 ```bash
-sudo loginctl enable-linger "$USER"
+sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
 4) Start services:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user start cap-mariadb.service
-systemctl --user start cap-adminer.service
+systemctl --user daemon-reload             # regenerate units from Quadlet files
+systemctl --user start cap-mariadb.service # start DB
+systemctl --user start cap-adminer.service # start UI
 ```
 
 5) Validate:
@@ -93,7 +93,7 @@ systemctl --user start cap-adminer.service
 Validate DB is private:
 
 ```bash
-podman port cap-mariadb || true
+podman port cap-mariadb || true  # show published ports
 ```
 
 Expected: no published ports.
@@ -103,10 +103,7 @@ Expected: no published ports.
 Create a test database/table so you have something to back up:
 
 ```bash
-podman run --rm --network capnet \
-  --secret mariadb_root_password \
-  docker.io/library/mariadb:11 \
-  sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "CREATE DATABASE IF NOT EXISTS cap; CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY); INSERT IGNORE INTO cap.t1 VALUES (1);"'
+podman run --rm --network capnet --secret mariadb_root_password docker.io/library/mariadb:11 sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "CREATE DATABASE IF NOT EXISTS cap; CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY); INSERT IGNORE INTO cap.t1 VALUES (1);"'  # run a container
 ```
 
 ## Optional: Scheduled Backups
@@ -114,23 +111,23 @@ podman run --rm --network capnet \
 1) Install backup Quadlet and timer:
 
 ```bash
-cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/
-mkdir -p ~/.config/systemd/user
-cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now cap-backup.timer
+cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/  # copy file
+mkdir -p ~/.config/systemd/user  # create directory
+cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/  # copy file
+systemctl --user daemon-reload                 # reload new units
+systemctl --user enable --now cap-backup.timer # enable scheduled backups
 ```
 
 2) Trigger a backup immediately:
 
 ```bash
-systemctl --user start cap-backup.service
+systemctl --user start cap-backup.service  # run a backup now
 ```
 
 3) Verify backup files exist:
 
 ```bash
-podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest ls -la /backups
+podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest ls -la /backups  # run a container
 ```
 
 Note:
@@ -161,13 +158,13 @@ Restore sketch:
 Trigger a backup:
 
 ```bash
-systemctl --user start cap-backup.service
+systemctl --user start cap-backup.service  # run a backup now
 ```
 
 Find the newest backup file:
 
 ```bash
-podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest sh -lc 'ls -1 /backups | tail -n 5'
+podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest sh -lc 'ls -1 /backups | tail -n 5'  # run a container
 ```
 
 ### Restore (Manual)
@@ -176,20 +173,13 @@ Pick a backup filename from the previous step, then restore:
 
 ```bash
 BACKUP_FILE=all-<timestamp>.sql
-podman run --rm --network capnet \
-  -v cap_backups:/backups \
-  --secret mariadb_root_password \
-  docker.io/library/mariadb:11 \
-  sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root < "/backups/'"$BACKUP_FILE"'"'
+podman run --rm --network capnet -v cap_backups:/backups --secret mariadb_root_password docker.io/library/mariadb:11 sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root < "/backups/'"$BACKUP_FILE"'"'  # run a container
 ```
 
 Verify the data is present:
 
 ```bash
-podman run --rm --network capnet \
-  --secret mariadb_root_password \
-  docker.io/library/mariadb:11 \
-  sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "SELECT * FROM cap.t1;"'
+podman run --rm --network capnet --secret mariadb_root_password docker.io/library/mariadb:11 sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "SELECT * FROM cap.t1;"'  # run a container
 ```
 
 Rollback idea:
@@ -207,9 +197,9 @@ Rollback idea:
 Record what you are running:
 
 ```bash
-podman images --digests | grep -E 'mariadb|adminer'
-podman inspect cap-mariadb --format '{{.ImageName}}'
-podman inspect cap-adminer --format '{{.ImageName}}'
+podman images --digests | grep -E 'mariadb|adminer'  # list images
+podman inspect cap-mariadb --format '{{.ImageName}}'  # inspect container/image metadata
+podman inspect cap-adminer --format '{{.ImageName}}'  # inspect container/image metadata
 ```
 
 ### Pin by Digest (Recommended)
@@ -222,9 +212,9 @@ In your `.container` files, set:
 Then:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user restart cap-mariadb.service
-systemctl --user restart cap-adminer.service
+systemctl --user daemon-reload                 # regenerate units after edits
+systemctl --user restart cap-mariadb.service   # restart DB
+systemctl --user restart cap-adminer.service   # restart UI
 ```
 
 Rollback is the same procedure with the previous digests.
@@ -238,20 +228,16 @@ For this lab, choose a password without quotes or newlines to avoid shell/SQL es
 1) Create a new secret (versioned name):
 
 ```bash
-read -s -p 'New MariaDB root password: ' P
-printf '\n'
-printf '%s' "$P" | podman secret create mariadb_root_password_v2 -
-unset P
+read -s -p 'New MariaDB root password: ' P  # prompt for input
+printf '\n'  # print text without trailing newline
+printf '%s' "$P" | podman secret create mariadb_root_password_v2 -  # print text without trailing newline
+unset P  # unset an environment variable
 ```
 
 2) Change the password inside MariaDB while authenticated with the old one:
 
 ```bash
-podman run --rm --network capnet \
-  --secret mariadb_root_password \
-  --secret mariadb_root_password_v2 \
-  docker.io/library/mariadb:11 \
-  sh -lc 'old=$(cat /run/secrets/mariadb_root_password); new=$(cat /run/secrets/mariadb_root_password_v2); export MYSQL_PWD="$old"; mysql -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"'
+podman run --rm --network capnet --secret mariadb_root_password --secret mariadb_root_password_v2 docker.io/library/mariadb:11 sh -lc 'old=$(cat /run/secrets/mariadb_root_password); new=$(cat /run/secrets/mariadb_root_password_v2); export MYSQL_PWD="$old"; mysql -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"'  # run a container
 ```
 
 3) Update Quadlet to reference the new secret name and restart MariaDB.
@@ -261,7 +247,7 @@ podman run --rm --network capnet \
 5) Remove the old secret only after verification:
 
 ```bash
-podman secret rm mariadb_root_password
+podman secret rm mariadb_root_password  # remove old secret after verification
 ```
 
 ## Notes

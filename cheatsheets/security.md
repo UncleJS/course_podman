@@ -10,7 +10,7 @@
 ## Hardening Flags (Examples)
 
 ```bash
-podman run --read-only --tmpfs /tmp <image>
+podman run --read-only --tmpfs /tmp <image>  # read-only root FS + writable temp
 ```
 
 ## SELinux (Fedora/RHEL)

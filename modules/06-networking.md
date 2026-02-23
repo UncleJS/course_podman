@@ -65,14 +65,14 @@ In rootless mode Podman cannot create kernel-level bridges as a normal user. Ins
 Check which backend your installation uses:
 
 ```bash
-podman info --format '{{.Host.NetworkBackend}}'
+podman info --format '{{.Host.NetworkBackend}}'  # show Podman host configuration
 ```
 
 Check which per-network helper is active:
 
 ```bash
-podman info --format '{{.Host.Slirp4NetnsOptions}}'
-podman info --format '{{.Host.PastaOptions}}'
+podman info --format '{{.Host.Slirp4NetnsOptions}}'  # show Podman host configuration
+podman info --format '{{.Host.PastaOptions}}'  # show Podman host configuration
 ```
 
 You can switch the rootless backend in `~/.config/containers/containers.conf`:
@@ -93,10 +93,10 @@ default_rootless_network_cmd = "pasta"
 Option A — lower the unprivileged port minimum (system-wide, only if you own the machine):
 
 ```bash
-sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
+sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80  # allow low ports for rootless (system-wide)
 # make permanent
-echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee /etc/sysctl.d/99-lowport.conf
-sudo sysctl -p /etc/sysctl.d/99-lowport.conf
+echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee /etc/sysctl.d/99-lowport.conf  # persist across reboots
+sudo sysctl -p /etc/sysctl.d/99-lowport.conf  # apply the persistent config
 ```
 
 Option B — use a high port and put a reverse proxy (nginx, Caddy) in front. Strongly preferred in production.
@@ -112,8 +112,8 @@ Option C — use `systemd` socket activation (covered in Module 11).
 Syntax: `-p <host-port>:<container-port>`
 
 ```bash
-podman run -d --name web1 -p 8080:80 docker.io/library/nginx:stable
-curl -sS http://127.0.0.1:8080/ | head
+podman run -d --name web1 -p 8080:80 docker.io/library/nginx:stable  # run a container
+curl -sS http://127.0.0.1:8080/ | head  # verify HTTP endpoint
 ```
 
 ### 3.2  Bind to a Specific Host Address
@@ -122,13 +122,13 @@ By default `-p 8080:80` listens on all host interfaces (`0.0.0.0`).
 To restrict to loopback only:
 
 ```bash
-podman run -d --name web-lo -p 127.0.0.1:8080:80 docker.io/library/nginx:stable
+podman run -d --name web-lo -p 127.0.0.1:8080:80 docker.io/library/nginx:stable  # run a container
 ```
 
 To listen on a specific network interface IP:
 
 ```bash
-podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:stable
+podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:stable  # run a container
 ```
 
 This is important for security: a backend service should never be published to `0.0.0.0` when it only needs to be reachable by a local proxy.
@@ -136,25 +136,19 @@ This is important for security: a backend service should never be published to `
 ### 3.3  Multiple Port Mappings
 
 ```bash
-podman run -d --name multi \
-  -p 8080:80 \
-  -p 8443:443 \
-  docker.io/library/nginx:stable
+podman run -d --name multi -p 8080:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
 ```
 
 ### 3.4  UDP Port Mapping
 
 ```bash
-podman run -d --name dns-demo \
-  -p 5053:53/udp \
-  -p 5053:53/tcp \
-  docker.io/library/alpine:latest sleep 600
+podman run -d --name dns-demo -p 5053:53/udp -p 5053:53/tcp docker.io/library/alpine:latest sleep 600  # run a container
 ```
 
 ### 3.5  Random Host Port (Ephemeral)
 
 ```bash
-podman run -d --name rand-port -p 80 docker.io/library/nginx:stable
+podman run -d --name rand-port -p 80 docker.io/library/nginx:stable  # run a container
 podman port rand-port          # see what port was assigned
 ```
 
@@ -162,19 +156,19 @@ podman port rand-port          # see what port was assigned
 
 ```bash
 # Quick view
-podman port web1
+podman port web1  # show published ports
 
 # Full JSON (useful in scripts)
-podman inspect web1 --format '{{json .NetworkSettings.Ports}}'
+podman inspect web1 --format '{{json .NetworkSettings.Ports}}'  # inspect container/image metadata
 
 # Everything in one JSON dump
-podman inspect web1 | python3 -m json.tool | grep -A10 '"Ports"'
+podman inspect web1 | python3 -m json.tool | grep -A10 '"Ports"'  # inspect container/image metadata
 ```
 
 Cleanup:
 
 ```bash
-podman rm -f web1 web-lo web-iface multi rand-port
+podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
 ```
 
 ---
@@ -194,13 +188,13 @@ Problems with the default network:
 ### 4.2  Creating a User-Defined Network
 
 ```bash
-podman network create appnet
+podman network create appnet  # create a network
 ```
 
 List networks:
 
 ```bash
-podman network ls
+podman network ls  # list networks
 ```
 
 Expected output includes your new `appnet` plus built-in networks.
@@ -208,7 +202,7 @@ Expected output includes your new `appnet` plus built-in networks.
 Inspect the network (shows subnet, gateway, driver):
 
 ```bash
-podman network inspect appnet
+podman network inspect appnet  # inspect a network
 ```
 
 Key fields to understand:
@@ -224,10 +218,7 @@ Notice `dns_enabled: true` — this is the key difference from the default netwo
 ### 4.3  Custom Subnet and Gateway
 
 ```bash
-podman network create \
-  --subnet 172.28.0.0/24 \
-  --gateway 172.28.0.1 \
-  myapp-net
+podman network create --subnet 172.28.0.0/24 --gateway 172.28.0.1 myapp-net  # create a network
 ```
 
 Use custom subnets when:
@@ -239,7 +230,7 @@ Use custom subnets when:
 An internal network has no route to the outside world. Containers on it cannot reach the internet.
 
 ```bash
-podman network create --internal db-internal
+podman network create --internal db-internal  # create a network
 ```
 
 Use this for databases, caches, and any service that has no business reaching the internet.
@@ -247,8 +238,7 @@ Use this for databases, caches, and any service that has no business reaching th
 Verify:
 
 ```bash
-podman run --rm --network db-internal docker.io/library/alpine:latest \
-  sh -lc 'wget -qO- --timeout=3 http://example.com || echo BLOCKED'
+podman run --rm --network db-internal docker.io/library/alpine:latest sh -lc 'wget -qO- --timeout=3 http://example.com || echo BLOCKED'  # run a container
 ```
 
 Expected: connection times out or is refused. That is the intended behavior.
@@ -256,7 +246,7 @@ Expected: connection times out or is refused. That is the intended behavior.
 ### 4.5  Remove a Network
 
 ```bash
-podman network rm appnet
+podman network rm appnet  # remove the network
 ```
 
 You cannot remove a network that has active containers attached. Stop and remove containers first:
@@ -264,8 +254,8 @@ You cannot remove a network that has active containers attached. Stop and remove
 ```bash
 podman network rm appnet           # may fail if containers are running
 podman ps --filter network=appnet  # find connected containers
-podman rm -f $(podman ps -q --filter network=appnet)
-podman network rm appnet
+podman rm -f $(podman ps -q --filter network=appnet)  # force remove connected containers
+podman network rm appnet  # remove a network
 ```
 
 ---
@@ -283,14 +273,13 @@ Podman runs an embedded DNS resolver (backed by **aardvark-dns** on modern versi
 ### 5.2  Basic DNS Lab
 
 ```bash
-podman network create testdns
+podman network create testdns  # create a network
 
 # Start a named container
-podman run -d --name server-a --network testdns docker.io/library/alpine:latest sleep 600
+podman run -d --name server-a --network testdns docker.io/library/alpine:latest sleep 600  # run a container
 
 # From another container, resolve the name
-podman run --rm --network testdns docker.io/library/alpine:latest \
-  sh -lc 'getent hosts server-a'
+podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'getent hosts server-a'  # run a container
 ```
 
 Expected output: an IP address followed by `server-a`.
@@ -298,8 +287,7 @@ Expected output: an IP address followed by `server-a`.
 Test TCP connectivity:
 
 ```bash
-podman run --rm --network testdns docker.io/library/alpine:latest \
-  sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'
+podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'  # run a container
 ```
 
 ### 5.3  Network Aliases
@@ -310,17 +298,12 @@ An alias lets you give a container an **additional DNS name** on a specific netw
 - Giving a container a short service name regardless of its actual container name.
 
 ```bash
-podman network create alias-demo
+podman network create alias-demo  # create a network
 
-podman run -d \
-  --name primary-db \
-  --network alias-demo \
-  --network-alias db \
-  docker.io/library/alpine:latest sleep 600
+podman run -d --name primary-db --network alias-demo --network-alias db docker.io/library/alpine:latest sleep 600  # run a container
 
 # Resolve by alias
-podman run --rm --network alias-demo docker.io/library/alpine:latest \
-  sh -lc 'getent hosts db'
+podman run --rm --network alias-demo docker.io/library/alpine:latest sh -lc 'getent hosts db'  # run a container
 ```
 
 Both the container name (`primary-db`) and the alias (`db`) resolve to the same IP.
@@ -330,18 +313,17 @@ Both the container name (`primary-db`) and the alias (`db`) resolve to the same 
 When multiple containers share the same alias on a network, DNS returns **all IPs** (round-robin).
 
 ```bash
-podman network create lb-demo
+podman network create lb-demo  # create a network
 
-podman run -d --name app-1 --network lb-demo --network-alias app docker.io/library/alpine:latest sleep 600
-podman run -d --name app-2 --network lb-demo --network-alias app docker.io/library/alpine:latest sleep 600
+podman run -d --name app-1 --network lb-demo --network-alias app docker.io/library/alpine:latest sleep 600  # run a container
+podman run -d --name app-2 --network lb-demo --network-alias app docker.io/library/alpine:latest sleep 600  # run a container
 
 # Resolve - you may see both IPs
-podman run --rm --network lb-demo docker.io/library/alpine:latest \
-  sh -lc 'for i in 1 2 3 4; do getent hosts app; done'
+podman run --rm --network lb-demo docker.io/library/alpine:latest sh -lc 'for i in 1 2 3 4; do getent hosts app; done'  # run a container
 
 # Cleanup
-podman rm -f app-1 app-2
-podman network rm lb-demo
+podman rm -f app-1 app-2  # cleanup containers
+podman network rm lb-demo # remove the network
 ```
 
 > This is primitive load balancing. For production you want a real load balancer in front. But the DNS pattern is real.
@@ -351,22 +333,19 @@ podman network rm lb-demo
 Override the DNS server used inside a container (useful on corporate networks or when using a split-horizon DNS):
 
 ```bash
-podman run --rm --dns 1.1.1.1 docker.io/library/alpine:latest \
-  sh -lc 'cat /etc/resolv.conf'
+podman run --rm --dns 1.1.1.1 docker.io/library/alpine:latest sh -lc 'cat /etc/resolv.conf'  # run a container
 ```
 
 Add DNS search domains:
 
 ```bash
-podman run --rm --dns-search corp.example.com docker.io/library/alpine:latest \
-  sh -lc 'cat /etc/resolv.conf'
+podman run --rm --dns-search corp.example.com docker.io/library/alpine:latest sh -lc 'cat /etc/resolv.conf'  # run a container
 ```
 
 Set a custom `/etc/hosts` entry:
 
 ```bash
-podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest \
-  sh -lc 'getent hosts myservice'
+podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest sh -lc 'getent hosts myservice'  # run a container
 ```
 
 ---
@@ -386,57 +365,51 @@ A container can be a member of more than one network simultaneously. This is the
 ### 6.1  Multi-Network Example
 
 ```bash
-podman network create frontend-net
-podman network create backend-net
+podman network create frontend-net  # create a network
+podman network create backend-net  # create a network
 
 # DB: only on backend
-podman run -d --name db \
-  --network backend-net \
-  docker.io/library/alpine:latest sleep 600
+podman run -d --name db --network backend-net docker.io/library/alpine:latest sleep 600  # run a container
 
 # App: on both networks
-podman run -d --name app \
-  --network frontend-net \
-  docker.io/library/alpine:latest sleep 600
+podman run -d --name app --network frontend-net docker.io/library/alpine:latest sleep 600  # run a container
 
 # Connect app to backend AFTER it is running
-podman network connect backend-net app
+podman network connect backend-net app  # attach a container to a network
 
 # Frontend: only on frontend
-podman run -d --name frontend \
-  --network frontend-net \
-  docker.io/library/alpine:latest sleep 600
+podman run -d --name frontend --network frontend-net docker.io/library/alpine:latest sleep 600  # run a container
 
 # Verify: frontend can reach app
-podman exec frontend sh -lc 'getent hosts app'
+podman exec frontend sh -lc 'getent hosts app'  # run a command in a running container
 
 # Verify: frontend CANNOT reach db (different network)
-podman exec frontend sh -lc 'getent hosts db || echo "NOT REACHABLE"'
+podman exec frontend sh -lc 'getent hosts db || echo "NOT REACHABLE"'  # run a command in a running container
 
 # Verify: app CAN reach db
-podman exec app sh -lc 'getent hosts db'
+podman exec app sh -lc 'getent hosts db'  # run a command in a running container
 
 # Cleanup
-podman rm -f db app frontend
-podman network rm frontend-net backend-net
+podman rm -f db app frontend               # stop and remove containers
+podman network rm frontend-net backend-net # remove networks
 ```
 
 ### 6.2  Disconnect from a Network Without Stopping
 
 ```bash
-podman network disconnect backend-net app
+podman network disconnect backend-net app  # detach a container from a network
 ```
 
 Verify the container no longer has the interface:
 
 ```bash
-podman exec app ip addr
+podman exec app ip addr  # run a command in a running container
 ```
 
 Reconnect:
 
 ```bash
-podman network connect backend-net app
+podman network connect backend-net app  # attach a container to a network
 ```
 
 ---
@@ -446,13 +419,13 @@ podman network connect backend-net app
 ### 7.1  List All Networks
 
 ```bash
-podman network ls
+podman network ls  # list networks
 ```
 
 ### 7.2  Detailed Network Info
 
 ```bash
-podman network inspect appnet
+podman network inspect appnet  # inspect a network
 ```
 
 Shows: driver, subnets, gateways, connected containers, DNS state.
@@ -460,35 +433,33 @@ Shows: driver, subnets, gateways, connected containers, DNS state.
 ### 7.3  Which Network Is a Container On?
 
 ```bash
-podman inspect <name> --format '{{json .NetworkSettings.Networks}}'
+podman inspect <name> --format '{{json .NetworkSettings.Networks}}'  # inspect container/image metadata
 ```
 
 Or see all networks and their connected containers:
 
 ```bash
-podman network inspect appnet --format '{{json .Containers}}'
+podman network inspect appnet --format '{{json .Containers}}'  # inspect a network
 ```
 
 ### 7.4  Show Container IP Address
 
 ```bash
-podman inspect <name> \
-  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+podman inspect <name> --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'  # inspect container/image metadata
 ```
 
 For multi-network containers:
 
 ```bash
-podman inspect app \
-  --format '{{range $name, $net := .NetworkSettings.Networks}}{{$name}}: {{$net.IPAddress}}{{"\n"}}{{end}}'
+podman inspect app --format '{{range $name, $net := .NetworkSettings.Networks}}{{$name}}: {{$net.IPAddress}}{{"\n"}}{{end}}'  # inspect container/image metadata
 ```
 
 ### 7.5  View Interfaces Inside a Running Container
 
 ```bash
-podman exec <name> ip addr
-podman exec <name> ip route
-podman exec <name> cat /etc/resolv.conf
+podman exec <name> ip addr  # run a command in a running container
+podman exec <name> ip route  # run a command in a running container
+podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 ```
 
 ### 7.6  Host-Side View
@@ -496,8 +467,8 @@ podman exec <name> cat /etc/resolv.conf
 On the host, Podman bridge networks appear as `podman` prefixed virtual bridges:
 
 ```bash
-ip link show type bridge
-ip addr show
+ip link show type bridge  # show network links
+ip addr show  # show interfaces
 ```
 
 ---
@@ -507,7 +478,7 @@ ip addr show
 ### 8.1  Bridge (Default)
 
 ```bash
-podman network create --driver bridge mybridge
+podman network create --driver bridge mybridge  # create a network
 ```
 
 Characteristics:
@@ -518,7 +489,7 @@ Characteristics:
 ### 8.2  None (No Networking)
 
 ```bash
-podman run --rm --network none docker.io/library/alpine:latest ip addr
+podman run --rm --network none docker.io/library/alpine:latest ip addr  # run a container
 ```
 
 Only `lo` (loopback) is present. Useful for:
@@ -529,7 +500,7 @@ Only `lo` (loopback) is present. Useful for:
 
 ```bash
 # Note: limited usefulness in rootless mode
-podman run --rm --network host docker.io/library/alpine:latest ip addr
+podman run --rm --network host docker.io/library/alpine:latest ip addr  # run a container
 ```
 
 The container sees the host's network interfaces directly. There is no NAT, no port mapping needed. Avoid this in production rootless workloads.
@@ -538,12 +509,7 @@ The container sees the host's network interfaces directly. There is no NAT, no p
 
 ```bash
 # rootful or with NET_ADMIN capability only
-podman network create \
-  --driver macvlan \
-  --opt parent=eth0 \
-  --subnet 192.168.1.0/24 \
-  --gateway 192.168.1.1 \
-  macvlan-net
+podman network create --driver macvlan --opt parent=eth0 --subnet 192.168.1.0/24 --gateway 192.168.1.1 macvlan-net  # create a network
 ```
 
 The container appears as a distinct host on your physical LAN. Useful for legacy protocols (DHCP from upstream, mDNS, etc.).
@@ -576,11 +542,8 @@ The DB is never on `public-net`. The proxy is never on `db-net`.
 ### 9.3  Combine with `--internal` Flag
 
 ```bash
-podman network create --internal private-db
-podman run -d --name postgres \
-  --network private-db \
-  -e POSTGRES_PASSWORD=secret \
-  docker.io/library/postgres:16-alpine
+podman network create --internal private-db  # create a network
+podman run -d --name postgres --network private-db -e POSTGRES_PASSWORD=secret docker.io/library/postgres:16-alpine  # run a container
 ```
 
 This DB can never initiate outbound connections. It cannot call home, exfiltrate data to an external server, or participate in an outbound botnet.
@@ -620,45 +583,32 @@ Build a realistic, isolated three-tier stack:
 ### Step 1 — Create Networks
 
 ```bash
-podman network create frontend-net
-podman network create --internal app-net
+podman network create frontend-net  # create a network
+podman network create --internal app-net  # create a network
 ```
 
 ### Step 2 — Start the "DB"
 
 ```bash
-podman run -d \
-  --name db \
-  --network app-net \
-  docker.io/library/alpine:latest \
-  sh -lc 'while true; do echo "DB OK" | nc -l -p 5432; done'
+podman run -d --name db --network app-net docker.io/library/alpine:latest sh -lc 'while true; do echo "DB OK" | nc -l -p 5432; done'  # run a container
 ```
 
 ### Step 3 — Start the "App"
 
 ```bash
-podman run -d \
-  --name app \
-  --network app-net \
-  --network-alias api \
-  docker.io/library/alpine:latest \
-  sleep 600
+podman run -d --name app --network app-net --network-alias api docker.io/library/alpine:latest sleep 600  # run a container
 ```
 
 Connect app to the frontend network as well:
 
 ```bash
-podman network connect frontend-net app
+podman network connect frontend-net app  # attach a container to a network
 ```
 
 ### Step 4 — Start the Reverse Proxy
 
 ```bash
-podman run -d \
-  --name proxy \
-  --network frontend-net \
-  -p 127.0.0.1:8080:80 \
-  docker.io/library/nginx:stable
+podman run -d --name proxy --network frontend-net -p 127.0.0.1:8080:80 docker.io/library/nginx:stable  # run a container
 ```
 
 ### Step 5 — Verify Connectivity
@@ -666,38 +616,38 @@ podman run -d \
 App can reach DB:
 
 ```bash
-podman exec app sh -lc 'getent hosts db && echo DNS OK'
+podman exec app sh -lc 'getent hosts db && echo DNS OK'  # run a command in a running container
 ```
 
 Proxy can reach app:
 
 ```bash
-podman exec proxy sh -lc 'getent hosts api && echo DNS OK'
+podman exec proxy sh -lc 'getent hosts api && echo DNS OK'  # run a command in a running container
 ```
 
 Proxy CANNOT reach DB (different network):
 
 ```bash
-podman exec proxy sh -lc 'getent hosts db 2>&1 || echo "ISOLATED: expected"'
+podman exec proxy sh -lc 'getent hosts db 2>&1 || echo "ISOLATED: expected"'  # run a command in a running container
 ```
 
 DB CANNOT reach the internet (internal network):
 
 ```bash
-podman exec db sh -lc 'wget -qO- --timeout=3 http://example.com 2>&1 || echo "BLOCKED: expected"'
+podman exec db sh -lc 'wget -qO- --timeout=3 http://example.com 2>&1 || echo "BLOCKED: expected"'  # run a command in a running container
 ```
 
 Host can reach proxy via published port:
 
 ```bash
-curl -sSI http://127.0.0.1:8080/
+curl -sSI http://127.0.0.1:8080/  # verify HTTP endpoint
 ```
 
 ### Step 6 — Cleanup
 
 ```bash
-podman rm -f db app proxy
-podman network rm frontend-net app-net
+podman rm -f db app proxy              # stop and remove containers
+podman network rm frontend-net app-net # remove networks
 ```
 
 ---
@@ -707,19 +657,18 @@ podman network rm frontend-net app-net
 Pods (covered in Module 7) and user-defined networks interact naturally. You can place an entire pod on a named network:
 
 ```bash
-podman network create podnet
+podman network create podnet  # create a network
 
-podman pod create --name mypod --network podnet -p 8090:80
+podman pod create --name mypod --network podnet -p 8090:80  # create a pod
 
-podman run -d --pod mypod --name pod-nginx docker.io/library/nginx:stable
+podman run -d --pod mypod --name pod-nginx docker.io/library/nginx:stable  # run a container
 
 # A container outside the pod resolves the pod by its infra container's IP
 # or by any container name inside:
-podman run --rm --network podnet docker.io/library/alpine:latest \
-  sh -lc 'getent hosts pod-nginx'
+podman run --rm --network podnet docker.io/library/alpine:latest sh -lc 'getent hosts pod-nginx'  # run a container
 
-podman pod rm -f mypod
-podman network rm podnet
+podman pod rm -f mypod  # stop and remove the pod and its containers
+podman network rm podnet  # remove the network
 ```
 
 ---
@@ -770,14 +719,13 @@ Checklist:
 
 ```bash
 # Check network membership
-podman inspect <name> --format '{{json .NetworkSettings.Networks}}'
+podman inspect <name> --format '{{json .NetworkSettings.Networks}}'  # inspect container/image metadata
 
 # Verify DNS is enabled on the network
-podman network inspect <net> --format '{{.DNSEnabled}}'
+podman network inspect <net> --format '{{.DNSEnabled}}'  # inspect a network
 
 # Try a live DNS lookup from a debug container
-podman run --rm --network <net> docker.io/library/alpine:latest \
-  sh -lc 'getent hosts <target-name>'
+podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent hosts <target-name>'  # run a container
 ```
 
 ### 13.2  Symptom: Cannot Connect Even Though DNS Resolves
@@ -786,30 +734,29 @@ DNS working but TCP failing means the service is not listening, is on the wrong 
 
 ```bash
 # Check if the port is open
-podman run --rm --network <net> docker.io/library/alpine:latest \
-  sh -lc 'nc -zv <target> <port>'
+podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'nc -zv <target> <port>'  # run a container
 
 # Check what the container is actually listening on
-podman exec <target> ss -tlnp
+podman exec <target> ss -tlnp  # run a command in a running container
 # or
-podman exec <target> netstat -tlnp
+podman exec <target> netstat -tlnp  # run a command in a running container
 ```
 
 ### 13.3  Symptom: Port Published But Cannot Reach from Host
 
 ```bash
 # Confirm the port mapping
-podman port <name>
+podman port <name>  # show published ports
 
 # Confirm the process is listening inside the container
-podman exec <name> ss -tlnp
+podman exec <name> ss -tlnp  # run a command in a running container
 
 # Check host firewall
 sudo firewall-cmd --list-all   # firewalld
 sudo iptables -L -n            # iptables / nftables
 
 # Check the container's host binding
-podman inspect <name> --format '{{json .NetworkSettings.Ports}}'
+podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # inspect container/image metadata
 # Look for "HostIp" - if it's 127.0.0.1, you can only reach from localhost
 ```
 
@@ -818,31 +765,29 @@ podman inspect <name> --format '{{json .NetworkSettings.Ports}}'
 Use a debug sidecar with networking tools:
 
 ```bash
-podman run --rm --network <net> docker.io/library/nicolaka/netshoot:latest \
-  curl -v http://<target>:<port>/
+podman run --rm --network <net> docker.io/library/nicolaka/netshoot:latest curl -v http://<target>:<port>/  # verify HTTP endpoint
 ```
 
 Or use a minimal alpine with a one-liner install:
 
 ```bash
-podman run --rm --network <net> docker.io/library/alpine:latest \
-  sh -lc 'apk add -q curl && curl -v http://<target>:<port>/'
+podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'apk add -q curl && curl -v http://<target>:<port>/'  # run a container
 ```
 
 ### 13.5  Symptom: Container Cannot Reach the Internet
 
 ```bash
 # Verify DNS
-podman exec <name> sh -lc 'cat /etc/resolv.conf'
+podman exec <name> sh -lc 'cat /etc/resolv.conf'  # run a command in a running container
 
 # Try pinging a well-known IP (not DNS-dependent)
-podman exec <name> ping -c3 8.8.8.8
+podman exec <name> ping -c3 8.8.8.8  # run a command in a running container
 
 # Try DNS resolution
-podman exec <name> sh -lc 'getent hosts example.com'
+podman exec <name> sh -lc 'getent hosts example.com'  # run a command in a running container
 
 # Check if the network is internal
-podman network inspect <net> --format '{{.Internal}}'
+podman network inspect <net> --format '{{.Internal}}'  # inspect a network
 ```
 
 If the network is `internal: true`, outbound traffic is intentionally blocked.
@@ -855,26 +800,24 @@ This is often a pasta/slirp4netns quirk with UDP under high load, or a port exha
 
 ```bash
 # Check for errors in the rootless network helper
-journalctl --user -u podman.socket
-podman events --filter type=network
+journalctl --user -u podman.socket  # view user-service logs
+podman events --filter type=network  # show Podman lifecycle events
 ```
 
 ### 13.7  Useful Debugging One-Liners
 
 ```bash
 # All running container IPs
-podman ps -q | xargs -I{} podman inspect {} \
-  --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'
+podman ps -q | xargs -I{} podman inspect {} --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'  # list containers
 
 # All networks and their subnets
-podman network ls -q | xargs -I{} podman network inspect {} \
-  --format '{{.Name}}: {{range .Subnets}}{{.Subnet}}{{end}}'
+podman network ls -q | xargs -I{} podman network inspect {} --format '{{.Name}}: {{range .Subnets}}{{.Subnet}}{{end}}'  # list networks
 
 # Which containers are on a given network
-podman network inspect <net> --format '{{range $id, $c := .Containers}}{{$c.Name}} {{end}}'
+podman network inspect <net> --format '{{range $id, $c := .Containers}}{{$c.Name}} {{end}}'  # inspect a network
 
 # Container's effective DNS config
-podman exec <name> cat /etc/resolv.conf
+podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 ```
 
 ---
@@ -884,44 +827,40 @@ podman exec <name> cat /etc/resolv.conf
 ### Pattern A — Single Shared App Network (Simple Stack)
 
 ```bash
-podman network create app
-podman run -d --name db    --network app docker.io/library/postgres:16-alpine
-podman run -d --name cache --network app docker.io/library/redis:7-alpine
-podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest
-podman run -d --name proxy --network app -p 0.0.0.0:80:80     nginx:stable
+podman network create app  # create a network
+podman run -d --name db    --network app docker.io/library/postgres:16-alpine  # run a container
+podman run -d --name cache --network app docker.io/library/redis:7-alpine  # run a container
+podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest  # run a container
+podman run -d --name proxy --network app -p 0.0.0.0:80:80     nginx:stable  # run a container
 ```
 
 ### Pattern B — Segmented Networks (Recommended for Production)
 
 ```bash
-podman network create --internal data-tier
-podman network create app-tier
-podman network create public-tier
+podman network create --internal data-tier  # create a network
+podman network create app-tier  # create a network
+podman network create public-tier  # create a network
 
-podman run -d --name db     --network data-tier   postgres:16-alpine
-podman run -d --name cache  --network data-tier   redis:7-alpine
-podman run -d --name api    --network app-tier    myapp:latest
+podman run -d --name db     --network data-tier   postgres:16-alpine  # run a container
+podman run -d --name cache  --network data-tier   redis:7-alpine  # run a container
+podman run -d --name api    --network app-tier    myapp:latest  # run a container
 podman network connect data-tier api              # api reaches db and cache
 
-podman run -d --name proxy  --network public-tier -p 80:80 nginx:stable
+podman run -d --name proxy  --network public-tier -p 80:80 nginx:stable  # run a container
 podman network connect app-tier proxy             # proxy reaches api
 ```
 
 ### Pattern C — Debug Sidecar (Ephemeral)
 
 ```bash
-podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh
+podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # run a container
 # Now you have a shell inside the network with tools
 ```
 
 ### Pattern D — One-Time Migration Container
 
 ```bash
-podman run --rm \
-  --network app-tier \
-  --env-file .env \
-  myapp:latest \
-  ./migrate.sh
+podman run --rm --network app-tier --env-file .env myapp:latest ./migrate.sh  # run a container
 ```
 
 ---

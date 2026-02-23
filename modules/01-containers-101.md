@@ -57,14 +57,14 @@ Rule of thumb:
 Run a container and compare:
 
 ```bash
-uname -a
-podman run --rm docker.io/library/alpine:latest uname -a
+uname -a  # show kernel/system info
+podman run --rm docker.io/library/alpine:latest uname -a  # run a container
 ```
 
 Look at processes inside the container:
 
 ```bash
-podman run --rm docker.io/library/alpine:latest ps -ef
+podman run --rm docker.io/library/alpine:latest ps -ef  # run a container
 ```
 
 You will see a small process tree. This is normal.
@@ -72,9 +72,9 @@ You will see a small process tree. This is normal.
 Inspect the container config (no need to memorize, just recognize the shape):
 
 ```bash
-podman create --name c101 docker.io/library/alpine:latest sleep 300
-podman inspect c101 | less
-podman rm c101
+podman create --name c101 docker.io/library/alpine:latest sleep 300  # create a container without starting it
+podman inspect c101 | less  # inspect container/image metadata
+podman rm c101  # remove the stopped container
 ```
 
 What to look for in `inspect`:

@@ -7,9 +7,9 @@ Rootless Podman runs as your user and uses user namespaces.
 ## Useful Checks
 
 ```bash
-podman info
-grep "^$USER:" /etc/subuid /etc/subgid
-podman unshare id
+podman info  # show Podman host configuration
+grep "^$USER:" /etc/subuid /etc/subgid  # filter output
+podman unshare id  # run a command inside the user namespace
 ```
 
 ## Common Paths
@@ -20,5 +20,5 @@ podman unshare id
 ## Boot Start for systemd User Services
 
 ```bash
-sudo loginctl enable-linger "$USER"
+sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```

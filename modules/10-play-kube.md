@@ -18,17 +18,17 @@ Use the example file:
 Commands:
 
 ```bash
-podman play kube examples/kube/webpod.yaml
-podman ps
-curl -sS http://127.0.0.1:8080/ | head
-podman kube down examples/kube/webpod.yaml
+podman play kube examples/kube/webpod.yaml      # create resources from YAML
+podman ps                                       # list containers
+curl -sS http://127.0.0.1:8080/ | head          # verify nginx responds
+podman kube down examples/kube/webpod.yaml      # tear down resources created by play kube
 ```
 
 Inspect created resources:
 
 ```bash
-podman ps -a --pod
-podman pod ps
+podman ps -a --pod  # list containers
+podman pod ps  # list pods
 ```
 
 Common gotcha:
@@ -49,13 +49,13 @@ Optional lab:
 Commands:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-cp examples/quadlet/webpod.kube ~/.config/containers/systemd/
-cp examples/quadlet/webpod.yaml ~/.config/containers/systemd/
-systemctl --user daemon-reload
-systemctl --user start webpod.service
-curl -sS http://127.0.0.1:8084/ | head
-systemctl --user stop webpod.service
+mkdir -p ~/.config/containers/systemd  # create directory
+cp examples/quadlet/webpod.kube ~/.config/containers/systemd/  # copy file
+cp examples/quadlet/webpod.yaml ~/.config/containers/systemd/  # copy file
+systemctl --user daemon-reload                  # regenerate units from Quadlet files
+systemctl --user start webpod.service           # start the YAML-defined pod
+curl -sS http://127.0.0.1:8084/ | head          # verify nginx responds
+systemctl --user stop webpod.service            # stop the service
 ```
 
 ## Secrets Note

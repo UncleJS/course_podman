@@ -29,39 +29,39 @@ You will often see it in `podman ps` for a pod.
 1) Create a pod and publish a port:
 
 ```bash
-podman pod create --name webpod -p 8080:80
+podman pod create --name webpod -p 8080:80  # create a pod
 ```
 
 List pods:
 
 ```bash
-podman pod ps
-podman ps --pod
+podman pod ps  # list pods
+podman ps --pod  # list containers
 ```
 
 2) Run an HTTP server inside the pod:
 
 ```bash
-podman run -d --pod webpod --name nginx docker.io/library/nginx:stable
+podman run -d --pod webpod --name nginx docker.io/library/nginx:stable  # run a container
 ```
 
 3) Add a "debug sidecar" container in the same pod:
 
 ```bash
-podman run -it --rm --pod webpod docker.io/library/alpine:latest sh
+podman run -it --rm --pod webpod docker.io/library/alpine:latest sh  # run a container
 ```
 
 Inside the sidecar, verify you can reach nginx on localhost:
 
 ```sh
-wget -qO- http://127.0.0.1:80/ | head
-exit
+wget -qO- http://127.0.0.1:80/ | head  # fetch a URL
+exit  # exit the shell
 ```
 
 4) Cleanup:
 
 ```bash
-podman pod rm -f webpod
+podman pod rm -f webpod  # stop and remove the pod and its containers
 ```
 
 ## Pod Lifecycle Notes

@@ -19,7 +19,7 @@ Quadlet lets you define containers/pods as declarative unit files that systemd m
 If you want user services to start on boot:
 
 ```bash
-sudo loginctl enable-linger "$USER"
+sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
 ## Where Quadlet Files Live
@@ -43,13 +43,13 @@ If you remove a Quadlet file, you must reload systemd to remove the generated un
 List discovered Quadlets:
 
 ```bash
-podman quadlet list
+podman quadlet list  # list discovered Quadlet definitions
 ```
 
 Print the resolved Quadlet file:
 
 ```bash
-podman quadlet print hello-nginx.container
+podman quadlet print hello-nginx.container  # show the resolved Quadlet file
 ```
 
 ## Lab: Your First Quadlet Container
@@ -61,20 +61,20 @@ Use the example unit:
 Install it:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-cp examples/quadlet/hello-nginx.container ~/.config/containers/systemd/
-systemctl --user daemon-reload
-systemctl --user start hello-nginx.service
-systemctl --user status hello-nginx.service
-curl -sS http://127.0.0.1:8081/ | head
+mkdir -p ~/.config/containers/systemd                   # Quadlet search path
+cp examples/quadlet/hello-nginx.container ~/.config/containers/systemd/  # install unit
+systemctl --user daemon-reload                          # regenerate units from Quadlet files
+systemctl --user start hello-nginx.service              # start the service
+systemctl --user status hello-nginx.service             # show status
+curl -sS http://127.0.0.1:8081/ | head                  # verify HTTP response
 ```
 
 Stop and disable:
 
 ```bash
-systemctl --user stop hello-nginx.service
-rm -f ~/.config/containers/systemd/hello-nginx.container
-systemctl --user daemon-reload
+systemctl --user stop hello-nginx.service               # stop the service
+rm -f ~/.config/containers/systemd/hello-nginx.container  # remove the Quadlet definition file
+systemctl --user daemon-reload                          # remove generated unit from systemd
 ```
 
 Notes:
@@ -92,37 +92,37 @@ Use the example units:
 Install them:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-cp examples/quadlet/labnet.network ~/.config/containers/systemd/
-cp examples/quadlet/labdata.volume ~/.config/containers/systemd/
-systemctl --user daemon-reload
-systemctl --user start labnet-network.service
-systemctl --user start labdata-volume.service
+mkdir -p ~/.config/containers/systemd                   # Quadlet search path
+cp examples/quadlet/labnet.network ~/.config/containers/systemd/        # install network unit
+cp examples/quadlet/labdata.volume ~/.config/containers/systemd/        # install volume unit
+systemctl --user daemon-reload                          # regenerate units
+systemctl --user start labnet-network.service           # create network
+systemctl --user start labdata-volume.service           # create volume
 ```
 
 Verify objects exist:
 
 ```bash
-podman network ls | grep labnet
-podman volume ls | grep labdata
+podman network ls | grep labnet  # list networks
+podman volume ls | grep labdata  # list volumes
 ```
 
 Cleanup:
 
 ```bash
-systemctl --user stop labnet-network.service || true
-systemctl --user stop labdata-volume.service || true
-rm -f ~/.config/containers/systemd/labnet.network
-rm -f ~/.config/containers/systemd/labdata.volume
-systemctl --user daemon-reload
-podman network rm labnet 2>/dev/null || true
-podman volume rm labdata 2>/dev/null || true
+systemctl --user stop labnet-network.service || true    # stop unit (ignore if missing)
+systemctl --user stop labdata-volume.service || true    # stop unit (ignore if missing)
+rm -f ~/.config/containers/systemd/labnet.network   # remove the Quadlet definition file
+rm -f ~/.config/containers/systemd/labdata.volume   # remove the Quadlet definition file
+systemctl --user daemon-reload                          # regenerate units
+podman network rm labnet 2>/dev/null || true        # remove the network object
+podman volume rm labdata 2>/dev/null || true        # remove the volume object (data loss)
 ```
 
 Logs:
 
 ```bash
-journalctl --user -u hello-nginx.service -n 50 --no-pager
+journalctl --user -u hello-nginx.service -n 50 --no-pager  # view user-service logs
 ```
 
 ## Debugging Quadlet Syntax
@@ -138,7 +138,7 @@ Dry-run the generator:
 Show generator verification output:
 
 ```bash
-systemd-analyze --user --generators=true verify hello-nginx.service
+systemd-analyze --user --generators=true verify hello-nginx.service  # analyze/verify systemd units
 ```
 
 When debugging:

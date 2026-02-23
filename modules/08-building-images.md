@@ -59,17 +59,17 @@ Terminology:
 ### 2.1  Basic Build
 
 ```bash
-podman build -t localhost/myapp:1 .
+podman build -t localhost/myapp:1 .  # build an image
 ```
 
 Common flags:
 
 ```bash
-podman build -t localhost/myapp:1 -f Containerfile .
-podman build --pull=always -t localhost/myapp:1 .
-podman build --no-cache -t localhost/myapp:1 .
-podman build --layers -t localhost/myapp:1 .
-podman build --target runtime -t localhost/myapp:1 .
+podman build -t localhost/myapp:1 -f Containerfile .  # build an image
+podman build --pull=always -t localhost/myapp:1 .  # build an image
+podman build --no-cache -t localhost/myapp:1 .  # build an image
+podman build --layers -t localhost/myapp:1 .  # build an image
+podman build --target runtime -t localhost/myapp:1 .  # build an image
 ```
 
 Notes:
@@ -83,7 +83,7 @@ Notes:
 Using `localhost/<name>` makes it explicit that the tag is local and not in a remote registry namespace.
 
 ```bash
-podman images | head
+podman images | head  # list images
 ```
 
 You will see `localhost/myapp:1` locally even if you are not logged into a registry.
@@ -160,7 +160,7 @@ CMD ["/app/server"]
 Publishing is runtime:
 
 ```bash
-podman run -p 8080:8080 localhost/myapp:1
+podman run -p 8080:8080 localhost/myapp:1  # run a container
 ```
 
 ---
@@ -170,14 +170,14 @@ podman run -p 8080:8080 localhost/myapp:1
 Create a new directory:
 
 ```bash
-mkdir -p ./image-lab
-cd ./image-lab
+mkdir -p ./image-lab  # create directory
+cd ./image-lab  # change directory
 ```
 
 Create `index.html`:
 
 ```bash
-printf '%s\n' '<h1>Hello from Podman</h1>' > index.html
+printf '%s\n' '<h1>Hello from Podman</h1>' > index.html  # print text without trailing newline
 ```
 
 Create `Containerfile`:
@@ -190,29 +190,29 @@ COPY index.html /usr/share/nginx/html/index.html
 Build and run:
 
 ```bash
-podman build -t localhost/hello-nginx:1 .
-podman run --rm -p 8080:80 localhost/hello-nginx:1
+podman build -t localhost/hello-nginx:1 .  # build an image
+podman run --rm -p 8080:80 localhost/hello-nginx:1  # run a container
 ```
 
 Verify in another terminal:
 
 ```bash
-curl -sS http://127.0.0.1:8080/
+curl -sS http://127.0.0.1:8080/  # verify HTTP endpoint
 ```
 
 Inspect the image:
 
 ```bash
-podman image inspect localhost/hello-nginx:1 | less
-podman image history localhost/hello-nginx:1
+podman image inspect localhost/hello-nginx:1 | less  # inspect image metadata
+podman image history localhost/hello-nginx:1  # show image layer history
 ```
 
 Cleanup:
 
 ```bash
-podman rmi localhost/hello-nginx:1
-cd ..
-rm -rf ./image-lab
+podman rmi localhost/hello-nginx:1  # remove the image from local storage
+cd ..  # change directory
+rm -rf ./image-lab                 # delete the lab directory
 ```
 
 ---
@@ -310,8 +310,8 @@ Notes:
 ### 6.3  Lab B: Verify Non-Root Actually Works
 
 ```bash
-mkdir -p ./nonroot-lab
-cd ./nonroot-lab
+mkdir -p ./nonroot-lab  # create directory
+cd ./nonroot-lab  # change directory
 
 cat > Containerfile <<'EOF'
 FROM docker.io/library/alpine:3.20
@@ -323,11 +323,11 @@ USER app
 CMD ["sh", "-lc", "echo user=$(id -u) group=$(id -g); touch /app/ok; ls -la /app"]
 EOF
 
-podman build -t localhost/nonroot:1 .
-podman run --rm localhost/nonroot:1
-podman rmi localhost/nonroot:1
-cd ..
-rm -rf ./nonroot-lab
+podman build -t localhost/nonroot:1 .  # build an image
+podman run --rm localhost/nonroot:1  # run a container
+podman rmi localhost/nonroot:1  # remove the image from local storage
+cd ..  # change directory
+rm -rf ./nonroot-lab            # delete the lab directory
 ```
 
 If `touch /app/ok` fails, you did not set ownership correctly.
@@ -357,16 +357,16 @@ This repository includes:
 Build and run:
 
 ```bash
-podman build -t localhost/hello-go:1 examples/build/hello-go
-podman run --rm -p 8085:8080 localhost/hello-go:1
-curl -sS http://127.0.0.1:8085/
+podman build -t localhost/hello-go:1 examples/build/hello-go  # build an image
+podman run --rm -p 8085:8080 localhost/hello-go:1  # run a container
+curl -sS http://127.0.0.1:8085/  # verify HTTP endpoint
 ```
 
 Inspect size:
 
 ```bash
-podman images | head
-podman image history localhost/hello-go:1
+podman images | head  # list images
+podman image history localhost/hello-go:1  # show image layer history
 ```
 
 ### 7.2  Pattern: Build Dependencies First, Copy Source Later
@@ -468,13 +468,13 @@ RUN apk add --no-cache ca-certificates curl
 If a multi-stage build fails late, rebuild only to the stage you care about:
 
 ```bash
-podman build --target build -t localhost/myapp:build .
+podman build --target build -t localhost/myapp:build .  # build an image
 ```
 
 Then you can run that stage as an image to inspect the filesystem:
 
 ```bash
-podman run --rm -it localhost/myapp:build sh
+podman run --rm -it localhost/myapp:build sh  # run a container
 ```
 
 ---
@@ -493,7 +493,7 @@ LABEL org.opencontainers.image.version=$APP_VERSION
 Build:
 
 ```bash
-podman build --build-arg APP_VERSION=1.2.3 -t localhost/myapp:1 .
+podman build --build-arg APP_VERSION=1.2.3 -t localhost/myapp:1 .  # build an image
 ```
 
 ### 9.2  `ENV` Is Runtime Default
@@ -507,7 +507,7 @@ CMD ["/app/server"]
 Override at runtime:
 
 ```bash
-podman run --rm -e PORT=8080 localhost/myapp:1
+podman run --rm -e PORT=8080 localhost/myapp:1  # run a container
 ```
 
 ### 9.3  Do Not Put Secrets in `ARG` or `ENV`
@@ -544,9 +544,7 @@ Some Podman/Buildah versions support `podman build --secret ...`.
 Example shape (do not assume your version supports it):
 
 ```bash
-podman build \
-  --secret id=npmrc,src=$HOME/.npmrc \
-  -t localhost/private-build:1 .
+podman build --secret id=npmrc,src=$HOME/.npmrc -t localhost/private-build:1 .  # build an image
 ```
 
 In a Containerfile, the secret is mounted at build time (not copied into layers).
@@ -590,7 +588,7 @@ LABEL org.opencontainers.image.version="1.0.0"
 Inspect labels:
 
 ```bash
-podman image inspect localhost/myapp:1 --format '{{json .Labels}}'
+podman image inspect localhost/myapp:1 --format '{{json .Labels}}'  # inspect image metadata
 ```
 
 ---
@@ -608,8 +606,8 @@ This is convenient, but it is not auditable.
 Pull and run by digest:
 
 ```bash
-podman pull docker.io/library/nginx@sha256:<digest>
-podman run --rm docker.io/library/nginx@sha256:<digest>
+podman pull docker.io/library/nginx@sha256:<digest>  # pull an image
+podman run --rm docker.io/library/nginx@sha256:<digest>  # run a container
 ```
 
 For production:
@@ -627,8 +625,8 @@ For production:
 Commands:
 
 ```bash
-podman tag localhost/myapp:git-abc123 localhost/myapp:staging
-podman tag localhost/myapp:git-abc123 localhost/myapp:prod
+podman tag localhost/myapp:git-abc123 localhost/myapp:staging  # add another tag/name
+podman tag localhost/myapp:git-abc123 localhost/myapp:prod  # add another tag/name
 ```
 
 ---
@@ -638,26 +636,26 @@ podman tag localhost/myapp:git-abc123 localhost/myapp:prod
 ### 13.1  Login
 
 ```bash
-podman login <registry>
+podman login <registry>  # log into a container registry
 ```
 
 ### 13.2  Tag for the Registry Namespace
 
 ```bash
-podman tag localhost/myapp:1 registry.example.com/team/myapp:1
+podman tag localhost/myapp:1 registry.example.com/team/myapp:1  # add another tag/name
 ```
 
 ### 13.3  Push
 
 ```bash
-podman push registry.example.com/team/myapp:1
+podman push registry.example.com/team/myapp:1  # push an image to a registry
 ```
 
 ### 13.4  Pull and Verify
 
 ```bash
-podman pull registry.example.com/team/myapp:1
-podman image inspect registry.example.com/team/myapp:1 | less
+podman pull registry.example.com/team/myapp:1  # pull an image
+podman image inspect registry.example.com/team/myapp:1 | less  # inspect image metadata
 ```
 
 Production habit:
@@ -682,13 +680,13 @@ Minimum checks:
 ### 14.1  Smoke Test
 
 ```bash
-podman run --rm -p 8080:8080 localhost/myapp:1
+podman run --rm -p 8080:8080 localhost/myapp:1  # run a container
 ```
 
 ### 14.2  Confirm Effective User
 
 ```bash
-podman run --rm localhost/myapp:1 id
+podman run --rm localhost/myapp:1 id  # run a container
 ```
 
 ### 14.3  Healthcheck (If You Define One)
@@ -699,16 +697,16 @@ If your Containerfile includes `HEALTHCHECK`:
 - If you need the healthcheck stored in the image, build using docker format:
 
 ```bash
-podman build --format docker -t localhost/myapp:1 .
+podman build --format docker -t localhost/myapp:1 .  # build an image
 ```
 
 Alternative: define a healthcheck at runtime with `podman run --health-*` flags.
 
 ```bash
-podman run -d --name hc localhost/myapp:1
-podman healthcheck run hc
-podman inspect hc --format '{{json .State.Health}}'
-podman rm -f hc
+podman run -d --name hc localhost/myapp:1  # run a container
+podman healthcheck run hc  # run the container healthcheck
+podman inspect hc --format '{{json .State.Health}}'  # inspect container/image metadata
+podman rm -f hc  # stop and remove the container
 ```
 
 ---
@@ -749,7 +747,7 @@ Causes:
 Debug:
 
 ```bash
-podman run --rm -it --entrypoint sh localhost/myapp:1
+podman run --rm -it --entrypoint sh localhost/myapp:1  # run a container
 ```
 
 ### 15.4  `exec format error`
@@ -763,7 +761,7 @@ Fix:
 - build for the target platform (if your environment supports it):
 
 ```bash
-podman build --platform linux/amd64 -t localhost/myapp:amd64 .
+podman build --platform linux/amd64 -t localhost/myapp:amd64 .  # build an image
 ```
 
 Cross-building often requires extra host setup (emulation). Treat it as an advanced topic.
@@ -785,7 +783,7 @@ Fix:
 Inspect what grew:
 
 ```bash
-podman image history localhost/myapp:1
+podman image history localhost/myapp:1  # show image layer history
 ```
 
 ---
@@ -797,14 +795,15 @@ Image builds create intermediate images and caches.
 Useful commands:
 
 ```bash
-podman images
-podman ps -a
+podman images  # list images
+podman ps -a  # list containers
 
-podman image prune
-podman container prune
-podman system prune
+podman image prune        # remove unused images (frees disk)
+podman container prune    # remove stopped containers
+podman system prune       # remove unused objects (be careful)
 
 # builder-specific cache (if supported)
+podman builder prune      # remove build cache (if supported)
 ```
 
 Be careful:
@@ -827,8 +826,8 @@ It uses only shell + Python standard library so you do not need extra tooling.
 ### 17.1  Create a Small App
 
 ```bash
-mkdir -p ./svc-lab
-cd ./svc-lab
+mkdir -p ./svc-lab  # create directory
+cd ./svc-lab  # change directory
 ```
 
 Create `server.py`:
@@ -887,22 +886,22 @@ EOF
 Build and run:
 
 ```bash
-podman build -t localhost/svc-lab:1 .
-podman run --rm -p 8088:8080 localhost/svc-lab:1
+podman build -t localhost/svc-lab:1 .  # build an image
+podman run --rm -p 8088:8080 localhost/svc-lab:1  # run a container
 ```
 
 Verify:
 
 ```bash
-curl -sS http://127.0.0.1:8088/
+curl -sS http://127.0.0.1:8088/  # verify HTTP endpoint
 ```
 
 Cleanup:
 
 ```bash
-podman rmi localhost/svc-lab:1
-cd ..
-rm -rf ./svc-lab
+podman rmi localhost/svc-lab:1  # remove the image from local storage
+cd ..  # change directory
+rm -rf ./svc-lab               # delete the lab directory
 ```
 
 ---

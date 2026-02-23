@@ -66,9 +66,9 @@ Notes:
 Run:
 
 ```bash
-bash examples/stack/stack.sh up
-bash examples/stack/stack.sh status
-bash examples/stack/stack.sh down
+bash examples/stack/stack.sh up  # run a shell script
+bash examples/stack/stack.sh status  # run a shell script
+bash examples/stack/stack.sh down  # run a shell script
 ```
 
 ## Compose-ish Tooling (Context)

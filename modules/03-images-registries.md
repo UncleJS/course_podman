@@ -32,21 +32,21 @@ Reason:
 ## Lab: Pull by Tag, Record Digest
 
 ```bash
-podman pull docker.io/library/alpine:latest
-podman images | grep alpine
-podman inspect docker.io/library/alpine:latest | less
+podman pull docker.io/library/alpine:latest  # pull an image
+podman images | grep alpine  # list images
+podman inspect docker.io/library/alpine:latest | less  # inspect container/image metadata
 ```
 
 Find the digest and re-pull by digest:
 
 ```bash
-podman images --digests | grep alpine
+podman images --digests | grep alpine  # list images
 ```
 
 Try running by digest once you have it:
 
 ```bash
-podman run --rm docker.io/library/alpine@sha256:<digest> echo ok
+podman run --rm docker.io/library/alpine@sha256:<digest> echo ok  # run a container
 ```
 
 ## Registry Authentication
@@ -54,13 +54,13 @@ podman run --rm docker.io/library/alpine@sha256:<digest> echo ok
 Login stores credentials for your user:
 
 ```bash
-podman login <registry>
+podman login <registry>  # log into a container registry
 ```
 
 Logout:
 
 ```bash
-podman logout <registry>
+podman logout <registry>  # log out of a container registry
 ```
 
 Do not put registry credentials in shell history.
@@ -75,7 +75,7 @@ Many images define an ENTRYPOINT and/or CMD.
 Inspect these fields:
 
 ```bash
-podman image inspect docker.io/library/nginx:stable --format '{{.Config.Entrypoint}} {{.Config.Cmd}}'
+podman image inspect docker.io/library/nginx:stable --format '{{.Config.Entrypoint}} {{.Config.Cmd}}'  # inspect image metadata
 ```
 
 Practical implication:
@@ -89,15 +89,15 @@ This lab teaches the full pull/build/tag/push flow without needing a real extern
 1) Start a local registry:
 
 ```bash
-podman run -d --name registry -p 5000:5000 docker.io/library/registry:2
+podman run -d --name registry -p 5000:5000 docker.io/library/registry:2  # run a container
 ```
 
 2) Tag an image into the local registry namespace and push it:
 
 ```bash
-podman pull docker.io/library/alpine:latest
-podman tag docker.io/library/alpine:latest localhost:5000/alpine:course
-podman push localhost:5000/alpine:course
+podman pull docker.io/library/alpine:latest  # pull an image
+podman tag docker.io/library/alpine:latest localhost:5000/alpine:course  # add another tag/name
+podman push localhost:5000/alpine:course  # push an image to a registry
 ```
 
 If the push fails with a TLS/HTTPS error:
@@ -106,7 +106,7 @@ If the push fails with a TLS/HTTPS error:
 - For this lab only, you can bypass verification:
 
 ```bash
-podman push --tls-verify=false localhost:5000/alpine:course
+podman push --tls-verify=false localhost:5000/alpine:course  # push an image to a registry
 ```
 
 Treat `--tls-verify=false` as a learning-only flag, not a production habit.
@@ -114,15 +114,15 @@ Treat `--tls-verify=false` as a learning-only flag, not a production habit.
 3) Remove your local copy and pull from the local registry:
 
 ```bash
-podman rmi docker.io/library/alpine:latest
-podman rmi localhost:5000/alpine:course
-podman pull localhost:5000/alpine:course
+podman rmi docker.io/library/alpine:latest       # remove local copy (forces re-pull)
+podman rmi localhost:5000/alpine:course          # remove local copy (forces re-pull)
+podman pull localhost:5000/alpine:course  # pull an image
 ```
 
 4) Cleanup:
 
 ```bash
-podman rm -f registry
+podman rm -f registry  # stop and remove the local registry container
 ```
 
 Note:
@@ -132,9 +132,9 @@ Note:
 ## Lab: Local Tagging
 
 ```bash
-podman pull docker.io/library/nginx:stable
-podman tag docker.io/library/nginx:stable localhost/nginx:course
-podman images | grep nginx
+podman pull docker.io/library/nginx:stable  # pull an image
+podman tag docker.io/library/nginx:stable localhost/nginx:course  # add another tag/name
+podman images | grep nginx  # list images
 ```
 
 ## Lab (Optional): Save and Load
@@ -142,8 +142,8 @@ podman images | grep nginx
 This teaches portable artifacts.
 
 ```bash
-podman save -o nginx.tar docker.io/library/nginx:stable
-podman load -i nginx.tar
+podman save -o nginx.tar docker.io/library/nginx:stable  # export an image to a tar file
+podman load -i nginx.tar  # import an image from a tar file
 ```
 
 Note:
