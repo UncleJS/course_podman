@@ -1,6 +1,6 @@
 ---
 title: "Podman Zero-to-Expert Course"
-date: "2026-02-24"
+date: "2026-02-25"
 ---
 
 # Front Matter
@@ -46,6 +46,15 @@ Suggested path:
 ## Suggested Pacing
 
 See `COURSE_OUTLINE.md` for rough time estimates per module.
+
+
+# License
+
+This project is licensed under the
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+
+https://creativecommons.org/licenses/by-sa/4.0/
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -104,6 +113,8 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 80 (Capstone): 3-6 hours
 - Module 90 (Survey): 45-90 min
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 ## MODULES.md
@@ -128,6 +139,8 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - `modules/14-autoupdate.md`
 - `modules/80-capstone.md`
 - `modules/90-external-secrets-survey.md`
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -279,6 +292,8 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - `loginctl` (linger for user services): https://www.freedesktop.org/software/systemd/man/latest/loginctl.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 1: Containers 101
@@ -386,6 +401,8 @@ What to look for in `inspect`:
 - Linux namespaces (man7): https://man7.org/linux/man-pages/man7/namespaces.7.html
 - Linux control groups (man7): https://man7.org/linux/man-pages/man7/cgroups.7.html
 - Podman overview docs: https://podman.io/docs
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -542,6 +559,8 @@ podman image prune  # remove unused images (frees disk)
 - `podman-logs(1)`: https://docs.podman.io/en/latest/markdown/podman-logs.1.html
 - `podman-exec(1)`: https://docs.podman.io/en/latest/markdown/podman-exec.1.html
 - `podman-inspect(1)`: https://docs.podman.io/en/latest/markdown/podman-inspect.1.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -715,6 +734,8 @@ Note:
 - `podman-image(1)`: https://docs.podman.io/en/latest/markdown/podman-image.1.html
 - Registries config (`registries.conf`): https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md
 - Docker Registry HTTP API V2: https://distribution.github.io/distribution/spec/api/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -912,6 +933,8 @@ If you cannot use build secrets on your version:
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - Kubernetes Secrets (base64 caveat context): https://kubernetes.io/docs/concepts/configuration/secret/
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 5: Storage (Volumes, Bind Mounts, Permissions)
@@ -1079,6 +1102,8 @@ Stretch:
 - Rootless storage and UID mapping: https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
 - SELinux mount labeling for containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - `subuid(5)` and `subgid(5)` (man7): https://man7.org/linux/man-pages/man5/subuid.5.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -1988,6 +2013,8 @@ You should be able to answer the following without looking at commands:
 - CNI vs Netavark: https://podman.io/blogs/2022/05/05/podman-rootful-rootless.html
 - nftables and container networking: see Module 13 (Troubleshooting)
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 7: Pods and Sidecars
@@ -2077,6 +2104,8 @@ podman pod rm -f webpod  # stop and remove the pod and its containers
 - `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
 - Kubernetes Pods concept: https://kubernetes.io/docs/concepts/workloads/pods/
 - Sidecar containers (Kubernetes): https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -3019,6 +3048,8 @@ rm -rf ./svc-lab               # delete the lab directory
 - `man Containerfile` (often via Buildah docs)
 - OCI image spec labels: https://github.com/opencontainers/image-spec/blob/main/annotations.md
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 9: Multi-Service Workflows
@@ -3125,6 +3156,8 @@ If your org already standardized on compose files:
 - `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
 - Compose Specification (for mapping concepts): https://compose-spec.io/
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 10: `podman play kube`
@@ -3228,6 +3261,8 @@ Treat it as a local runner for a subset of YAML.
 - `podman-kube-down(1)`: https://docs.podman.io/en/latest/markdown/podman-kube-down.1.html
 - Kubernetes objects overview: https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/
 - Kubernetes Secrets (base64 caveat): https://kubernetes.io/docs/concepts/configuration/secret/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -3434,6 +3469,8 @@ See:
 - systemd user services: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
 - journald: https://www.freedesktop.org/software/systemd/man/latest/journald.html
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 11 Add-On: Secrets with Quadlet + systemd (Rootless)
@@ -3579,6 +3616,8 @@ podman secret rm db_password_v1  # delete the old secret after verification
 
 2) Why should you keep the old secret around until after verification?
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 12: Security Deep Dive
@@ -3702,6 +3741,8 @@ Supply chain habits:
 - `seccomp(2)` (man7): https://man7.org/linux/man-pages/man2/seccomp.2.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - Podman security docs: https://github.com/containers/podman/blob/main/docs/tutorials/security.md
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -3877,6 +3918,8 @@ systemctl --user restart <service>       # restart the service
 - systemd journalctl: https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
 - `systemd-analyze(1)` (verify, generators): https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Module 14: Maintenance and Auto-Updates
@@ -3991,6 +4034,8 @@ Treat auto-update as an operational feature, not a convenience hack.
 - `podman-auto-update(1)`: https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 - systemd service restart policies: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -4272,6 +4317,8 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - Adminer project docs: https://www.adminer.org/
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # External Secrets Survey (Thorough Intro, Optional Implementation)
@@ -4442,6 +4489,8 @@ This avoids rewriting applications that already expect file-based secrets.
 - HashiCorp Vault: https://www.vaultproject.io/
 - Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 # Cheatsheets
@@ -4552,6 +4601,8 @@ podman secret ls  # list secrets
 podman run --secret <name> <image>  # run a container
 ```
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 ## quadlet.md
@@ -4578,6 +4629,8 @@ journalctl --user -u <name>.service -n 100 --no-pager  # view user-service logs
 sudo loginctl enable-linger "$USER"        # allow user services to start at boot
 systemctl --user enable <name>.service     # enable the service for your user
 ```
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -4608,6 +4661,8 @@ podman unshare id  # run a command inside the user namespace
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 ## security.md
@@ -4630,6 +4685,8 @@ podman run --read-only --tmpfs /tmp <image>  # read-only root FS + writable temp
 ## SELinux (Fedora/RHEL)
 
 - bind mount with `:Z` (private) or `:z` (shared)
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -4662,6 +4719,8 @@ journalctl --user -u <service> -n 200 --no-pager     # service logs from journal
 - volume mounted where the app expects
 - permissions for the container user
 - on Fedora/RHEL: use `:Z` for private bind mounts
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -4719,6 +4778,8 @@ Rubric:
 - Secrets handled safely.
 - Clear, testable runbook.
 
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+
 \newpage
 
 ## GLOSSARY.md
@@ -4747,6 +4808,8 @@ Rubric:
 - pasta: a newer user-mode networking helper often used for rootless containers
 - healthcheck: an image or runtime-defined command that reports container health (used by tooling/systemd policies)
 - linger: systemd feature that allows user services to run at boot without an interactive login
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
@@ -4846,4 +4909,6 @@ systemctl --user status <unit>  # show service status
 ```
 
 See: `modules/11-quadlet.md`
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
