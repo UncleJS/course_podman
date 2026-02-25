@@ -1585,6 +1585,7 @@ def build_presentation(output_path: str, slides: list | None = None) -> None:
     S_CODE_TEXT     = make_style("text", fontsize="13pt",                       color=ACCENT,
                                  fontfamily="Liberation Mono")
     S_NOTES_TEXT    = make_style("text", fontsize="12pt",                       color="#111111")
+    S_COPYRIGHT_TEXT = make_style("text", fontsize="14pt",                      color=TEXT_DIM)
 
     S_BG_DARK    = make_style("drawing-page", fill="solid", fillcolor=BG_DARK,    backgroundsize="border")
     S_BG_SECTION = make_style("drawing-page", fill="solid", fillcolor=BG_SECTION, backgroundsize="border")
@@ -1703,6 +1704,22 @@ def build_presentation(output_path: str, slides: list | None = None) -> None:
 
             notes_el.addElement(notes_frame)
             page.addElement(notes_el)
+
+        # ── Footer: copyright line on every slide ─────────────────
+        footer_frame = Frame(
+            stylename=S_BOX,
+            width="23.4cm", height="0.6cm",
+            x="1.0cm", y="13.55cm",
+        )
+        footer_tb = TextBox()
+        footer_frame.addElement(footer_tb)
+        fp = P()
+        fp.addElement(Span(
+            stylename=S_COPYRIGHT_TEXT,
+            text="\u00a9 2026 Jaco Steyn \u2014 Licensed under CC BY-SA 4.0 \u2014 Attribution Required",
+        ))
+        footer_tb.addElement(fp)
+        page.addElement(footer_frame)
 
     # ── Build deck ────────────────────────────────────────────────
     for slide in slides:
