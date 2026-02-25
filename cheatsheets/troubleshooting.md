@@ -25,3 +25,5 @@ journalctl --user -u <service> -n 200 --no-pager     # service logs from journal
 - volume mounted where the app expects
 - permissions for the container user
 - on Fedora/RHEL: use `:Z` for private bind mounts
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

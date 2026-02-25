@@ -99,3 +99,5 @@ podman secret create <name> -  # create a secret
 podman secret ls  # list secrets
 podman run --secret <name> <image>  # run a container
 ```
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

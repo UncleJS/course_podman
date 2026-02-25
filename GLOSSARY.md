@@ -22,3 +22,5 @@
 - pasta: a newer user-mode networking helper often used for rootless containers
 - healthcheck: an image or runtime-defined command that reports container health (used by tooling/systemd policies)
 - linger: systemd feature that allows user services to run at boot without an interactive login
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

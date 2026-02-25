@@ -165,3 +165,5 @@ This avoids rewriting applications that already expect file-based secrets.
 - age (file encryption tool often used with SOPS): https://github.com/FiloSottile/age
 - HashiCorp Vault: https://www.vaultproject.io/
 - Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

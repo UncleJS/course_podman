@@ -18,3 +18,5 @@
 - `modules/14-autoupdate.md`
 - `modules/80-capstone.md`
 - `modules/90-external-secrets-survey.md`
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

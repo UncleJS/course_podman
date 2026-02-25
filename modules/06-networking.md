@@ -903,3 +903,5 @@ You should be able to answer the following without looking at commands:
 - slirp4netns: https://github.com/rootless-containers/slirp4netns
 - CNI vs Netavark: https://podman.io/blogs/2022/05/05/podman-rootful-rootless.html
 - nftables and container networking: see Module 13 (Troubleshooting)
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

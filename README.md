@@ -37,3 +37,12 @@ Suggested path:
 ## Suggested Pacing
 
 See `COURSE_OUTLINE.md` for rough time estimates per module.
+
+
+# License
+
+This project is licensed under the
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+
+https://creativecommons.org/licenses/by-sa/4.0/
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

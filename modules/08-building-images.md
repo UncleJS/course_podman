@@ -936,3 +936,5 @@ rm -rf ./svc-lab               # delete the lab directory
 - `man podman-image`
 - `man Containerfile` (often via Buildah docs)
 - OCI image spec labels: https://github.com/opencontainers/image-spec/blob/main/annotations.md
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

@@ -85,3 +85,5 @@ podman pod rm -f webpod  # stop and remove the pod and its containers
 - `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
 - Kubernetes Pods concept: https://kubernetes.io/docs/concepts/workloads/pods/
 - Sidecar containers (Kubernetes): https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

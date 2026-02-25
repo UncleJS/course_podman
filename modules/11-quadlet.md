@@ -200,3 +200,5 @@ See:
 - systemd unit basics: https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
 - systemd user services: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
 - journald: https://www.freedesktop.org/software/systemd/man/latest/journald.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

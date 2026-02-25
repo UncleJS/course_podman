@@ -151,3 +151,5 @@ podman image prune  # remove unused images (frees disk)
 - `podman-logs(1)`: https://docs.podman.io/en/latest/markdown/podman-logs.1.html
 - `podman-exec(1)`: https://docs.podman.io/en/latest/markdown/podman-exec.1.html
 - `podman-inspect(1)`: https://docs.podman.io/en/latest/markdown/podman-inspect.1.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

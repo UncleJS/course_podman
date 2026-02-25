@@ -191,3 +191,5 @@ If you cannot use build secrets on your version:
 - OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - Kubernetes Secrets (base64 caveat context): https://kubernetes.io/docs/concepts/configuration/secret/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

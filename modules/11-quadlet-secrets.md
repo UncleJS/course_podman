@@ -140,3 +140,5 @@ podman secret rm db_password_v1  # delete the old secret after verification
 1) Why is it safer to mount secrets as files than to pass them in environment variables?
 
 2) Why should you keep the old secret around until after verification?
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

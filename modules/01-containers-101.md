@@ -103,3 +103,5 @@ What to look for in `inspect`:
 - Linux namespaces (man7): https://man7.org/linux/man-pages/man7/namespaces.7.html
 - Linux control groups (man7): https://man7.org/linux/man-pages/man7/cgroups.7.html
 - Podman overview docs: https://podman.io/docs
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

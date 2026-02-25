@@ -101,3 +101,5 @@ If your org already standardized on compose files:
 - `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
 - `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
 - Compose Specification (for mapping concepts): https://compose-spec.io/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

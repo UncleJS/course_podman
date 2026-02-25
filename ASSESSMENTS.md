@@ -45,3 +45,5 @@ Rubric:
 - Correct storage and networking.
 - Secrets handled safely.
 - Clear, testable runbook.
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

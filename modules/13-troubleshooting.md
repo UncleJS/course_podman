@@ -169,3 +169,5 @@ systemctl --user restart <service>       # restart the service
 - `podman-stats(1)`: https://docs.podman.io/en/latest/markdown/podman-stats.1.html
 - systemd journalctl: https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
 - `systemd-analyze(1)` (verify, generators): https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

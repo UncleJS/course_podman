@@ -110,3 +110,5 @@ Treat auto-update as an operational feature, not a convenience hack.
 - `podman-auto-update(1)`: https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 - systemd service restart policies: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

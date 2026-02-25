@@ -168,3 +168,5 @@ Note:
 - `podman-image(1)`: https://docs.podman.io/en/latest/markdown/podman-image.1.html
 - Registries config (`registries.conf`): https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md
 - Docker Registry HTTP API V2: https://distribution.github.io/distribution/spec/api/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

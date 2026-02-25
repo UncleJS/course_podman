@@ -30,3 +30,5 @@ podman healthcheck run hb  # run the container healthcheck
 podman inspect hb --format '{{json .State.Health}}'  # inspect container/image metadata
 podman rm -f hb  # stop and remove the container
 ```
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

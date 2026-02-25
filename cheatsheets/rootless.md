@@ -22,3 +22,5 @@ podman unshare id  # run a command inside the user namespace
 ```bash
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

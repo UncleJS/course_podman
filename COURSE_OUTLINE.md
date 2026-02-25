@@ -50,3 +50,5 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 14: 45-75 min
 - Module 80 (Capstone): 3-6 hours
 - Module 90 (Survey): 45-90 min
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

@@ -92,3 +92,5 @@ systemctl --user status <unit>  # show service status
 ```
 
 See: `modules/11-quadlet.md`
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

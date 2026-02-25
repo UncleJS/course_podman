@@ -20,3 +20,5 @@ journalctl --user -u <name>.service -n 100 --no-pager  # view user-service logs
 sudo loginctl enable-linger "$USER"        # allow user services to start at boot
 systemctl --user enable <name>.service     # enable the service for your user
 ```
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

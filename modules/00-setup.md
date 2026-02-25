@@ -141,3 +141,5 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - cgroups v2 (kernel docs): https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html
 - `loginctl` (linger for user services): https://www.freedesktop.org/software/systemd/man/latest/loginctl.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

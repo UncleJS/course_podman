@@ -119,3 +119,5 @@ Supply chain habits:
 - `seccomp(2)` (man7): https://man7.org/linux/man-pages/man2/seccomp.2.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - Podman security docs: https://github.com/containers/podman/blob/main/docs/tutorials/security.md
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

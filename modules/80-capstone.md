@@ -275,3 +275,5 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - MariaDB logical backup (`mysqldump`): https://mariadb.com/kb/en/mysqldump/
 - Adminer project docs: https://www.adminer.org/
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

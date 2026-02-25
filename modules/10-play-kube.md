@@ -99,3 +99,5 @@ Treat it as a local runner for a subset of YAML.
 - `podman-kube-down(1)`: https://docs.podman.io/en/latest/markdown/podman-kube-down.1.html
 - Kubernetes objects overview: https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/
 - Kubernetes Secrets (base64 caveat): https://kubernetes.io/docs/concepts/configuration/secret/
+
+© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
