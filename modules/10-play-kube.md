@@ -1,6 +1,22 @@
 # Module 10: `podman play kube`
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Lab: Run a Pod from YAML](#lab-run-a-pod-from-yaml)
+- [Production Note](#production-note)
+- [Secrets Note](#secrets-note)
+- [Limitations To Know](#limitations-to-know)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 `podman play kube` runs a subset of Kubernetes YAML locally.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -8,6 +24,9 @@
 - Run a pod from YAML.
 - Use YAML as a repeatable definition of a local stack.
 - Know how to tear it down cleanly.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Run a Pod from YAML
 
@@ -36,6 +55,9 @@ Common gotcha:
 - resources created by play kube are named based on YAML metadata
 - use `podman kube down <yaml>` to clean up consistently
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Production Note
 
 You can also run Kube YAML under systemd using a Quadlet `.kube` unit. This can be useful for "YAML-defined" services without a full cluster.
@@ -58,6 +80,9 @@ curl -sS http://127.0.0.1:8084/ | head          # verify nginx responds
 systemctl --user stop webpod.service            # stop the service
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Secrets Note
 
 Kubernetes YAML secrets often appear as base64-encoded strings.
@@ -69,6 +94,9 @@ If you need repeatable dev secrets:
 
 - keep secret material out of YAML
 - provision secrets out-of-band (Podman secret, systemd creds, SOPS)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Limitations To Know
 
@@ -82,10 +110,16 @@ Examples of things that may differ or be unsupported:
 
 Treat it as a local runner for a subset of YAML.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can run and stop a YAML-defined pod.
 - You understand the security implications of YAML-stored secrets.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -93,11 +127,17 @@ Treat it as a local runner for a subset of YAML.
 
 2) What is the safest teardown command for resources created by `play kube`?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
 - `podman-kube-down(1)`: https://docs.podman.io/en/latest/markdown/podman-kube-down.1.html
 - Kubernetes objects overview: https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/
 - Kubernetes Secrets (base64 caveat): https://kubernetes.io/docs/concepts/configuration/secret/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

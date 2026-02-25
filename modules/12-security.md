@@ -1,6 +1,25 @@
 # Module 12: Security Deep Dive
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Baseline Hardening Checklist](#baseline-hardening-checklist)
+- [Lab: Drop Capabilities](#lab-drop-capabilities)
+- [Resource Limits](#resource-limits)
+- [Lab: No-New-Privileges](#lab-no-new-privileges)
+- [Lab: Read-Only Root FS](#lab-read-only-root-fs)
+- [SELinux (Fedora/RHEL)](#selinux-fedorarhel)
+- [Image Trust (Practical)](#image-trust-practical)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This module focuses on reducing blast radius and making your container posture auditable.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -9,6 +28,9 @@ This module focuses on reducing blast radius and making your container posture a
 - Understand SELinux and why it matters on Fedora/RHEL.
 - Understand image trust at a practical level.
 - Build a secure-by-default run configuration.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Baseline Hardening Checklist
 
@@ -26,6 +48,9 @@ Also consider:
 - minimal mounts (avoid mounting home directories)
 - immutable config (mount config read-only)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Drop Capabilities
 
 Start with a simple container and drop all Linux capabilities:
@@ -38,6 +63,9 @@ If your workload breaks, add only the specific capabilities required.
 
 Avoid using `--privileged` as a workaround.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Resource Limits
 
 Example:
@@ -46,11 +74,17 @@ Example:
 podman run --rm --memory 256m --pids-limit 200 docker.io/library/alpine:latest sh -lc 'echo ok'  # run a container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: No-New-Privileges
 
 ```bash
 podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # run a container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Read-Only Root FS
 
@@ -74,6 +108,9 @@ podman run --rm -p 8080:80 --read-only --cap-drop=ALL --security-opt no-new-priv
 
 If it fails, treat the error as a map of required writes/capabilities and add back only what is necessary.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux (Fedora/RHEL)
 
 If SELinux is enforcing:
@@ -87,6 +124,9 @@ If you see mount permission errors with bind mounts:
 
 - try `:Z`
 - prefer volumes
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Image Trust (Practical)
 
@@ -102,10 +142,16 @@ Supply chain habits:
 - prefer official images or your organization's curated base images
 - avoid running unverified installer scripts in builds
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain the difference between rootless and non-root-in-container.
 - You can make a service run read-only (or explain why it cannot).
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -113,11 +159,17 @@ Supply chain habits:
 
 2) Why is digest pinning useful even if you trust the upstream?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - Linux capabilities (man7): https://man7.org/linux/man-pages/man7/capabilities.7.html
 - `seccomp(2)` (man7): https://man7.org/linux/man-pages/man2/seccomp.2.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - Podman security docs: https://github.com/containers/podman/blob/main/docs/tutorials/security.md
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

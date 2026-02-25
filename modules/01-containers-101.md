@@ -1,11 +1,30 @@
 # Module 1: Containers 101
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [The Three Things To Get Right](#the-three-things-to-get-right)
+- [Rootless vs Rootful](#rootless-vs-rootful)
+- [Terminology You Will See](#terminology-you-will-see)
+- [Lab: Compare Host vs Container](#lab-compare-host-vs-container)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz (Answer Without Running Commands)](#quick-quiz-answer-without-running-commands)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 - Explain images vs containers in one sentence.
 - Understand what an OCI image is (layers + config).
 - Understand why rootless containers matter.
 - Understand the boundary: containers are isolation, not a VM.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## The Three Things To Get Right
 
@@ -28,6 +47,9 @@ Important: the kernel is shared.
 - A container is not a VM.
 - Container security is about reducing blast radius and applying least privilege.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Rootless vs Rootful
 
 Rootless benefits:
@@ -45,12 +67,18 @@ Rule of thumb:
 - Use rootless by default.
 - Use rootful only when you can explain why it is required.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Terminology You Will See
 
 - OCI: the standards that define images and runtimes.
 - runtime: software that starts the container process (Podman uses an OCI runtime under the hood).
 - registry: where images live (Docker Hub, Quay, your internal registry).
 - short name: a shorthand like `alpine` which resolves to a fully qualified name.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Compare Host vs Container
 
@@ -85,16 +113,25 @@ What to look for in `inspect`:
 - environment variables
 - user
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain: "An image is a template; a container is a running instance."
 - You know rootless is the default for this course.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz (Answer Without Running Commands)
 
 1) If you delete a container, do you delete its image?
 
 2) If a container runs as UID 0 inside, does that mean it is host root?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -103,5 +140,8 @@ What to look for in `inspect`:
 - Linux namespaces (man7): https://man7.org/linux/man-pages/man7/namespaces.7.html
 - Linux control groups (man7): https://man7.org/linux/man-pages/man7/cgroups.7.html
 - Podman overview docs: https://podman.io/docs
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

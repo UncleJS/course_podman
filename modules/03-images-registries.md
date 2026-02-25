@@ -1,5 +1,25 @@
 # Module 3: Images and Registries
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Tags vs Digests](#tags-vs-digests)
+- [Fully Qualified Image Names](#fully-qualified-image-names)
+- [Lab: Pull by Tag, Record Digest](#lab-pull-by-tag-record-digest)
+- [Registry Authentication](#registry-authentication)
+- [Image Metadata: ENTRYPOINT vs CMD](#image-metadata-entrypoint-vs-cmd)
+- [Lab (Optional): Push to a Local Registry](#lab-optional-push-to-a-local-registry)
+- [Lab: Local Tagging](#lab-local-tagging)
+- [Lab (Optional): Save and Load](#lab-optional-save-and-load)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 - Pull images by tag and by digest.
@@ -7,12 +27,18 @@
 - Inspect image metadata (entrypoint/cmd, exposed ports, labels).
 - Understand short-name resolution and why fully qualified names matter.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Tags vs Digests
 
 - A tag (like `:latest`) is a name that can move.
 - A digest (like `@sha256:...`) is content-addressed and does not move.
 
 For production, prefer digests.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Fully Qualified Image Names
 
@@ -28,6 +54,9 @@ Reason:
 
 - Short-name resolution rules can vary by system policy.
 - Fully qualified names are more predictable in automation.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Pull by Tag, Record Digest
 
@@ -49,6 +78,9 @@ Try running by digest once you have it:
 podman run --rm docker.io/library/alpine@sha256:<digest> echo ok  # run a container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Registry Authentication
 
 Login stores credentials for your user:
@@ -64,6 +96,9 @@ podman logout <registry>  # log out of a container registry
 ```
 
 Do not put registry credentials in shell history.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Image Metadata: ENTRYPOINT vs CMD
 
@@ -81,6 +116,9 @@ podman image inspect docker.io/library/nginx:stable --format '{{.Config.Entrypoi
 Practical implication:
 
 - `podman run <image> <args>` appends or replaces depending on ENTRYPOINT.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab (Optional): Push to a Local Registry
 
@@ -129,6 +167,9 @@ Note:
 
 - A local registry is not "secure by default". Treat it as a learning tool.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Local Tagging
 
 ```bash
@@ -136,6 +177,9 @@ podman pull docker.io/library/nginx:stable  # pull an image
 podman tag docker.io/library/nginx:stable localhost/nginx:course  # add another tag/name
 podman images | grep nginx  # list images
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab (Optional): Save and Load
 
@@ -150,16 +194,25 @@ Note:
 
 - `save/load` are not a registry. They are file-based transport.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain why `:latest` is risky.
 - You can find and record an image digest.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) If you deploy by tag, what can change without you changing your config?
 
 2) What is the advantage of a digest in incident response?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -168,5 +221,8 @@ Note:
 - `podman-image(1)`: https://docs.podman.io/en/latest/markdown/podman-image.1.html
 - Registries config (`registries.conf`): https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md
 - Docker Registry HTTP API V2: https://distribution.github.io/distribution/spec/api/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

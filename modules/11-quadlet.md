@@ -1,6 +1,28 @@
 # Module 11: Production Baseline (systemd + Quadlet)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Why Quadlet](#why-quadlet)
+- [Boot Safety (Rootless)](#boot-safety-rootless)
+- [Where Quadlet Files Live](#where-quadlet-files-live)
+- [How "Enable" Works for Quadlet](#how-enable-works-for-quadlet)
+- [Helpful Podman Commands](#helpful-podman-commands)
+- [Lab: Your First Quadlet Container](#lab-your-first-quadlet-container)
+- [Lab: Pre-Create a Network and Volume (Quadlet)](#lab-pre-create-a-network-and-volume-quadlet)
+- [Debugging Quadlet Syntax](#debugging-quadlet-syntax)
+- [Dependencies Between Quadlets](#dependencies-between-quadlets)
+- [Upgrades and Rollback](#upgrades-and-rollback)
+- [Secrets](#secrets)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 Quadlet lets you define containers/pods as declarative unit files that systemd manages.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -9,10 +31,16 @@ Quadlet lets you define containers/pods as declarative unit files that systemd m
 - Make services reboot-safe with predictable restarts.
 - Debug generator failures quickly.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Why Quadlet
 
 - It is the most "Linux-native" way to operate Podman services.
 - systemd gives you restart policies, ordering, logs, and boot integration.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Boot Safety (Rootless)
 
@@ -22,11 +50,17 @@ If you want user services to start on boot:
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Where Quadlet Files Live
 
 - `~/.config/containers/systemd/`
 
 systemd generates units from these files.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## How "Enable" Works for Quadlet
 
@@ -37,6 +71,9 @@ Quadlet units are generated at daemon-reload time.
 - After `systemctl --user daemon-reload`, systemd will have the symlinks it needs.
 
 If you remove a Quadlet file, you must reload systemd to remove the generated unit.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Helpful Podman Commands
 
@@ -51,6 +88,9 @@ Print the resolved Quadlet file:
 ```bash
 podman quadlet print hello-nginx.container  # show the resolved Quadlet file
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Your First Quadlet Container
 
@@ -81,6 +121,9 @@ Notes:
 
 - The running container name is typically `systemd-<unit>` unless you set `ContainerName=`.
 - Quadlet supports many `podman run` flags via `[Container]` keys.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Pre-Create a Network and Volume (Quadlet)
 
@@ -125,6 +168,9 @@ Logs:
 journalctl --user -u hello-nginx.service -n 50 --no-pager  # view user-service logs
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Debugging Quadlet Syntax
 
 If systemd cannot find your generated service, the generator may have failed.
@@ -147,6 +193,9 @@ When debugging:
 - confirm keys are spelled correctly (unknown keys can break generation)
 - start with a minimal unit and add options incrementally
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Dependencies Between Quadlets
 
 Quadlet can translate dependencies written against `.network`/`.volume`/`.container` files.
@@ -157,6 +206,9 @@ Pattern:
 - make containers `Requires=` and `After=` those units
 
 This prevents race conditions on boot.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Upgrades and Rollback
 
@@ -174,6 +226,9 @@ Operational note:
 
 - record the previous digest so rollback is fast
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Secrets
 
 Do not store secret material in unit files.
@@ -187,11 +242,17 @@ See:
 
 - `modules/11-quadlet-secrets.md`
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can start/stop a container via systemd user services.
 - You can find logs in journald.
 - You can debug why a unit did not generate.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -200,5 +261,8 @@ See:
 - systemd unit basics: https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
 - systemd user services: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
 - journald: https://www.freedesktop.org/software/systemd/man/latest/journald.html
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

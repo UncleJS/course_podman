@@ -1,5 +1,32 @@
 # Module 8: Building Images (Containerfiles)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Minimum Path (If You Are Short on Time)](#minimum-path-if-you-are-short-on-time)
+- [1  Images, Layers, and the Build Mental Model](#1-images-layers-and-the-build-mental-model)
+- [2  `podman build` Fundamentals](#2-podman-build-fundamentals)
+- [3  Containerfile Instructions: The Practical Subset](#3-containerfile-instructions-the-practical-subset)
+- [4  Lab A: Build a Tiny HTTP Image (Warm-Up)](#4-lab-a-build-a-tiny-http-image-warm-up)
+- [5  Build Context Hygiene (The Most Common Image Leak)](#5-build-context-hygiene-the-most-common-image-leak)
+- [6  Running as Non-Root (Image-Level Least Privilege)](#6-running-as-non-root-image-level-least-privilege)
+- [7  Multi-Stage Builds (Small Images, Fast Builds)](#7-multi-stage-builds-small-images-fast-builds)
+- [8  Caching: Make Rebuilds Fast](#8-caching-make-rebuilds-fast)
+- [9  `ARG`, `ENV`, and Configuration](#9-arg-env-and-configuration)
+- [10  Secrets and Private Dependencies (Build-Time)](#10-secrets-and-private-dependencies-build-time)
+- [11  Labels, Metadata, and Image Introspection](#11-labels-metadata-and-image-introspection)
+- [12  Tagging, Digests, and Promotion](#12-tagging-digests-and-promotion)
+- [13  Pushing Images to a Registry](#13-pushing-images-to-a-registry)
+- [14  Testing the Image You Built](#14-testing-the-image-you-built)
+- [15  Troubleshooting Builds (Common Failures)](#15-troubleshooting-builds-common-failures)
+- [16  Cleanup: Keep Your Machine Healthy](#16-cleanup-keep-your-machine-healthy)
+- [17  Extended Lab: A Small "Real" Service Image](#17-extended-lab-a-small-real-service-image)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This module teaches you how to build images you can trust in production:
 
 - reproducible enough to debug
@@ -10,6 +37,9 @@ This module teaches you how to build images you can trust in production:
 The focus is Podman-first: `podman build`, `podman image`, `podman push`.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -22,6 +52,9 @@ By the end of this module you will be able to:
 - Keep secrets out of build layers and out of the build context.
 - Debug common build and runtime failures (missing files, permissions, wrong arch).
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Minimum Path (If You Are Short on Time)
 
 - Do Lab A (build + run a tiny image).
@@ -30,6 +63,9 @@ By the end of this module you will be able to:
 - Build a multi-stage image once (Go example or `examples/build/hello-bun`).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 1  Images, Layers, and the Build Mental Model
 
@@ -53,6 +89,9 @@ Terminology:
 - **Digest**: immutable content address (`sha256:...`).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 2  `podman build` Fundamentals
 
@@ -95,6 +134,9 @@ Podman builds are typically executed by Buildah under the hood.
 You do not need to become a Buildah expert, but this matters when you search for docs and flags.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 3  Containerfile Instructions: The Practical Subset
 
@@ -165,6 +207,9 @@ podman run -p 8080:8080 localhost/myapp:1  # run a container
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 4  Lab A: Build a Tiny HTTP Image (Warm-Up)
 
 Create a new directory:
@@ -217,6 +262,9 @@ rm -rf ./image-lab                 # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 5  Build Context Hygiene (The Most Common Image Leak)
 
 Your build context is everything in the directory you pass to `podman build`.
@@ -268,6 +316,9 @@ COPY src/ /app/src/
 This prevents accidental inclusion and improves caching.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 6  Running as Non-Root (Image-Level Least Privilege)
 
@@ -333,6 +384,9 @@ rm -rf ./nonroot-lab            # delete the lab directory
 If `touch /app/ok` fails, you did not set ownership correctly.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 7  Multi-Stage Builds (Small Images, Fast Builds)
 
@@ -436,6 +490,9 @@ This keeps Node and build tools out of the runtime image.
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 8  Caching: Make Rebuilds Fast
 
 Most slow builds are slow because caching is accidentally disabled.
@@ -478,6 +535,9 @@ podman run --rm -it localhost/myapp:build sh  # run a container
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 9  `ARG`, `ENV`, and Configuration
 
@@ -529,6 +589,9 @@ Use runtime secrets (Module 4) or build-time secret mechanisms (next section).
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 10  Secrets and Private Dependencies (Build-Time)
 
 Rules you can rely on:
@@ -564,6 +627,9 @@ This keeps secrets entirely out of the image build process.
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 11  Labels, Metadata, and Image Introspection
 
 Labels help you operate images later.
@@ -592,6 +658,9 @@ podman image inspect localhost/myapp:1 --format '{{json .Labels}}'  # inspect im
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 12  Tagging, Digests, and Promotion
 
@@ -631,6 +700,9 @@ podman tag localhost/myapp:git-abc123 localhost/myapp:prod  # add another tag/na
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 13  Pushing Images to a Registry
 
 ### 13.1  Login
@@ -664,6 +736,9 @@ Production habit:
 - configure your runtime (Quadlet, Kubernetes YAML) to pull by digest
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 14  Testing the Image You Built
 
@@ -710,6 +785,9 @@ podman rm -f hc  # stop and remove the container
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 15  Troubleshooting Builds (Common Failures)
 
@@ -788,6 +866,9 @@ podman image history localhost/myapp:1  # show image layer history
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 16  Cleanup: Keep Your Machine Healthy
 
 Image builds create intermediate images and caches.
@@ -811,6 +892,9 @@ Be careful:
 - `podman system prune` can delete data you care about if you store it in unnamed volumes.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 17  Extended Lab: A Small "Real" Service Image
 
@@ -906,6 +990,9 @@ rm -rf ./svc-lab               # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain what a build context is and why `.containerignore` matters.
@@ -915,6 +1002,9 @@ rm -rf ./svc-lab               # delete the lab directory
 - You can explain why secrets do not belong in `ARG`, `ENV`, or `COPY`.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -930,11 +1020,17 @@ rm -rf ./svc-lab               # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `man podman-build`
 - `man podman-image`
 - `man Containerfile` (often via Buildah docs)
 - OCI image spec labels: https://github.com/opencontainers/image-spec/blob/main/annotations.md
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

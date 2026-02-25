@@ -1,6 +1,27 @@
 # Capstone: Reboot-Safe Local Stack with Secrets, Backups, and Upgrades
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Goal](#goal)
+- [Reference Stack](#reference-stack)
+- [Deliverables](#deliverables)
+- [Build It](#build-it)
+- [First Data (Required)](#first-data-required)
+- [Optional: Scheduled Backups](#optional-scheduled-backups)
+- [Backup and Restore (Required)](#backup-and-restore-required)
+- [Upgrade and Rollback (Required)](#upgrade-and-rollback-required)
+- [Password Rotation (Required)](#password-rotation-required)
+- [Notes](#notes)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This capstone focuses on operational excellence, not app development.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Goal
 
@@ -18,12 +39,18 @@ Success criteria:
 - You can produce a backup file and prove you can restore it.
 - You can upgrade MariaDB/Adminer versions with a documented rollback.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Reference Stack
 
 - DB: MariaDB
 - UI: Adminer (web DB admin)
 
 This gives you a realistic stateful service without writing code.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Deliverables
 
@@ -39,6 +66,9 @@ This gives you a realistic stateful service without writing code.
   - restore from backup
   - upgrade pinned digests
   - rollback
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Build It
 
@@ -98,6 +128,9 @@ podman port cap-mariadb || true  # show published ports
 
 Expected: no published ports.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## First Data (Required)
 
 Create a test database/table so you have something to back up:
@@ -105,6 +138,9 @@ Create a test database/table so you have something to back up:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password docker.io/library/mariadb:11 sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "CREATE DATABASE IF NOT EXISTS cap; CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY); INSERT IGNORE INTO cap.t1 VALUES (1);"'  # run a container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Optional: Scheduled Backups
 
@@ -134,6 +170,9 @@ Note:
 
 - backups are stored in the `cap_backups` volume
 - the backup unit runs `mysqldump` inside a container
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Backup and Restore (Required)
 
@@ -186,6 +225,9 @@ Rollback idea:
 
 - restore into a fresh volume and validate before switching (advanced)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Upgrade and Rollback (Required)
 
 - Record current image digests.
@@ -219,6 +261,9 @@ systemctl --user restart cap-adminer.service   # restart UI
 
 Rollback is the same procedure with the previous digests.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Password Rotation (Required)
 
 Rotation plan for root password:
@@ -250,10 +295,16 @@ podman run --rm --network capnet --secret mariadb_root_password --secret mariadb
 podman secret rm mariadb_root_password  # remove old secret after verification
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Notes
 
 - Password rotation often implies updating both the secret and the DB user credentials.
 - Keep the old password available until the new one is verified.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Checkpoint
 
@@ -262,11 +313,17 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - You can produce a backup file and restore it successfully.
 - You can upgrade using digest pinning and roll back to a previous digest.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Quick Quiz
 
 1) Why is it important to test restore, not just backup?
 
 2) What is the operational advantage of deploying by digest rather than by tag?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -275,5 +332,8 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - MariaDB logical backup (`mysqldump`): https://mariadb.com/kb/en/mysqldump/
 - Adminer project docs: https://www.adminer.org/
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

@@ -1,6 +1,21 @@
 # Module 11 Add-On: Secrets with Quadlet + systemd (Rootless)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Recommended Pattern](#recommended-pattern)
+- [Lab: Quadlet Unit Consuming a Secret](#lab-quadlet-unit-consuming-a-secret)
+- [Rotation](#rotation)
+- [Further Reading](#further-reading)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+
 This add-on shows how to run reboot-safe services while keeping secret material out of unit files and environment variables.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -10,6 +25,9 @@ This add-on shows how to run reboot-safe services while keeping secret material 
   - `Environment=` lines
   - shell history
 - Rotate secrets safely with rollback.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Recommended Pattern
 
@@ -22,6 +40,9 @@ Guidelines:
 - Treat secret names as part of your deployment config.
 - Prefer versioned secret names for rotation (`db_password_v1`, `db_password_v2`).
 - Assume many apps only read secrets at startup.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Quadlet Unit Consuming a Secret
 
@@ -84,6 +105,9 @@ systemctl --user status example-app.service  # show status
 journalctl --user -u example-app.service -n 50 --no-pager  # view user-service logs
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Rotation
 
 Use versioned secret names and update the Quadlet unit to reference the new secret name, then restart.
@@ -122,6 +146,9 @@ journalctl --user -u example-app.service -n 100 --no-pager  # view logs
 podman secret rm db_password_v1  # delete the old secret after verification
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html
@@ -129,16 +156,25 @@ podman secret rm db_password_v1  # delete the old secret after verification
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can run a Quadlet-managed service that reads a secret from `/run/secrets/...`.
 - You can rotate a secret by switching the referenced secret name and restarting.
 - You can verify journald logs do not contain secret values.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Quick Quiz
 
 1) Why is it safer to mount secrets as files than to pass them in environment variables?
 
 2) Why should you keep the old secret around until after verification?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

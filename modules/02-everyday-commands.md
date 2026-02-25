@@ -1,11 +1,31 @@
 # Module 2: Everyday Podman Commands
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Core Commands](#core-commands)
+- [Useful Flags (Learn These Early)](#useful-flags-learn-these-early)
+- [Lab: The Writable Layer Is Not Persistence](#lab-the-writable-layer-is-not-persistence)
+- [Lab: Name Your Containers](#lab-name-your-containers)
+- [Cleaning Up Without Nuking Your System](#cleaning-up-without-nuking-your-system)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 - Run containers interactively and in the background.
 - Use `logs` and `exec` to debug.
 - Clean up containers and images safely.
 - Understand naming, exit codes, and restart behavior.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Core Commands
 
@@ -58,6 +78,9 @@ podman start sleep1  # start an existing container
 podman rm -f sleep1  # stop (if needed) and force remove the container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Useful Flags (Learn These Early)
 
 - `--name <name>`: stable name for scripts
@@ -66,6 +89,9 @@ podman rm -f sleep1  # stop (if needed) and force remove the container
 - `-p host:container`: publish ports
 - `--network <net>`: connect to network
 - `--user <uid[:gid]>`: run as a specific user
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: The Writable Layer Is Not Persistence
 
@@ -97,6 +123,9 @@ ls -la /tmp/hello.txt  # list files
 
 Expected: the file is gone.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Name Your Containers
 
 1) Run the same image twice with different names:
@@ -111,6 +140,9 @@ podman rm -f a1 a2  # cleanup both containers
 2) Try to reuse a name and observe the error.
 
 This teaches you why stable naming matters.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Cleaning Up Without Nuking Your System
 
@@ -133,16 +165,25 @@ Remove unused images (be careful; it can remove bases you need):
 podman image prune  # remove unused images (frees disk)
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can use `podman logs` and `podman exec` without guessing.
 - You understand why volumes exist.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) What is the difference between `podman run` and `podman start`?
 
 2) Where do you look first if a container exits immediately?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -151,5 +192,8 @@ podman image prune  # remove unused images (frees disk)
 - `podman-logs(1)`: https://docs.podman.io/en/latest/markdown/podman-logs.1.html
 - `podman-exec(1)`: https://docs.podman.io/en/latest/markdown/podman-exec.1.html
 - `podman-inspect(1)`: https://docs.podman.io/en/latest/markdown/podman-inspect.1.html
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

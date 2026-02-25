@@ -1,5 +1,20 @@
 # External Secrets Survey (Thorough Intro, Optional Implementation)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [What You Are Optimizing For](#what-you-are-optimizing-for)
+- [Option 1: systemd Credentials (Host-Native)](#option-1-systemd-credentials-host-native)
+- [Option 2: SOPS (GitOps-Friendly Encrypted Files)](#option-2-sops-gitops-friendly-encrypted-files)
+- [Option 3: Vault-Class Secret Managers (Centralized)](#option-3-vault-class-secret-managers-centralized)
+- [Comparison Table (Mental Model)](#comparison-table-mental-model)
+- [What Does Not Change](#what-does-not-change)
+- [Migration Path from Podman Secrets](#migration-path-from-podman-secrets)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 Podman secrets are a good local-first baseline, but most teams eventually need one or more of:
 
 - encryption-at-rest on the host
@@ -12,6 +27,9 @@ This module teaches the landscape so learners can choose an external approach co
 This is intentionally not a single "do this" recipe.
 
 External secrets are an architecture and operations decision.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## What You Are Optimizing For
 
@@ -29,6 +47,9 @@ Also consider:
 - do you need dynamic credentials (leases) or static secrets
 - how do you revoke access
 - how do you handle break-glass scenarios
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Option 1: systemd Credentials (Host-Native)
 
@@ -59,6 +80,9 @@ When to choose it:
 - Single host or small fleet.
 - You want minimal moving parts.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Option 2: SOPS (GitOps-Friendly Encrypted Files)
 
 What it is:
@@ -86,6 +110,9 @@ Best-fit pattern with containers:
 - Decrypt to a root-owned file with `0600`.
 - Mount into the container read-only.
 - Never persist decrypted files into images.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Option 3: Vault-Class Secret Managers (Centralized)
 
@@ -115,6 +142,9 @@ Operational notes:
 - treat auth methods (Kubernetes auth, AppRole, OIDC, etc.) as part of the threat model
 - dynamic creds reduce blast radius but increase moving parts
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Comparison Table (Mental Model)
 
 Answer these questions:
@@ -129,6 +159,9 @@ Typical outcomes:
 - small fleet, GitOps: SOPS is a strong fit
 - larger org/compliance: Vault-class is common
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## What Does Not Change
 
 Regardless of external system:
@@ -136,6 +169,9 @@ Regardless of external system:
 - The container should read secrets from files.
 - Do not pass secret values in env vars, CLI args, or logs.
 - Use rotation-friendly names and restart/roll strategies.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Migration Path from Podman Secrets
 
@@ -146,17 +182,26 @@ If you start with Podman secrets (local-first), the clean migration is:
 
 This avoids rewriting applications that already expect file-based secrets.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain the tradeoffs between: systemd credentials, SOPS, and Vault-class secret managers.
 - You can describe a bootstrap story for a new host (how it gets the ability to decrypt/fetch).
 - You can describe a file-based delivery pattern that keeps apps unchanged.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Quick Quiz
 
 1) In one sentence: why is base64 not encryption?
 
 2) What question best distinguishes SOPS-style encrypted files from Vault-style leased secrets?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -165,5 +210,8 @@ This avoids rewriting applications that already expect file-based secrets.
 - age (file encryption tool often used with SOPS): https://github.com/FiloSottile/age
 - HashiCorp Vault: https://www.vaultproject.io/
 - Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

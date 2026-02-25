@@ -1,5 +1,23 @@
 # Module 5: Storage (Volumes, Bind Mounts, Permissions)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [The Three Storage Types You Will Use](#the-three-storage-types-you-will-use)
+- [Volumes](#volumes)
+- [Bind Mounts](#bind-mounts)
+- [Inspect Mounts](#inspect-mounts)
+- [Rootless Permission Pitfalls](#rootless-permission-pitfalls)
+- [SELinux Drill (Fedora/RHEL)](#selinux-drill-fedorarhel)
+- [Lab: Persistent DB Data (Conceptual)](#lab-persistent-db-data-conceptual)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 - Use volumes for persistent state.
@@ -7,6 +25,9 @@
 - Debug rootless permission issues (UID/GID mapping).
 - Understand SELinux labeling at a high level.
 - Know when to use `podman unshare`.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## The Three Storage Types You Will Use
 
@@ -21,6 +42,9 @@ Practical guidance:
 - Use volumes for databases and state.
 - Use bind mounts for configuration and source code.
 - Avoid writing important data into the writable layer.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Volumes
 
@@ -44,6 +68,9 @@ Clean up (be careful; this deletes data):
 ```bash
 podman volume rm dbdata  # delete the volume (data loss)
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Bind Mounts
 
@@ -74,6 +101,9 @@ SELinux note (Fedora/RHEL):
 
 If SELinux is enforcing and you omit labels, mounts can fail with "permission denied".
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Inspect Mounts
 
 ```bash
@@ -81,6 +111,9 @@ podman run -d --name mount1 -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest
 podman inspect mount1 --format '{{json .Mounts}}' | less  # inspect container/image metadata
 podman rm -f mount1  # cleanup the container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Rootless Permission Pitfalls
 
@@ -112,6 +145,9 @@ podman unshare chown -R 1000:1000 <path>  # run a command inside the user namesp
 
 Do not blindly `chmod 777`.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux Drill (Fedora/RHEL)
 
 If SELinux is Enforcing, try this to learn the failure mode:
@@ -129,6 +165,9 @@ podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/he
 ```
 
 Do not disable SELinux as a workaround.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Persistent DB Data (Conceptual)
 
@@ -151,11 +190,17 @@ Stretch:
 - show where the volume lives (`podman volume inspect`)
 - document a backup and restore method (logical dump)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can choose volume vs bind mount intentionally.
 - You can explain when `:Z` matters on Fedora/RHEL.
 - You can use `podman unshare` to debug permission issues.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -163,5 +208,8 @@ Stretch:
 - Rootless storage and UID mapping: https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
 - SELinux mount labeling for containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - `subuid(5)` and `subgid(5)` (man7): https://man7.org/linux/man-pages/man5/subuid.5.html
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

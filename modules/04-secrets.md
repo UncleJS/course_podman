@@ -1,6 +1,25 @@
 # Module 4: Secrets (Local-First)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Mental Model](#mental-model)
+- [Common Anti-Patterns](#common-anti-patterns)
+- [Commands](#commands)
+- [Lab A: Create and Mount a Secret](#lab-a-create-and-mount-a-secret)
+- [Lab A2: Prove It Is Not an Env Var](#lab-a2-prove-it-is-not-an-env-var)
+- [Lab B: Rotation Pattern (Versioned Secrets)](#lab-b-rotation-pattern-versioned-secrets)
+- [Advanced: Build-Time Secrets (Optional)](#advanced-build-time-secrets-optional)
+- [Common Failure Modes](#common-failure-modes)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 This module replaces the common beginner pattern of putting passwords in `.env` files and environment variables.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -9,6 +28,9 @@ This module replaces the common beginner pattern of putting passwords in `.env` 
 - Mount secrets as files and consume them safely.
 - Rotate a secret with minimal downtime.
 - Build a "no-secrets-in-logs" habit.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Mental Model
 
@@ -31,12 +53,18 @@ Threat model in one line:
 
 - Podman secrets help with accidental exposure; they do not turn a laptop into a secret manager.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Common Anti-Patterns
 
 - `export DB_PASSWORD=...` in your shell
 - putting passwords in `.env` and committing it
 - `podman run -e DB_PASSWORD=...` for anything beyond a throwaway lab
 - logging connection strings that contain credentials
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Commands
 
@@ -73,6 +101,9 @@ Notes:
 - Keep the secret value out of your shell history. Prefer `read -s` or a file with tight permissions.
 - Do not print secret contents in logs.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab A: Create and Mount a Secret
 
 1) Create a secret from stdin (example only):
@@ -97,6 +128,9 @@ Checkpoint:
 
 - Secret appears as a file at `/run/secrets/db_password`.
 - You never printed the secret value.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab A2: Prove It Is Not an Env Var
 
@@ -126,6 +160,9 @@ podman exec secret-demo sh -lc 'ls -la /run/secrets'  # run a command in a runni
 podman rm -f secret-demo  # stop and remove the demo container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab B: Rotation Pattern (Versioned Secrets)
 
 Use versioned names and switch consumers:
@@ -152,6 +189,9 @@ Rotation note:
 
 - Many apps only read secrets on startup. Rotation often means "deploy a new container".
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Advanced: Build-Time Secrets (Optional)
 
 Goal: authenticate to a private resource during image build without leaking tokens into image layers.
@@ -174,16 +214,25 @@ If you cannot use build secrets on your version:
 - do not work around it by embedding secrets
 - fetch private dependencies in CI and copy artifacts into the build context instead
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Common Failure Modes
 
 - Your app expects a string env var but you mounted a file.
 - File permissions/ownership do not match what the app runs as.
 - You accidentally log the secret during debugging.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can create and mount a secret without leaking it.
 - You can describe a rotation plan that includes rollback.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -191,5 +240,8 @@ If you cannot use build secrets on your version:
 - OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - Kubernetes Secrets (base64 caveat context): https://kubernetes.io/docs/concepts/configuration/secret/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

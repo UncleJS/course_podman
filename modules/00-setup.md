@@ -1,6 +1,25 @@
 # Module 0: Setup (Fedora/RHEL + systemd)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Install](#install)
+- [cgroups v2 Check (Required)](#cgroups-v2-check-required)
+- [Rootless Prereqs](#rootless-prereqs)
+- [SELinux Quick Check (Fedora/RHEL)](#selinux-quick-check-fedorarhel)
+- [First Container](#first-container)
+- [Where Things Live (Rootless)](#where-things-live-rootless)
+- [Create a Course Workspace](#create-a-course-workspace)
+- [Recommended Shell Safety](#recommended-shell-safety)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 This course targets Fedora/RHEL-like systems with systemd, using rootless Podman.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -9,6 +28,9 @@ This course targets Fedora/RHEL-like systems with systemd, using rootless Podman
 - Know where logs and state live for rootless Podman.
 - Confirm cgroups v2 is enabled (required for Quadlet).
 - Set up a lab workspace and a few safety defaults.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Install
 
@@ -39,6 +61,9 @@ rpm -q podman 2>/dev/null || true  # show installed package version
 uname -r  # show kernel/system info
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## cgroups v2 Check (Required)
 
 Quadlet requires cgroups v2.
@@ -50,6 +75,9 @@ podman info --format '{{.Host.CgroupsVersion}}'  # show Podman host configuratio
 ```
 
 Expected: `v2`
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Rootless Prereqs
 
@@ -69,6 +97,9 @@ sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"  # 
 
 Log out and back in after updating subuids/subgids.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux Quick Check (Fedora/RHEL)
 
 SELinux is usually enabled on these systems. You do not need to understand the full policy model, but you should recognize when it affects bind mounts.
@@ -84,6 +115,9 @@ If SELinux is Enforcing, prefer:
 - named volumes for data
 - bind mounts with `:Z` (private) or `:z` (shared)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## First Container
 
 ```bash
@@ -95,6 +129,9 @@ If this works, you have:
 - network access to pull images
 - a working storage backend
 - a working OCI runtime
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Where Things Live (Rootless)
 
@@ -109,6 +146,9 @@ Logs:
 - `podman logs <name>` for container logs
 - `journalctl --user -u <service>` for Quadlet/systemd logs
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Create a Course Workspace
 
 Pick a working directory for labs:
@@ -117,6 +157,9 @@ Pick a working directory for labs:
 mkdir -p ~/course_podman-labs  # create directory
 cd ~/course_podman-labs  # change directory
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Recommended Shell Safety
 
@@ -128,11 +171,17 @@ set -o noclobber  # prevent overwriting files with redirects
 
 Do not run this in shells where it would surprise you; it changes redirect behavior.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - `podman info` runs without errors.
 - `podman run --rm ...` works rootless.
 - cgroups version reports `v2`.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -141,5 +190,8 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - cgroups v2 (kernel docs): https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html
 - `loginctl` (linger for user services): https://www.freedesktop.org/software/systemd/man/latest/loginctl.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

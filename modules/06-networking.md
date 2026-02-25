@@ -1,5 +1,32 @@
 # Module 6: Networking (Ports, DNS, User-Defined Networks)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Minimum Path (If You Are Short on Time)](#minimum-path-if-you-are-short-on-time)
+- [1  How Container Networking Works (Mental Model)](#1-how-container-networking-works-mental-model)
+- [2  Rootless Networking In Depth](#2-rootless-networking-in-depth)
+- [3  Port Publishing](#3-port-publishing)
+- [4  The Default Network vs User-Defined Networks](#4-the-default-network-vs-user-defined-networks)
+- [5  Container DNS and Service Discovery](#5-container-dns-and-service-discovery)
+- [6  Connecting Containers to Multiple Networks](#6-connecting-containers-to-multiple-networks)
+- [7  Inspecting Network State](#7-inspecting-network-state)
+- [8  Network Drivers — Deeper Look](#8-network-drivers-deeper-look)
+- [9  Network Security Patterns](#9-network-security-patterns)
+- [10  Full Lab: Three-Tier Isolated Stack](#10-full-lab-three-tier-isolated-stack)
+- [11  Connecting Containers to Pods on a Network](#11-connecting-containers-to-pods-on-a-network)
+- [12  Networking in Quadlet (systemd) Deployments](#12-networking-in-quadlet-systemd-deployments)
+- [13  Troubleshooting Networking](#13-troubleshooting-networking)
+- [14  Common Patterns Reference](#14-common-patterns-reference)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 By the end of this module you will be able to:
@@ -15,6 +42,9 @@ By the end of this module you will be able to:
 - Connect containers across pods and across user-defined networks.
 - Understand how networking interacts with Quadlet (systemd) deployments.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Minimum Path (If You Are Short on Time)
 
 If you only do a small slice of this module, do these:
@@ -25,6 +55,9 @@ If you only do a small slice of this module, do these:
 - Run the troubleshooting checklist once (Section 13).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 1  How Container Networking Works (Mental Model)
 
@@ -50,6 +83,9 @@ When a container is only on the **default network** (Podman's built-in `podman` 
 > **Rootless note:** `host` network mode has limited usefulness in rootless Podman because the container still cannot bind privileged ports without extra capability. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 2  Rootless Networking In Depth
 
@@ -104,6 +140,9 @@ Option B — use a high port and put a reverse proxy (nginx, Caddy) in front. St
 Option C — use `systemd` socket activation (covered in Module 11).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 3  Port Publishing
 
@@ -172,6 +211,9 @@ podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 4  The Default Network vs User-Defined Networks
 
@@ -259,6 +301,9 @@ podman network rm appnet  # remove a network
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 5  Container DNS and Service Discovery
 
@@ -350,6 +395,9 @@ podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest s
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 6  Connecting Containers to Multiple Networks
 
 A container can be a member of more than one network simultaneously. This is the correct way to build a tiered architecture:
@@ -414,6 +462,9 @@ podman network connect backend-net app  # attach a container to a network
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 7  Inspecting Network State
 
 ### 7.1  List All Networks
@@ -473,6 +524,9 @@ ip addr show  # show interfaces
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 8  Network Drivers — Deeper Look
 
 ### 8.1  Bridge (Default)
@@ -515,6 +569,9 @@ podman network create --driver macvlan --opt parent=eth0 --subnet 192.168.1.0/24
 The container appears as a distinct host on your physical LAN. Useful for legacy protocols (DHCP from upstream, mDNS, etc.).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 9  Network Security Patterns
 
@@ -571,6 +628,9 @@ When you upgrade a service, you swap the container and preserve the alias. Nothi
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 10  Full Lab: Three-Tier Isolated Stack
 
@@ -652,6 +712,9 @@ podman network rm frontend-net app-net # remove networks
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 11  Connecting Containers to Pods on a Network
 
 Pods (covered in Module 7) and user-defined networks interact naturally. You can place an entire pod on a named network:
@@ -672,6 +735,9 @@ podman network rm podnet  # remove the network
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 12  Networking in Quadlet (systemd) Deployments
 
@@ -705,6 +771,9 @@ Systemd will automatically create `appnet` before starting your container and th
 Full Quadlet networking is covered in Module 11.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 13  Troubleshooting Networking
 
@@ -822,6 +891,9 @@ podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 14  Common Patterns Reference
 
 ### Pattern A — Single Shared App Network (Simple Stack)
@@ -865,6 +937,9 @@ podman run --rm --network app-tier --env-file .env myapp:latest ./migrate.sh  # 
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 You should be able to answer the following without looking at commands:
@@ -878,6 +953,9 @@ You should be able to answer the following without looking at commands:
 - What is the first tool you reach for when a container cannot be found by DNS?
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -895,6 +973,9 @@ You should be able to answer the following without looking at commands:
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - Podman networking documentation: `man podman-network`
@@ -903,5 +984,8 @@ You should be able to answer the following without looking at commands:
 - slirp4netns: https://github.com/rootless-containers/slirp4netns
 - CNI vs Netavark: https://podman.io/blogs/2022/05/05/podman-rootful-rootless.html
 - nftables and container networking: see Module 13 (Troubleshooting)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required

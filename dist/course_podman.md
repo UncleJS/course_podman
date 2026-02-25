@@ -150,7 +150,26 @@ These are rough time boxes for a first pass (reading + doing the labs).
 
 # Module 0: Setup (Fedora/RHEL + systemd)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Install](#install)
+- [cgroups v2 Check (Required)](#cgroups-v2-check-required)
+- [Rootless Prereqs](#rootless-prereqs)
+- [SELinux Quick Check (Fedora/RHEL)](#selinux-quick-check-fedorarhel)
+- [First Container](#first-container)
+- [Where Things Live (Rootless)](#where-things-live-rootless)
+- [Create a Course Workspace](#create-a-course-workspace)
+- [Recommended Shell Safety](#recommended-shell-safety)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 This course targets Fedora/RHEL-like systems with systemd, using rootless Podman.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -159,6 +178,9 @@ This course targets Fedora/RHEL-like systems with systemd, using rootless Podman
 - Know where logs and state live for rootless Podman.
 - Confirm cgroups v2 is enabled (required for Quadlet).
 - Set up a lab workspace and a few safety defaults.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Install
 
@@ -189,6 +211,9 @@ rpm -q podman 2>/dev/null || true  # show installed package version
 uname -r  # show kernel/system info
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## cgroups v2 Check (Required)
 
 Quadlet requires cgroups v2.
@@ -200,6 +225,9 @@ podman info --format '{{.Host.CgroupsVersion}}'  # show Podman host configuratio
 ```
 
 Expected: `v2`
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Rootless Prereqs
 
@@ -219,6 +247,9 @@ sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"  # 
 
 Log out and back in after updating subuids/subgids.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux Quick Check (Fedora/RHEL)
 
 SELinux is usually enabled on these systems. You do not need to understand the full policy model, but you should recognize when it affects bind mounts.
@@ -234,6 +265,9 @@ If SELinux is Enforcing, prefer:
 - named volumes for data
 - bind mounts with `:Z` (private) or `:z` (shared)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## First Container
 
 ```bash
@@ -245,6 +279,9 @@ If this works, you have:
 - network access to pull images
 - a working storage backend
 - a working OCI runtime
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Where Things Live (Rootless)
 
@@ -259,6 +296,9 @@ Logs:
 - `podman logs <name>` for container logs
 - `journalctl --user -u <service>` for Quadlet/systemd logs
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Create a Course Workspace
 
 Pick a working directory for labs:
@@ -267,6 +307,9 @@ Pick a working directory for labs:
 mkdir -p ~/course_podman-labs  # create directory
 cd ~/course_podman-labs  # change directory
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Recommended Shell Safety
 
@@ -278,11 +321,17 @@ set -o noclobber  # prevent overwriting files with redirects
 
 Do not run this in shells where it would surprise you; it changes redirect behavior.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - `podman info` runs without errors.
 - `podman run --rm ...` works rootless.
 - cgroups version reports `v2`.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -292,11 +341,30 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - `loginctl` (linger for user services): https://www.freedesktop.org/software/systemd/man/latest/loginctl.html
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 1: Containers 101
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [The Three Things To Get Right](#the-three-things-to-get-right)
+- [Rootless vs Rootful](#rootless-vs-rootful)
+- [Terminology You Will See](#terminology-you-will-see)
+- [Lab: Compare Host vs Container](#lab-compare-host-vs-container)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz (Answer Without Running Commands)](#quick-quiz-answer-without-running-commands)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -304,6 +372,9 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 - Understand what an OCI image is (layers + config).
 - Understand why rootless containers matter.
 - Understand the boundary: containers are isolation, not a VM.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## The Three Things To Get Right
 
@@ -326,6 +397,9 @@ Important: the kernel is shared.
 - A container is not a VM.
 - Container security is about reducing blast radius and applying least privilege.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Rootless vs Rootful
 
 Rootless benefits:
@@ -343,12 +417,18 @@ Rule of thumb:
 - Use rootless by default.
 - Use rootful only when you can explain why it is required.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Terminology You Will See
 
 - OCI: the standards that define images and runtimes.
 - runtime: software that starts the container process (Podman uses an OCI runtime under the hood).
 - registry: where images live (Docker Hub, Quay, your internal registry).
 - short name: a shorthand like `alpine` which resolves to a fully qualified name.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Compare Host vs Container
 
@@ -383,16 +463,25 @@ What to look for in `inspect`:
 - environment variables
 - user
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain: "An image is a template; a container is a running instance."
 - You know rootless is the default for this course.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz (Answer Without Running Commands)
 
 1) If you delete a container, do you delete its image?
 
 2) If a container runs as UID 0 inside, does that mean it is host root?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -402,11 +491,31 @@ What to look for in `inspect`:
 - Linux control groups (man7): https://man7.org/linux/man-pages/man7/cgroups.7.html
 - Podman overview docs: https://podman.io/docs
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 2: Everyday Podman Commands
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Core Commands](#core-commands)
+- [Useful Flags (Learn These Early)](#useful-flags-learn-these-early)
+- [Lab: The Writable Layer Is Not Persistence](#lab-the-writable-layer-is-not-persistence)
+- [Lab: Name Your Containers](#lab-name-your-containers)
+- [Cleaning Up Without Nuking Your System](#cleaning-up-without-nuking-your-system)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -414,6 +523,9 @@ What to look for in `inspect`:
 - Use `logs` and `exec` to debug.
 - Clean up containers and images safely.
 - Understand naming, exit codes, and restart behavior.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Core Commands
 
@@ -466,6 +578,9 @@ podman start sleep1  # start an existing container
 podman rm -f sleep1  # stop (if needed) and force remove the container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Useful Flags (Learn These Early)
 
 - `--name <name>`: stable name for scripts
@@ -474,6 +589,9 @@ podman rm -f sleep1  # stop (if needed) and force remove the container
 - `-p host:container`: publish ports
 - `--network <net>`: connect to network
 - `--user <uid[:gid]>`: run as a specific user
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: The Writable Layer Is Not Persistence
 
@@ -505,6 +623,9 @@ ls -la /tmp/hello.txt  # list files
 
 Expected: the file is gone.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Name Your Containers
 
 1) Run the same image twice with different names:
@@ -519,6 +640,9 @@ podman rm -f a1 a2  # cleanup both containers
 2) Try to reuse a name and observe the error.
 
 This teaches you why stable naming matters.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Cleaning Up Without Nuking Your System
 
@@ -541,16 +665,25 @@ Remove unused images (be careful; it can remove bases you need):
 podman image prune  # remove unused images (frees disk)
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can use `podman logs` and `podman exec` without guessing.
 - You understand why volumes exist.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) What is the difference between `podman run` and `podman start`?
 
 2) Where do you look first if a container exits immediately?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -560,11 +693,34 @@ podman image prune  # remove unused images (frees disk)
 - `podman-exec(1)`: https://docs.podman.io/en/latest/markdown/podman-exec.1.html
 - `podman-inspect(1)`: https://docs.podman.io/en/latest/markdown/podman-inspect.1.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 3: Images and Registries
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Tags vs Digests](#tags-vs-digests)
+- [Fully Qualified Image Names](#fully-qualified-image-names)
+- [Lab: Pull by Tag, Record Digest](#lab-pull-by-tag-record-digest)
+- [Registry Authentication](#registry-authentication)
+- [Image Metadata: ENTRYPOINT vs CMD](#image-metadata-entrypoint-vs-cmd)
+- [Lab (Optional): Push to a Local Registry](#lab-optional-push-to-a-local-registry)
+- [Lab: Local Tagging](#lab-local-tagging)
+- [Lab (Optional): Save and Load](#lab-optional-save-and-load)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -573,12 +729,18 @@ podman image prune  # remove unused images (frees disk)
 - Inspect image metadata (entrypoint/cmd, exposed ports, labels).
 - Understand short-name resolution and why fully qualified names matter.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Tags vs Digests
 
 - A tag (like `:latest`) is a name that can move.
 - A digest (like `@sha256:...`) is content-addressed and does not move.
 
 For production, prefer digests.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Fully Qualified Image Names
 
@@ -594,6 +756,9 @@ Reason:
 
 - Short-name resolution rules can vary by system policy.
 - Fully qualified names are more predictable in automation.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Pull by Tag, Record Digest
 
@@ -615,6 +780,9 @@ Try running by digest once you have it:
 podman run --rm docker.io/library/alpine@sha256:<digest> echo ok  # run a container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Registry Authentication
 
 Login stores credentials for your user:
@@ -630,6 +798,9 @@ podman logout <registry>  # log out of a container registry
 ```
 
 Do not put registry credentials in shell history.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Image Metadata: ENTRYPOINT vs CMD
 
@@ -647,6 +818,9 @@ podman image inspect docker.io/library/nginx:stable --format '{{.Config.Entrypoi
 Practical implication:
 
 - `podman run <image> <args>` appends or replaces depending on ENTRYPOINT.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab (Optional): Push to a Local Registry
 
@@ -695,6 +869,9 @@ Note:
 
 - A local registry is not "secure by default". Treat it as a learning tool.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Local Tagging
 
 ```bash
@@ -702,6 +879,9 @@ podman pull docker.io/library/nginx:stable  # pull an image
 podman tag docker.io/library/nginx:stable localhost/nginx:course  # add another tag/name
 podman images | grep nginx  # list images
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab (Optional): Save and Load
 
@@ -716,16 +896,25 @@ Note:
 
 - `save/load` are not a registry. They are file-based transport.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain why `:latest` is risky.
 - You can find and record an image digest.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) If you deploy by tag, what can change without you changing your config?
 
 2) What is the advantage of a digest in incident response?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -735,13 +924,35 @@ Note:
 - Registries config (`registries.conf`): https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md
 - Docker Registry HTTP API V2: https://distribution.github.io/distribution/spec/api/
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 4: Secrets (Local-First)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Mental Model](#mental-model)
+- [Common Anti-Patterns](#common-anti-patterns)
+- [Commands](#commands)
+- [Lab A: Create and Mount a Secret](#lab-a-create-and-mount-a-secret)
+- [Lab A2: Prove It Is Not an Env Var](#lab-a2-prove-it-is-not-an-env-var)
+- [Lab B: Rotation Pattern (Versioned Secrets)](#lab-b-rotation-pattern-versioned-secrets)
+- [Advanced: Build-Time Secrets (Optional)](#advanced-build-time-secrets-optional)
+- [Common Failure Modes](#common-failure-modes)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 This module replaces the common beginner pattern of putting passwords in `.env` files and environment variables.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -750,6 +961,9 @@ This module replaces the common beginner pattern of putting passwords in `.env` 
 - Mount secrets as files and consume them safely.
 - Rotate a secret with minimal downtime.
 - Build a "no-secrets-in-logs" habit.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Mental Model
 
@@ -772,12 +986,18 @@ Threat model in one line:
 
 - Podman secrets help with accidental exposure; they do not turn a laptop into a secret manager.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Common Anti-Patterns
 
 - `export DB_PASSWORD=...` in your shell
 - putting passwords in `.env` and committing it
 - `podman run -e DB_PASSWORD=...` for anything beyond a throwaway lab
 - logging connection strings that contain credentials
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Commands
 
@@ -814,6 +1034,9 @@ Notes:
 - Keep the secret value out of your shell history. Prefer `read -s` or a file with tight permissions.
 - Do not print secret contents in logs.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab A: Create and Mount a Secret
 
 1) Create a secret from stdin (example only):
@@ -838,6 +1061,9 @@ Checkpoint:
 
 - Secret appears as a file at `/run/secrets/db_password`.
 - You never printed the secret value.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab A2: Prove It Is Not an Env Var
 
@@ -867,6 +1093,9 @@ podman exec secret-demo sh -lc 'ls -la /run/secrets'  # run a command in a runni
 podman rm -f secret-demo  # stop and remove the demo container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab B: Rotation Pattern (Versioned Secrets)
 
 Use versioned names and switch consumers:
@@ -893,6 +1122,9 @@ Rotation note:
 
 - Many apps only read secrets on startup. Rotation often means "deploy a new container".
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Advanced: Build-Time Secrets (Optional)
 
 Goal: authenticate to a private resource during image build without leaking tokens into image layers.
@@ -915,16 +1147,25 @@ If you cannot use build secrets on your version:
 - do not work around it by embedding secrets
 - fetch private dependencies in CI and copy artifacts into the build context instead
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Common Failure Modes
 
 - Your app expects a string env var but you mounted a file.
 - File permissions/ownership do not match what the app runs as.
 - You accidentally log the secret during debugging.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can create and mount a secret without leaking it.
 - You can describe a rotation plan that includes rollback.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -933,11 +1174,32 @@ If you cannot use build secrets on your version:
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - Kubernetes Secrets (base64 caveat context): https://kubernetes.io/docs/concepts/configuration/secret/
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 5: Storage (Volumes, Bind Mounts, Permissions)
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [The Three Storage Types You Will Use](#the-three-storage-types-you-will-use)
+- [Volumes](#volumes)
+- [Bind Mounts](#bind-mounts)
+- [Inspect Mounts](#inspect-mounts)
+- [Rootless Permission Pitfalls](#rootless-permission-pitfalls)
+- [SELinux Drill (Fedora/RHEL)](#selinux-drill-fedorarhel)
+- [Lab: Persistent DB Data (Conceptual)](#lab-persistent-db-data-conceptual)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -946,6 +1208,9 @@ If you cannot use build secrets on your version:
 - Debug rootless permission issues (UID/GID mapping).
 - Understand SELinux labeling at a high level.
 - Know when to use `podman unshare`.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## The Three Storage Types You Will Use
 
@@ -960,6 +1225,9 @@ Practical guidance:
 - Use volumes for databases and state.
 - Use bind mounts for configuration and source code.
 - Avoid writing important data into the writable layer.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Volumes
 
@@ -983,6 +1251,9 @@ Clean up (be careful; this deletes data):
 ```bash
 podman volume rm dbdata  # delete the volume (data loss)
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Bind Mounts
 
@@ -1013,6 +1284,9 @@ SELinux note (Fedora/RHEL):
 
 If SELinux is enforcing and you omit labels, mounts can fail with "permission denied".
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Inspect Mounts
 
 ```bash
@@ -1020,6 +1294,9 @@ podman run -d --name mount1 -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest
 podman inspect mount1 --format '{{json .Mounts}}' | less  # inspect container/image metadata
 podman rm -f mount1  # cleanup the container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Rootless Permission Pitfalls
 
@@ -1051,6 +1328,9 @@ podman unshare chown -R 1000:1000 <path>  # run a command inside the user namesp
 
 Do not blindly `chmod 777`.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux Drill (Fedora/RHEL)
 
 If SELinux is Enforcing, try this to learn the failure mode:
@@ -1068,6 +1348,9 @@ podman run --rm -v ./mnt-demo:/mnt:Z docker.io/library/alpine:latest cat /mnt/he
 ```
 
 Do not disable SELinux as a workaround.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Persistent DB Data (Conceptual)
 
@@ -1090,11 +1373,17 @@ Stretch:
 - show where the volume lives (`podman volume inspect`)
 - document a backup and restore method (logical dump)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can choose volume vs bind mount intentionally.
 - You can explain when `:Z` matters on Fedora/RHEL.
 - You can use `podman unshare` to debug permission issues.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -1103,11 +1392,41 @@ Stretch:
 - SELinux mount labeling for containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - `subuid(5)` and `subgid(5)` (man7): https://man7.org/linux/man-pages/man5/subuid.5.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 6: Networking (Ports, DNS, User-Defined Networks)
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Minimum Path (If You Are Short on Time)](#minimum-path-if-you-are-short-on-time)
+- [1  How Container Networking Works (Mental Model)](#1-how-container-networking-works-mental-model)
+- [2  Rootless Networking In Depth](#2-rootless-networking-in-depth)
+- [3  Port Publishing](#3-port-publishing)
+- [4  The Default Network vs User-Defined Networks](#4-the-default-network-vs-user-defined-networks)
+- [5  Container DNS and Service Discovery](#5-container-dns-and-service-discovery)
+- [6  Connecting Containers to Multiple Networks](#6-connecting-containers-to-multiple-networks)
+- [7  Inspecting Network State](#7-inspecting-network-state)
+- [8  Network Drivers — Deeper Look](#8-network-drivers-deeper-look)
+- [9  Network Security Patterns](#9-network-security-patterns)
+- [10  Full Lab: Three-Tier Isolated Stack](#10-full-lab-three-tier-isolated-stack)
+- [11  Connecting Containers to Pods on a Network](#11-connecting-containers-to-pods-on-a-network)
+- [12  Networking in Quadlet (systemd) Deployments](#12-networking-in-quadlet-systemd-deployments)
+- [13  Troubleshooting Networking](#13-troubleshooting-networking)
+- [14  Common Patterns Reference](#14-common-patterns-reference)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -1124,6 +1443,9 @@ By the end of this module you will be able to:
 - Connect containers across pods and across user-defined networks.
 - Understand how networking interacts with Quadlet (systemd) deployments.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Minimum Path (If You Are Short on Time)
 
 If you only do a small slice of this module, do these:
@@ -1134,6 +1456,9 @@ If you only do a small slice of this module, do these:
 - Run the troubleshooting checklist once (Section 13).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 1  How Container Networking Works (Mental Model)
 
@@ -1159,6 +1484,9 @@ When a container is only on the **default network** (Podman's built-in `podman` 
 > **Rootless note:** `host` network mode has limited usefulness in rootless Podman because the container still cannot bind privileged ports without extra capability. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 2  Rootless Networking In Depth
 
@@ -1213,6 +1541,9 @@ Option B — use a high port and put a reverse proxy (nginx, Caddy) in front. St
 Option C — use `systemd` socket activation (covered in Module 11).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 3  Port Publishing
 
@@ -1281,6 +1612,9 @@ podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 4  The Default Network vs User-Defined Networks
 
@@ -1368,6 +1702,9 @@ podman network rm appnet  # remove a network
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 5  Container DNS and Service Discovery
 
@@ -1459,6 +1796,9 @@ podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest s
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 6  Connecting Containers to Multiple Networks
 
 A container can be a member of more than one network simultaneously. This is the correct way to build a tiered architecture:
@@ -1523,6 +1863,9 @@ podman network connect backend-net app  # attach a container to a network
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 7  Inspecting Network State
 
 ### 7.1  List All Networks
@@ -1582,6 +1925,9 @@ ip addr show  # show interfaces
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 8  Network Drivers — Deeper Look
 
 ### 8.1  Bridge (Default)
@@ -1624,6 +1970,9 @@ podman network create --driver macvlan --opt parent=eth0 --subnet 192.168.1.0/24
 The container appears as a distinct host on your physical LAN. Useful for legacy protocols (DHCP from upstream, mDNS, etc.).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 9  Network Security Patterns
 
@@ -1680,6 +2029,9 @@ When you upgrade a service, you swap the container and preserve the alias. Nothi
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 10  Full Lab: Three-Tier Isolated Stack
 
@@ -1761,6 +2113,9 @@ podman network rm frontend-net app-net # remove networks
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 11  Connecting Containers to Pods on a Network
 
 Pods (covered in Module 7) and user-defined networks interact naturally. You can place an entire pod on a named network:
@@ -1781,6 +2136,9 @@ podman network rm podnet  # remove the network
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 12  Networking in Quadlet (systemd) Deployments
 
@@ -1814,6 +2172,9 @@ Systemd will automatically create `appnet` before starting your container and th
 Full Quadlet networking is covered in Module 11.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 13  Troubleshooting Networking
 
@@ -1931,6 +2292,9 @@ podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 14  Common Patterns Reference
 
 ### Pattern A — Single Shared App Network (Simple Stack)
@@ -1974,6 +2338,9 @@ podman run --rm --network app-tier --env-file .env myapp:latest ./migrate.sh  # 
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 You should be able to answer the following without looking at commands:
@@ -1987,6 +2354,9 @@ You should be able to answer the following without looking at commands:
 - What is the first tool you reach for when a container cannot be found by DNS?
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -2004,6 +2374,9 @@ You should be able to answer the following without looking at commands:
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - Podman networking documentation: `man podman-network`
@@ -2013,13 +2386,32 @@ You should be able to answer the following without looking at commands:
 - CNI vs Netavark: https://podman.io/blogs/2022/05/05/podman-rootful-rootless.html
 - nftables and container networking: see Module 13 (Troubleshooting)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 7: Pods and Sidecars
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Why Pods](#why-pods)
+- [Infra Container](#infra-container)
+- [Lab: Two Containers, One Pod](#lab-two-containers-one-pod)
+- [Pod Lifecycle Notes](#pod-lifecycle-notes)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 Podman pods group multiple containers so they share certain namespaces (especially networking).
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -2027,6 +2419,9 @@ Podman pods group multiple containers so they share certain namespaces (especial
 - Run a pod with multiple containers.
 - Understand the "sidecar" pattern.
 - Know what the infra container is.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Why Pods
 
@@ -2037,11 +2432,17 @@ Pods are useful when:
 
 They are not required for most workloads. Use them when they simplify your stack.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Infra Container
 
 Pods include an "infra" container that holds the shared namespaces.
 
 You will often see it in `podman ps` for a pod.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Two Containers, One Pod
 
@@ -2083,15 +2484,24 @@ exit  # exit the shell
 podman pod rm -f webpod  # stop and remove the pod and its containers
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Pod Lifecycle Notes
 
 - Stopping a pod stops all containers.
 - Removing a pod removes the infra container too.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can use a sidecar for debugging without exposing new ports.
 - You understand pods are not Kubernetes, but the idea rhymes.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -2099,17 +2509,50 @@ podman pod rm -f webpod  # stop and remove the pod and its containers
 
 2) When would you prefer a network over a pod?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
 - Kubernetes Pods concept: https://kubernetes.io/docs/concepts/workloads/pods/
 - Sidecar containers (Kubernetes): https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 8: Building Images (Containerfiles)
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Minimum Path (If You Are Short on Time)](#minimum-path-if-you-are-short-on-time)
+- [1  Images, Layers, and the Build Mental Model](#1-images-layers-and-the-build-mental-model)
+- [2  `podman build` Fundamentals](#2-podman-build-fundamentals)
+- [3  Containerfile Instructions: The Practical Subset](#3-containerfile-instructions-the-practical-subset)
+- [4  Lab A: Build a Tiny HTTP Image (Warm-Up)](#4-lab-a-build-a-tiny-http-image-warm-up)
+- [5  Build Context Hygiene (The Most Common Image Leak)](#5-build-context-hygiene-the-most-common-image-leak)
+- [6  Running as Non-Root (Image-Level Least Privilege)](#6-running-as-non-root-image-level-least-privilege)
+- [7  Multi-Stage Builds (Small Images, Fast Builds)](#7-multi-stage-builds-small-images-fast-builds)
+- [8  Caching: Make Rebuilds Fast](#8-caching-make-rebuilds-fast)
+- [9  `ARG`, `ENV`, and Configuration](#9-arg-env-and-configuration)
+- [10  Secrets and Private Dependencies (Build-Time)](#10-secrets-and-private-dependencies-build-time)
+- [11  Labels, Metadata, and Image Introspection](#11-labels-metadata-and-image-introspection)
+- [12  Tagging, Digests, and Promotion](#12-tagging-digests-and-promotion)
+- [13  Pushing Images to a Registry](#13-pushing-images-to-a-registry)
+- [14  Testing the Image You Built](#14-testing-the-image-you-built)
+- [15  Troubleshooting Builds (Common Failures)](#15-troubleshooting-builds-common-failures)
+- [16  Cleanup: Keep Your Machine Healthy](#16-cleanup-keep-your-machine-healthy)
+- [17  Extended Lab: A Small "Real" Service Image](#17-extended-lab-a-small-real-service-image)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
 
 This module teaches you how to build images you can trust in production:
 
@@ -2122,6 +2565,9 @@ The focus is Podman-first: `podman build`, `podman image`, `podman push`.
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Learning Goals
 
 By the end of this module you will be able to:
@@ -2133,6 +2579,9 @@ By the end of this module you will be able to:
 - Keep secrets out of build layers and out of the build context.
 - Debug common build and runtime failures (missing files, permissions, wrong arch).
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Minimum Path (If You Are Short on Time)
 
 - Do Lab A (build + run a tiny image).
@@ -2141,6 +2590,9 @@ By the end of this module you will be able to:
 - Build a multi-stage image once (Go example or `examples/build/hello-bun`).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 1  Images, Layers, and the Build Mental Model
 
@@ -2164,6 +2616,9 @@ Terminology:
 - **Digest**: immutable content address (`sha256:...`).
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 2  `podman build` Fundamentals
 
@@ -2206,6 +2661,9 @@ Podman builds are typically executed by Buildah under the hood.
 You do not need to become a Buildah expert, but this matters when you search for docs and flags.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 3  Containerfile Instructions: The Practical Subset
 
@@ -2276,6 +2734,9 @@ podman run -p 8080:8080 localhost/myapp:1  # run a container
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 4  Lab A: Build a Tiny HTTP Image (Warm-Up)
 
 Create a new directory:
@@ -2328,6 +2789,9 @@ rm -rf ./image-lab                 # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 5  Build Context Hygiene (The Most Common Image Leak)
 
 Your build context is everything in the directory you pass to `podman build`.
@@ -2379,6 +2843,9 @@ COPY src/ /app/src/
 This prevents accidental inclusion and improves caching.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 6  Running as Non-Root (Image-Level Least Privilege)
 
@@ -2444,6 +2911,9 @@ rm -rf ./nonroot-lab            # delete the lab directory
 If `touch /app/ok` fails, you did not set ownership correctly.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 7  Multi-Stage Builds (Small Images, Fast Builds)
 
@@ -2547,6 +3017,9 @@ This keeps Node and build tools out of the runtime image.
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 8  Caching: Make Rebuilds Fast
 
 Most slow builds are slow because caching is accidentally disabled.
@@ -2589,6 +3062,9 @@ podman run --rm -it localhost/myapp:build sh  # run a container
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 9  `ARG`, `ENV`, and Configuration
 
@@ -2640,6 +3116,9 @@ Use runtime secrets (Module 4) or build-time secret mechanisms (next section).
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 10  Secrets and Private Dependencies (Build-Time)
 
 Rules you can rely on:
@@ -2675,6 +3154,9 @@ This keeps secrets entirely out of the image build process.
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 11  Labels, Metadata, and Image Introspection
 
 Labels help you operate images later.
@@ -2703,6 +3185,9 @@ podman image inspect localhost/myapp:1 --format '{{json .Labels}}'  # inspect im
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 12  Tagging, Digests, and Promotion
 
@@ -2742,6 +3227,9 @@ podman tag localhost/myapp:git-abc123 localhost/myapp:prod  # add another tag/na
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 13  Pushing Images to a Registry
 
 ### 13.1  Login
@@ -2775,6 +3263,9 @@ Production habit:
 - configure your runtime (Quadlet, Kubernetes YAML) to pull by digest
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 14  Testing the Image You Built
 
@@ -2821,6 +3312,9 @@ podman rm -f hc  # stop and remove the container
 ```
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 15  Troubleshooting Builds (Common Failures)
 
@@ -2899,6 +3393,9 @@ podman image history localhost/myapp:1  # show image layer history
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## 16  Cleanup: Keep Your Machine Healthy
 
 Image builds create intermediate images and caches.
@@ -2922,6 +3419,9 @@ Be careful:
 - `podman system prune` can delete data you care about if you store it in unnamed volumes.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## 17  Extended Lab: A Small "Real" Service Image
 
@@ -3017,6 +3517,9 @@ rm -rf ./svc-lab               # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain what a build context is and why `.containerignore` matters.
@@ -3026,6 +3529,9 @@ rm -rf ./svc-lab               # delete the lab directory
 - You can explain why secrets do not belong in `ARG`, `ENV`, or `COPY`.
 
 ---
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -3041,6 +3547,9 @@ rm -rf ./svc-lab               # delete the lab directory
 
 ---
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `man podman-build`
@@ -3048,13 +3557,32 @@ rm -rf ./svc-lab               # delete the lab directory
 - `man Containerfile` (often via Buildah docs)
 - OCI image spec labels: https://github.com/opencontainers/image-spec/blob/main/annotations.md
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 9: Multi-Service Workflows
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Patterns](#patterns)
+- [Lab: A Two-Service Stack (Network + Volumes)](#lab-a-two-service-stack-network-volumes)
+- [Make It Repeatable (Script)](#make-it-repeatable-script)
+- [Compose-ish Tooling (Context)](#compose-ish-tooling-context)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This module teaches patterns for running a small stack without jumping straight to a full orchestrator.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3062,6 +3590,9 @@ This module teaches patterns for running a small stack without jumping straight 
 - Build a repeatable "stack up / stack down" workflow.
 - Know the tradeoffs of compose-style tooling.
 - Know how to persist data and keep DB private.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Patterns
 
@@ -3078,6 +3609,9 @@ This module teaches patterns for running a small stack without jumping straight 
 
 - Good when you want the YAML shape.
 - Not the full Kubernetes API.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: A Two-Service Stack (Network + Volumes)
 
@@ -3099,6 +3633,9 @@ Suggested validation steps:
 - `podman ps` shows both containers
 - `podman network inspect appnet` shows both attached
 - DB has no published ports (`podman port <db>` shows nothing)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Make It Repeatable (Script)
 
@@ -3125,6 +3662,9 @@ bash examples/stack/stack.sh status  # run a shell script
 bash examples/stack/stack.sh down  # run a shell script
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Compose-ish Tooling (Context)
 
 If your team already uses compose files, you may encounter helper tools.
@@ -3138,16 +3678,25 @@ If your org already standardized on compose files:
 - treat compose as a convenient wrapper
 - still learn how it maps to networks/volumes/secrets so you can debug it
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can stand up and tear down a small stack predictably.
 - You can explain when you would reach for `podman play kube`.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) Why should your DB usually not publish a port to the host?
 
 2) What makes a stack script "safe" to run repeatedly?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -3156,13 +3705,32 @@ If your org already standardized on compose files:
 - `podman-play-kube(1)`: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html
 - Compose Specification (for mapping concepts): https://compose-spec.io/
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 10: `podman play kube`
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Lab: Run a Pod from YAML](#lab-run-a-pod-from-yaml)
+- [Production Note](#production-note)
+- [Secrets Note](#secrets-note)
+- [Limitations To Know](#limitations-to-know)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 `podman play kube` runs a subset of Kubernetes YAML locally.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3170,6 +3738,9 @@ If your org already standardized on compose files:
 - Run a pod from YAML.
 - Use YAML as a repeatable definition of a local stack.
 - Know how to tear it down cleanly.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Run a Pod from YAML
 
@@ -3198,6 +3769,9 @@ Common gotcha:
 - resources created by play kube are named based on YAML metadata
 - use `podman kube down <yaml>` to clean up consistently
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Production Note
 
 You can also run Kube YAML under systemd using a Quadlet `.kube` unit. This can be useful for "YAML-defined" services without a full cluster.
@@ -3220,6 +3794,9 @@ curl -sS http://127.0.0.1:8084/ | head          # verify nginx responds
 systemctl --user stop webpod.service            # stop the service
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Secrets Note
 
 Kubernetes YAML secrets often appear as base64-encoded strings.
@@ -3231,6 +3808,9 @@ If you need repeatable dev secrets:
 
 - keep secret material out of YAML
 - provision secrets out-of-band (Podman secret, systemd creds, SOPS)
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Limitations To Know
 
@@ -3244,16 +3824,25 @@ Examples of things that may differ or be unsupported:
 
 Treat it as a local runner for a subset of YAML.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can run and stop a YAML-defined pod.
 - You understand the security implications of YAML-stored secrets.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) Why is base64 not a secret storage mechanism?
 
 2) What is the safest teardown command for resources created by `play kube`?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -3262,13 +3851,38 @@ Treat it as a local runner for a subset of YAML.
 - Kubernetes objects overview: https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/
 - Kubernetes Secrets (base64 caveat): https://kubernetes.io/docs/concepts/configuration/secret/
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 11: Production Baseline (systemd + Quadlet)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Why Quadlet](#why-quadlet)
+- [Boot Safety (Rootless)](#boot-safety-rootless)
+- [Where Quadlet Files Live](#where-quadlet-files-live)
+- [How "Enable" Works for Quadlet](#how-enable-works-for-quadlet)
+- [Helpful Podman Commands](#helpful-podman-commands)
+- [Lab: Your First Quadlet Container](#lab-your-first-quadlet-container)
+- [Lab: Pre-Create a Network and Volume (Quadlet)](#lab-pre-create-a-network-and-volume-quadlet)
+- [Debugging Quadlet Syntax](#debugging-quadlet-syntax)
+- [Dependencies Between Quadlets](#dependencies-between-quadlets)
+- [Upgrades and Rollback](#upgrades-and-rollback)
+- [Secrets](#secrets)
+- [Checkpoint](#checkpoint)
+- [Further Reading](#further-reading)
+
 Quadlet lets you define containers/pods as declarative unit files that systemd manages.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3277,10 +3891,16 @@ Quadlet lets you define containers/pods as declarative unit files that systemd m
 - Make services reboot-safe with predictable restarts.
 - Debug generator failures quickly.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Why Quadlet
 
 - It is the most "Linux-native" way to operate Podman services.
 - systemd gives you restart policies, ordering, logs, and boot integration.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Boot Safety (Rootless)
 
@@ -3290,11 +3910,17 @@ If you want user services to start on boot:
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Where Quadlet Files Live
 
 - `~/.config/containers/systemd/`
 
 systemd generates units from these files.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## How "Enable" Works for Quadlet
 
@@ -3305,6 +3931,9 @@ Quadlet units are generated at daemon-reload time.
 - After `systemctl --user daemon-reload`, systemd will have the symlinks it needs.
 
 If you remove a Quadlet file, you must reload systemd to remove the generated unit.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Helpful Podman Commands
 
@@ -3319,6 +3948,9 @@ Print the resolved Quadlet file:
 ```bash
 podman quadlet print hello-nginx.container  # show the resolved Quadlet file
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Your First Quadlet Container
 
@@ -3349,6 +3981,9 @@ Notes:
 
 - The running container name is typically `systemd-<unit>` unless you set `ContainerName=`.
 - Quadlet supports many `podman run` flags via `[Container]` keys.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Pre-Create a Network and Volume (Quadlet)
 
@@ -3393,6 +4028,9 @@ Logs:
 journalctl --user -u hello-nginx.service -n 50 --no-pager  # view user-service logs
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Debugging Quadlet Syntax
 
 If systemd cannot find your generated service, the generator may have failed.
@@ -3415,6 +4053,9 @@ When debugging:
 - confirm keys are spelled correctly (unknown keys can break generation)
 - start with a minimal unit and add options incrementally
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Dependencies Between Quadlets
 
 Quadlet can translate dependencies written against `.network`/`.volume`/`.container` files.
@@ -3425,6 +4066,9 @@ Pattern:
 - make containers `Requires=` and `After=` those units
 
 This prevents race conditions on boot.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Upgrades and Rollback
 
@@ -3442,6 +4086,9 @@ Operational note:
 
 - record the previous digest so rollback is fast
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Secrets
 
 Do not store secret material in unit files.
@@ -3455,11 +4102,17 @@ See:
 
 - `modules/11-quadlet-secrets.md`
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can start/stop a container via systemd user services.
 - You can find logs in journald.
 - You can debug why a unit did not generate.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -3469,13 +4122,31 @@ See:
 - systemd user services: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
 - journald: https://www.freedesktop.org/software/systemd/man/latest/journald.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 11 Add-On: Secrets with Quadlet + systemd (Rootless)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Recommended Pattern](#recommended-pattern)
+- [Lab: Quadlet Unit Consuming a Secret](#lab-quadlet-unit-consuming-a-secret)
+- [Rotation](#rotation)
+- [Further Reading](#further-reading)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+
 This add-on shows how to run reboot-safe services while keeping secret material out of unit files and environment variables.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3485,6 +4156,9 @@ This add-on shows how to run reboot-safe services while keeping secret material 
   - `Environment=` lines
   - shell history
 - Rotate secrets safely with rollback.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Recommended Pattern
 
@@ -3497,6 +4171,9 @@ Guidelines:
 - Treat secret names as part of your deployment config.
 - Prefer versioned secret names for rotation (`db_password_v1`, `db_password_v2`).
 - Assume many apps only read secrets at startup.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Quadlet Unit Consuming a Secret
 
@@ -3559,6 +4236,9 @@ systemctl --user status example-app.service  # show status
 journalctl --user -u example-app.service -n 50 --no-pager  # view user-service logs
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Rotation
 
 Use versioned secret names and update the Quadlet unit to reference the new secret name, then restart.
@@ -3597,6 +4277,9 @@ journalctl --user -u example-app.service -n 100 --no-pager  # view logs
 podman secret rm db_password_v1  # delete the old secret after verification
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-secret(1)`: https://docs.podman.io/en/latest/markdown/podman-secret.1.html
@@ -3604,11 +4287,17 @@ podman secret rm db_password_v1  # delete the old secret after verification
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
 - OWASP Secrets Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can run a Quadlet-managed service that reads a secret from `/run/secrets/...`.
 - You can rotate a secret by switching the referenced secret name and restarting.
 - You can verify journald logs do not contain secret values.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -3616,13 +4305,35 @@ podman secret rm db_password_v1  # delete the old secret after verification
 
 2) Why should you keep the old secret around until after verification?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 12: Security Deep Dive
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Baseline Hardening Checklist](#baseline-hardening-checklist)
+- [Lab: Drop Capabilities](#lab-drop-capabilities)
+- [Resource Limits](#resource-limits)
+- [Lab: No-New-Privileges](#lab-no-new-privileges)
+- [Lab: Read-Only Root FS](#lab-read-only-root-fs)
+- [SELinux (Fedora/RHEL)](#selinux-fedorarhel)
+- [Image Trust (Practical)](#image-trust-practical)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This module focuses on reducing blast radius and making your container posture auditable.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3631,6 +4342,9 @@ This module focuses on reducing blast radius and making your container posture a
 - Understand SELinux and why it matters on Fedora/RHEL.
 - Understand image trust at a practical level.
 - Build a secure-by-default run configuration.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Baseline Hardening Checklist
 
@@ -3648,6 +4362,9 @@ Also consider:
 - minimal mounts (avoid mounting home directories)
 - immutable config (mount config read-only)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: Drop Capabilities
 
 Start with a simple container and drop all Linux capabilities:
@@ -3660,6 +4377,9 @@ If your workload breaks, add only the specific capabilities required.
 
 Avoid using `--privileged` as a workaround.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Resource Limits
 
 Example:
@@ -3668,11 +4388,17 @@ Example:
 podman run --rm --memory 256m --pids-limit 200 docker.io/library/alpine:latest sh -lc 'echo ok'  # run a container
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Lab: No-New-Privileges
 
 ```bash
 podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # run a container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Read-Only Root FS
 
@@ -3696,6 +4422,9 @@ podman run --rm -p 8080:80 --read-only --cap-drop=ALL --security-opt no-new-priv
 
 If it fails, treat the error as a map of required writes/capabilities and add back only what is necessary.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux (Fedora/RHEL)
 
 If SELinux is enforcing:
@@ -3709,6 +4438,9 @@ If you see mount permission errors with bind mounts:
 
 - try `:Z`
 - prefer volumes
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Image Trust (Practical)
 
@@ -3724,16 +4456,25 @@ Supply chain habits:
 - prefer official images or your organization's curated base images
 - avoid running unverified installer scripts in builds
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain the difference between rootless and non-root-in-container.
 - You can make a service run read-only (or explain why it cannot).
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) Why is `--privileged` almost always the wrong answer?
 
 2) Why is digest pinning useful even if you trust the upstream?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -3742,13 +4483,35 @@ Supply chain habits:
 - SELinux with containers (RHEL docs): https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/assembly_using-selinux-with-containers_using-selinux
 - Podman security docs: https://github.com/containers/podman/blob/main/docs/tutorials/security.md
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 13: Troubleshooting and Ops
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [The Debug Loop](#the-debug-loop)
+- [More Tools](#more-tools)
+- [Failure Drills (With Expected Observations)](#failure-drills-with-expected-observations)
+- [systemd/Quadlet Troubleshooting](#systemdquadlet-troubleshooting)
+- [Networking Checklist](#networking-checklist)
+- [Storage Checklist](#storage-checklist)
+- [Failure Drills (Do These)](#failure-drills-do-these)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This module is about turning "it doesn't work" into a short checklist.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -3756,6 +4519,9 @@ This module is about turning "it doesn't work" into a short checklist.
 - Know where to look: logs, inspect, events, journald.
 - Debug networking and storage issues.
 - Do failure drills and recover.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## The Debug Loop
 
@@ -3787,6 +4553,9 @@ If the container exits too fast to exec into it:
 
 - run the same image with an interactive shell
 - or override command to `sleep 3600` and then `exec` in
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## More Tools
 
@@ -3820,6 +4589,9 @@ Cleanup (be careful on shared systems):
 podman system prune  # remove unused objects (be careful)
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Failure Drills (With Expected Observations)
 
 Do these on purpose; they make you faster in real incidents.
@@ -3848,6 +4620,9 @@ Do these on purpose; they make you faster in real incidents.
 - check: `podman network inspect <net>`; run a debug container and `getent hosts <name>`
 - fix: ensure both containers are on the same user-defined network
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## systemd/Quadlet Troubleshooting
 
 Check status:
@@ -3869,6 +4644,9 @@ systemctl --user daemon-reload           # reload unit changes
 systemctl --user restart <service>       # restart the service
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Networking Checklist
 
 - Is the port published to the host?
@@ -3876,11 +4654,17 @@ systemctl --user restart <service>       # restart the service
 - Are containers on the same network?
 - Does DNS resolve container names?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Storage Checklist
 
 - Is the correct volume mounted?
 - Are permissions correct for the container user?
 - On Fedora/RHEL: is SELinux labeling correct (`:Z`/`:z`)?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Failure Drills (Do These)
 
@@ -3900,16 +4684,25 @@ systemctl --user restart <service>       # restart the service
 - deploy with a tag that gets replaced upstream
 - fix by pinning to digest
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can debug a failed service without guessing.
 - You have a repeatable recovery flow.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
 1) What is the difference between `podman logs` and `journalctl --user -u ...`?
 
 2) What do you do when a container exits too quickly to exec into it?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -3918,19 +4711,42 @@ systemctl --user restart <service>       # restart the service
 - systemd journalctl: https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
 - `systemd-analyze(1)` (verify, generators): https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # Module 14: Maintenance and Auto-Updates
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [What Auto-Update Is](#what-auto-update-is)
+- [Tags, Digests, and Policy](#tags-digests-and-policy)
+- [Lab: Enable Registry Auto-Update (Single Service)](#lab-enable-registry-auto-update-single-service)
+- [Rollback Plan (Required If You Auto-Update)](#rollback-plan-required-if-you-auto-update)
+- [Safe Rollout Rules](#safe-rollout-rules)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 Auto-updates can be useful, but they are a policy decision.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
 - Understand what Podman auto-update does.
 - Configure a Quadlet-managed container for registry-based auto-update.
 - Build a safe rollout + rollback plan.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## What Auto-Update Is
 
@@ -3946,6 +4762,9 @@ What it cannot do by itself:
 - coordinate multiple hosts without additional tooling
 - guarantee compatibility between versions
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Tags, Digests, and Policy
 
 Auto-update works best with tags (because tags can move).
@@ -3958,6 +4777,9 @@ Choose intentionally:
 - If you need "always reproducible": pin digests and upgrade with a controlled change.
 
 In regulated environments, digest pinning is often the default.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Enable Registry Auto-Update (Single Service)
 
@@ -3995,6 +4817,9 @@ systemctl --user list-unit-files | grep auto-update  # look for an auto-update t
 
 If a timer exists and you choose to use it, enable it like a normal systemd unit.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Rollback Plan (Required If You Auto-Update)
 
 Minimum rollback plan:
@@ -4008,6 +4833,9 @@ If you rely on tags:
 - you may need to pin to a specific digest during rollback
 - you may need a local cache/registry to keep old versions available
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Safe Rollout Rules
 
 - Prefer digest-pinned images for production unless you explicitly accept the risk.
@@ -4018,10 +4846,16 @@ If you rely on tags:
 
 Treat auto-update as an operational feature, not a convenience hack.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain why auto-update is optional, not mandatory.
 - You can trigger and observe an auto-update.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -4029,11 +4863,17 @@ Treat auto-update as an operational feature, not a convenience hack.
 
 2) What must exist before you turn on auto-update in production?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-auto-update(1)`: https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 - systemd service restart policies: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
@@ -4041,7 +4881,28 @@ Treat auto-update as an operational feature, not a convenience hack.
 
 # Capstone: Reboot-Safe Local Stack with Secrets, Backups, and Upgrades
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Goal](#goal)
+- [Reference Stack](#reference-stack)
+- [Deliverables](#deliverables)
+- [Build It](#build-it)
+- [First Data (Required)](#first-data-required)
+- [Optional: Scheduled Backups](#optional-scheduled-backups)
+- [Backup and Restore (Required)](#backup-and-restore-required)
+- [Upgrade and Rollback (Required)](#upgrade-and-rollback-required)
+- [Password Rotation (Required)](#password-rotation-required)
+- [Notes](#notes)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 This capstone focuses on operational excellence, not app development.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Goal
 
@@ -4059,12 +4920,18 @@ Success criteria:
 - You can produce a backup file and prove you can restore it.
 - You can upgrade MariaDB/Adminer versions with a documented rollback.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Reference Stack
 
 - DB: MariaDB
 - UI: Adminer (web DB admin)
 
 This gives you a realistic stateful service without writing code.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Deliverables
 
@@ -4080,6 +4947,9 @@ This gives you a realistic stateful service without writing code.
   - restore from backup
   - upgrade pinned digests
   - rollback
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Build It
 
@@ -4139,6 +5009,9 @@ podman port cap-mariadb || true  # show published ports
 
 Expected: no published ports.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## First Data (Required)
 
 Create a test database/table so you have something to back up:
@@ -4146,6 +5019,9 @@ Create a test database/table so you have something to back up:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password docker.io/library/mariadb:11 sh -lc 'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "CREATE DATABASE IF NOT EXISTS cap; CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY); INSERT IGNORE INTO cap.t1 VALUES (1);"'  # run a container
 ```
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Optional: Scheduled Backups
 
@@ -4175,6 +5051,9 @@ Note:
 
 - backups are stored in the `cap_backups` volume
 - the backup unit runs `mysqldump` inside a container
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Backup and Restore (Required)
 
@@ -4227,6 +5106,9 @@ Rollback idea:
 
 - restore into a fresh volume and validate before switching (advanced)
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Upgrade and Rollback (Required)
 
 - Record current image digests.
@@ -4260,6 +5142,9 @@ systemctl --user restart cap-adminer.service   # restart UI
 
 Rollback is the same procedure with the previous digests.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Password Rotation (Required)
 
 Rotation plan for root password:
@@ -4291,10 +5176,16 @@ podman run --rm --network capnet --secret mariadb_root_password --secret mariadb
 podman secret rm mariadb_root_password  # remove old secret after verification
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Notes
 
 - Password rotation often implies updating both the secret and the DB user credentials.
 - Keep the old password available until the new one is verified.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Checkpoint
 
@@ -4303,11 +5194,17 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - You can produce a backup file and restore it successfully.
 - You can upgrade using digest pinning and roll back to a previous digest.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Quick Quiz
 
 1) Why is it important to test restore, not just backup?
 
 2) What is the operational advantage of deploying by digest rather than by tag?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -4317,11 +5214,29 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 - Adminer project docs: https://www.adminer.org/
 - systemd timers: https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 
+
+[↑ Go to TOC](#table-of-contents)
+
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 
 \newpage
 
 # External Secrets Survey (Thorough Intro, Optional Implementation)
+
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [What You Are Optimizing For](#what-you-are-optimizing-for)
+- [Option 1: systemd Credentials (Host-Native)](#option-1-systemd-credentials-host-native)
+- [Option 2: SOPS (GitOps-Friendly Encrypted Files)](#option-2-sops-gitops-friendly-encrypted-files)
+- [Option 3: Vault-Class Secret Managers (Centralized)](#option-3-vault-class-secret-managers-centralized)
+- [Comparison Table (Mental Model)](#comparison-table-mental-model)
+- [What Does Not Change](#what-does-not-change)
+- [Migration Path from Podman Secrets](#migration-path-from-podman-secrets)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
 
 Podman secrets are a good local-first baseline, but most teams eventually need one or more of:
 
@@ -4335,6 +5250,9 @@ This module teaches the landscape so learners can choose an external approach co
 This is intentionally not a single "do this" recipe.
 
 External secrets are an architecture and operations decision.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## What You Are Optimizing For
 
@@ -4352,6 +5270,9 @@ Also consider:
 - do you need dynamic credentials (leases) or static secrets
 - how do you revoke access
 - how do you handle break-glass scenarios
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Option 1: systemd Credentials (Host-Native)
 
@@ -4382,6 +5303,9 @@ When to choose it:
 - Single host or small fleet.
 - You want minimal moving parts.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Option 2: SOPS (GitOps-Friendly Encrypted Files)
 
 What it is:
@@ -4409,6 +5333,9 @@ Best-fit pattern with containers:
 - Decrypt to a root-owned file with `0600`.
 - Mount into the container read-only.
 - Never persist decrypted files into images.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Option 3: Vault-Class Secret Managers (Centralized)
 
@@ -4438,6 +5365,9 @@ Operational notes:
 - treat auth methods (Kubernetes auth, AppRole, OIDC, etc.) as part of the threat model
 - dynamic creds reduce blast radius but increase moving parts
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Comparison Table (Mental Model)
 
 Answer these questions:
@@ -4452,6 +5382,9 @@ Typical outcomes:
 - small fleet, GitOps: SOPS is a strong fit
 - larger org/compliance: Vault-class is common
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## What Does Not Change
 
 Regardless of external system:
@@ -4459,6 +5392,9 @@ Regardless of external system:
 - The container should read secrets from files.
 - Do not pass secret values in env vars, CLI args, or logs.
 - Use rotation-friendly names and restart/roll strategies.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Migration Path from Podman Secrets
 
@@ -4469,17 +5405,26 @@ If you start with Podman secrets (local-first), the clean migration is:
 
 This avoids rewriting applications that already expect file-based secrets.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can explain the tradeoffs between: systemd credentials, SOPS, and Vault-class secret managers.
 - You can describe a bootstrap story for a new host (how it gets the ability to decrypt/fetch).
 - You can describe a file-based delivery pattern that keeps apps unchanged.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Quick Quiz
 
 1) In one sentence: why is base64 not encryption?
 
 2) What question best distinguishes SOPS-style encrypted files from Vault-style leased secrets?
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Further Reading
 
@@ -4488,6 +5433,9 @@ This avoids rewriting applications that already expect file-based secrets.
 - age (file encryption tool often used with SOPS): https://github.com/FiloSottile/age
 - HashiCorp Vault: https://www.vaultproject.io/
 - Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
 

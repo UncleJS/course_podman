@@ -1,6 +1,22 @@
 # Module 7: Pods and Sidecars
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Learning Goals](#learning-goals)
+- [Why Pods](#why-pods)
+- [Infra Container](#infra-container)
+- [Lab: Two Containers, One Pod](#lab-two-containers-one-pod)
+- [Pod Lifecycle Notes](#pod-lifecycle-notes)
+- [Checkpoint](#checkpoint)
+- [Quick Quiz](#quick-quiz)
+- [Further Reading](#further-reading)
+
 Podman pods group multiple containers so they share certain namespaces (especially networking).
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Learning Goals
 
@@ -8,6 +24,9 @@ Podman pods group multiple containers so they share certain namespaces (especial
 - Run a pod with multiple containers.
 - Understand the "sidecar" pattern.
 - Know what the infra container is.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Why Pods
 
@@ -18,11 +37,17 @@ Pods are useful when:
 
 They are not required for most workloads. Use them when they simplify your stack.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Infra Container
 
 Pods include an "infra" container that holds the shared namespaces.
 
 You will often see it in `podman ps` for a pod.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Lab: Two Containers, One Pod
 
@@ -64,15 +89,24 @@ exit  # exit the shell
 podman pod rm -f webpod  # stop and remove the pod and its containers
 ```
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Pod Lifecycle Notes
 
 - Stopping a pod stops all containers.
 - Removing a pod removes the infra container too.
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Checkpoint
 
 - You can use a sidecar for debugging without exposing new ports.
 - You understand pods are not Kubernetes, but the idea rhymes.
+
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
@@ -80,10 +114,16 @@ podman pod rm -f webpod  # stop and remove the pod and its containers
 
 2) When would you prefer a network over a pod?
 
+
+[↑ Go to TOC](#table-of-contents)
+
 ## Further Reading
 
 - `podman-pod(1)`: https://docs.podman.io/en/latest/markdown/podman-pod.1.html
 - Kubernetes Pods concept: https://kubernetes.io/docs/concepts/workloads/pods/
 - Sidecar containers (Kubernetes): https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
