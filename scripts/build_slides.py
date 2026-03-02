@@ -1716,7 +1716,7 @@ def build_presentation(output_path: str, slides: list | None = None) -> None:
         fp = P()
         fp.addElement(Span(
             stylename=S_COPYRIGHT_TEXT,
-            text="\u00a9 2026 Jaco Steyn \u2014 Licensed under CC BY-SA 4.0 \u2014 Attribution Required",
+            text="\u00a9 2026 UncleJS \u2014 Licensed under CC BY-NC-SA 4.0",
         ))
         footer_tb.addElement(fp)
         page.addElement(footer_frame)

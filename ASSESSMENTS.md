@@ -1,4 +1,7 @@
 # Assessments
+[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](./LICENSE.md)
+[![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
+[![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
 These assessments focus on practical skills.
 
@@ -46,4 +49,4 @@ Rubric:
 - Secrets handled safely.
 - Clear, testable runbook.
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

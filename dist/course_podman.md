@@ -4,6 +4,9 @@ date: "2026-02-25"
 ---
 
 # Front Matter
+[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](../LICENSE.md)
+[![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
+[![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
 ## README.md
 
@@ -51,10 +54,10 @@ See `COURSE_OUTLINE.md` for rough time estimates per module.
 # License
 
 This project is licensed under the
-Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 
-https://creativecommons.org/licenses/by-sa/4.0/
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -113,7 +116,7 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 80 (Capstone): 3-6 hours
 - Module 90 (Survey): 45-90 min
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -140,7 +143,7 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - `modules/80-capstone.md`
 - `modules/90-external-secrets-survey.md`
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -344,7 +347,7 @@ Do not run this in shells where it would surprise you; it changes redirect behav
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -494,7 +497,7 @@ What to look for in `inspect`:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -696,7 +699,7 @@ podman image prune  # remove unused images (frees disk)
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -927,7 +930,7 @@ Note:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -1177,7 +1180,7 @@ If you cannot use build secrets on your version:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -1395,7 +1398,7 @@ Stretch:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -2389,7 +2392,7 @@ You should be able to answer the following without looking at commands:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -2521,7 +2524,7 @@ podman pod rm -f webpod  # stop and remove the pod and its containers
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -3560,7 +3563,7 @@ rm -rf ./svc-lab               # delete the lab directory
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -3708,7 +3711,7 @@ If your org already standardized on compose files:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -3854,7 +3857,7 @@ Treat it as a local runner for a subset of YAML.
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -4125,7 +4128,7 @@ See:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -4308,7 +4311,7 @@ podman secret rm db_password_v1  # delete the old secret after verification
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -4486,7 +4489,7 @@ Supply chain habits:
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -4714,7 +4717,7 @@ systemctl --user restart <service>       # restart the service
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -4875,7 +4878,7 @@ Treat auto-update as an operational feature, not a convenience hack.
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5217,7 +5220,7 @@ podman secret rm mariadb_root_password  # remove old secret after verification
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5437,7 +5440,7 @@ This avoids rewriting applications that already expect file-based secrets.
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5549,7 +5552,7 @@ podman secret ls  # list secrets
 podman run --secret <name> <image>  # run a container
 ```
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5578,7 +5581,7 @@ sudo loginctl enable-linger "$USER"        # allow user services to start at boo
 systemctl --user enable <name>.service     # enable the service for your user
 ```
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5609,7 +5612,7 @@ podman unshare id  # run a command inside the user namespace
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5634,7 +5637,7 @@ podman run --read-only --tmpfs /tmp <image>  # read-only root FS + writable temp
 
 - bind mount with `:Z` (private) or `:z` (shared)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5668,7 +5671,7 @@ journalctl --user -u <service> -n 200 --no-pager     # service logs from journal
 - permissions for the container user
 - on Fedora/RHEL: use `:Z` for private bind mounts
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5726,7 +5729,7 @@ Rubric:
 - Secrets handled safely.
 - Clear, testable runbook.
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5757,7 +5760,7 @@ Rubric:
 - healthcheck: an image or runtime-defined command that reports container health (used by tooling/systemd policies)
 - linger: systemd feature that allows user services to run at boot without an interactive login
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 
 \newpage
 
@@ -5858,5 +5861,5 @@ systemctl --user status <unit>  # show service status
 
 See: `modules/11-quadlet.md`
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
 

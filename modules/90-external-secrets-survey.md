@@ -1,4 +1,7 @@
 # External Secrets Survey (Thorough Intro, Optional Implementation)
+[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](../LICENSE.md)
+[![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
+[![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
 <a id="table-of-contents"></a>
 
@@ -214,4 +217,4 @@ This avoids rewriting applications that already expect file-based secrets.
 
 [↑ Go to TOC](#table-of-contents)
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

@@ -2,6 +2,10 @@
 
 This is a course-in-a-repo for taking a learner from zero container knowledge to running rootless Podman services with systemd (Quadlet), with strong security and troubleshooting fundamentals.
 
+[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](LICENSE.md)
+[![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
+[![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
+
 ## How To Use This Repo
 
 - Read the modules in `modules/` in order.
@@ -42,7 +46,8 @@ See `COURSE_OUTLINE.md` for rough time estimates per module.
 # License
 
 This project is licensed under the
-Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 
-https://creativecommons.org/licenses/by-sa/4.0/
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

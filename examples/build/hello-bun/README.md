@@ -31,4 +31,4 @@ podman inspect hb --format '{{json .State.Health}}'  # inspect container/image m
 podman rm -f hb  # stop and remove the container
 ```
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

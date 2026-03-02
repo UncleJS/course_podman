@@ -24,4 +24,4 @@ The Containerfile does not force `GOARCH=amd64`.
 
 If you see `exec format error`, your build architecture and runtime architecture do not match.
 
-© 2026 Jaco Steyn — Licensed under CC BY-SA 4.0 — Attribution Required
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
