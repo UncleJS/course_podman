@@ -3,10 +3,20 @@
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Files](#files)
+- [Workflow](#workflow)
+- [Boot Start](#boot-start)
+
 ## Files
 
 - put Quadlet files in: `~/.config/containers/systemd/`
 - common extensions: `.container`, `.pod`, `.network`, `.volume`
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Workflow
 
@@ -17,11 +27,15 @@ systemctl --user status <name>.service  # show service status
 journalctl --user -u <name>.service -n 100 --no-pager  # view user-service logs
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Boot Start
 
 ```bash
 sudo loginctl enable-linger "$USER"        # allow user services to start at boot
 systemctl --user enable <name>.service     # enable the service for your user
 ```
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

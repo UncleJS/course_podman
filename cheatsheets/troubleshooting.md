@@ -3,6 +3,15 @@
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Fast Triage](#fast-triage)
+- [systemd/Quadlet](#systemdquadlet)
+- [Network Checks](#network-checks)
+- [Storage Checks](#storage-checks)
+
 ## Fast Triage
 
 ```bash
@@ -11,6 +20,8 @@ podman logs <name>           # app output / crash reason
 podman inspect <name> | less # config: mounts, ports, command, env
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## systemd/Quadlet
 
 ```bash
@@ -18,15 +29,21 @@ systemctl --user status <service>                    # systemd view: active/fail
 journalctl --user -u <service> -n 200 --no-pager     # service logs from journald
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Network Checks
 
 - verify ports: `-p host:container`
 - verify container name DNS on the network
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Storage Checks
 
 - volume mounted where the app expects
 - permissions for the container user
 - on Fedora/RHEL: use `:Z` for private bind mounts
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

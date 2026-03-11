@@ -5,10 +5,19 @@
 
 Goal: take an absolute beginner to an operator who can build, run, secure, and troubleshoot rootless Podman workloads, including systemd (Quadlet) production patterns.
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Modules](#modules)
+- [Suggested Pacing (Rough Estimates)](#suggested-pacing-rough-estimates)
+
 Assumptions:
 
 - Learners have basic command line familiarity by the end of Module 2.
 - Labs target Fedora/RHEL-like systems with systemd. Where commands differ across distros, modules call it out.
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Modules
 
@@ -30,6 +39,8 @@ Assumptions:
 14. Maintenance and auto-updates (policy, `podman auto-update`, safe rollouts)
 80. Capstone (Quadlet stack with secrets, backups, upgrades, rollback)
 90. External secrets survey (thorough intro; optional implementation paths)
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Suggested Pacing (Rough Estimates)
 
@@ -53,5 +64,7 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 14: 45-75 min
 - Module 80 (Capstone): 3-6 hours
 - Module 90 (Survey): 45-90 min
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

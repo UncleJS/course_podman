@@ -5,6 +5,18 @@
 
 This file collects common failure modes and the fastest fixes.
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Rootless: "permission denied" publishing port 80](#rootless-permission-denied-publishing-port-80)
+- [Container name DNS does not work](#container-name-dns-does-not-work)
+- [SELinux: bind mounts fail with permission denied (Fedora/RHEL)](#selinux-bind-mounts-fail-with-permission-denied-fedorarhel)
+- [Local registry lab fails with TLS/HTTPS errors](#local-registry-lab-fails-with-tlshttps-errors)
+- [HEALTHCHECK missing after build](#healthcheck-missing-after-build)
+- [`exec format error`](#exec-format-error)
+- [Quadlet service does not exist after adding a file](#quadlet-service-does-not-exist-after-adding-a-file)
+
 ## Rootless: "permission denied" publishing port 80
 
 Rootless users typically cannot bind ports below 1024.
@@ -20,6 +32,8 @@ sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80  # allow low ports for roo
 
 See: `modules/06-networking.md`
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Container name DNS does not work
 
 Container DNS names work on user-defined networks (DNS enabled), not on the default network.
@@ -33,6 +47,8 @@ podman run --network appnet ...  # run a container
 
 See: `modules/06-networking.md`
 
+[↑ Go to TOC](#table-of-contents)
+
 ## SELinux: bind mounts fail with permission denied (Fedora/RHEL)
 
 If SELinux is enforcing, bind mounts may require labels.
@@ -43,6 +59,8 @@ Fix patterns:
 - Shared mount: `-v ./dir:/mnt:z`
 
 See: `modules/05-storage.md`
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Local registry lab fails with TLS/HTTPS errors
 
@@ -55,6 +73,8 @@ podman push --tls-verify=false localhost:5000/alpine:course  # push an image to 
 ```
 
 See: `modules/03-images-registries.md`
+
+[↑ Go to TOC](#table-of-contents)
 
 ## HEALTHCHECK missing after build
 
@@ -72,6 +92,8 @@ podman build --format docker -t localhost/myapp:1 .  # build an image
 
 See: `modules/08-building-images.md`, `examples/build/hello-bun/README.md`
 
+[↑ Go to TOC](#table-of-contents)
+
 ## `exec format error`
 
 This almost always means an architecture mismatch (built for amd64, running on arm64, or vice versa).
@@ -82,6 +104,8 @@ Fix:
 - Use a platform-aware build workflow (advanced topic)
 
 See: `modules/08-building-images.md`, `examples/build/hello-go/README.md`
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Quadlet service does not exist after adding a file
 
@@ -95,5 +119,7 @@ systemctl --user status <unit>  # show service status
 ```
 
 See: `modules/11-quadlet.md`
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

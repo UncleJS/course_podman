@@ -3,6 +3,14 @@
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Terms](#terms)
+
+## Terms
+
 - container: a running (or stopped) instance of an image with its own writable layer and runtime config
 - image: an OCI artifact composed of layers + config; used as a template for containers
 - registry: a service that stores and distributes images
@@ -25,5 +33,7 @@
 - pasta: a newer user-mode networking helper often used for rootless containers
 - healthcheck: an image or runtime-defined command that reports container health (used by tooling/systemd policies)
 - linger: systemd feature that allows user services to run at boot without an interactive login
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

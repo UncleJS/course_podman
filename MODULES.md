@@ -3,6 +3,14 @@
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Reading Order](#reading-order)
+
+## Reading Order
+
 - `modules/00-setup.md`
 - `modules/01-containers-101.md`
 - `modules/02-everyday-commands.md`
@@ -21,5 +29,7 @@
 - `modules/14-autoupdate.md`
 - `modules/80-capstone.md`
 - `modules/90-external-secrets-survey.md`
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

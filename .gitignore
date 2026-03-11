@@ -1,0 +1,32 @@
+# Environment files
+.env
+.env.*
+.env.example
+
+# Local credential and secret material
+*.local.env
+*.secret
+*.secrets
+*.creds
+*.credentials
+*.password
+*.passwd
+*.token
+*.key
+*.pem
+*.p12
+*.pfx
+auth.json
+config/*.local.*
+config/*credential*
+config/*password*
+config/*secret*
+db_password*.txt
+mariadb_root_password*
+
+# Editor and Python build noise
+*.swp
+*.swo
+*.tmp
+__pycache__/
+*.pyc

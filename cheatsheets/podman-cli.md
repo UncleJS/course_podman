@@ -3,6 +3,18 @@
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Containers](#containers)
+- [Images](#images)
+- [Port Publishing](#port-publishing)
+- [Networks](#networks)
+- [Volumes](#volumes)
+- [Pods](#pods)
+- [Secrets](#secrets)
+
 ## Containers
 
 ```bash
@@ -14,6 +26,8 @@ podman exec -it <name> sh                           # run a shell in a running c
 podman stop <name>                                  # stop a running container
 podman rm -f <name>                                  # force remove container
 ```
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Images
 
@@ -33,6 +47,8 @@ podman system prune         # remove unused objects (be careful)
 podman builder prune        # remove build cache (if supported)
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Port Publishing
 
 ```bash
@@ -44,6 +60,8 @@ podman run -d -p 80 <image>                       # random host port
 podman port <name>                                # show active port mappings
 podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # show raw port mapping JSON
 ```
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Networks
 
@@ -79,6 +97,8 @@ podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent h
 podman ps -q | xargs -I{} podman inspect {} --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'  # list containers
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Volumes
 
 ```bash
@@ -86,6 +106,8 @@ podman volume create <vol>  # create a volume
 podman volume ls  # list volumes
 podman volume inspect <vol>  # inspect a volume
 ```
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Pods
 
@@ -95,6 +117,8 @@ podman pod ps  # list pods
 podman pod rm -f <pod>                               # stop and remove pod + containers
 ```
 
+[↑ Go to TOC](#table-of-contents)
+
 ## Secrets
 
 ```bash
@@ -102,5 +126,7 @@ podman secret create <name> -  # create a secret
 podman secret ls  # list secrets
 podman run --secret <name> <image>  # run a container
 ```
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

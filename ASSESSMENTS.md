@@ -5,9 +5,19 @@
 
 These assessments focus on practical skills.
 
+<a id="table-of-contents"></a>
+
+## Table of Contents
+
+- [Module Checkpoints](#module-checkpoints)
+- [Practical Exam A (Mid-Course)](#practical-exam-a-mid-course)
+- [Practical Exam B (Final)](#practical-exam-b-final)
+
 ## Module Checkpoints
 
 Each module ends with a checkpoint. Treat it as "must be able to do without notes".
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Practical Exam A (Mid-Course)
 
@@ -26,6 +36,8 @@ Rubric:
 - Uses `podman ps -a`, `podman logs`, `podman inspect` effectively.
 - Fix is minimal and reproducible.
 - No secrets printed.
+
+[↑ Go to TOC](#table-of-contents)
 
 ## Practical Exam B (Final)
 
@@ -48,5 +60,7 @@ Rubric:
 - Correct storage and networking.
 - Secrets handled safely.
 - Clear, testable runbook.
+
+[↑ Go to TOC](#table-of-contents)
 
 © 2026 UncleJS — Licensed under CC BY-NC-SA 4.0
