@@ -7,201 +7,374 @@
 
 ## Table of Contents
 
+- [Why This Module Exists](#why-this-module-exists)
 - [What You Are Optimizing For](#what-you-are-optimizing-for)
+- [The Decision Tree](#the-decision-tree)
 - [Option 1: systemd Credentials (Host-Native)](#option-1-systemd-credentials-host-native)
 - [Option 2: SOPS (GitOps-Friendly Encrypted Files)](#option-2-sops-gitops-friendly-encrypted-files)
 - [Option 3: Vault-Class Secret Managers (Centralized)](#option-3-vault-class-secret-managers-centralized)
-- [Comparison Table (Mental Model)](#comparison-table-mental-model)
+- [Comparison Table](#comparison-table)
 - [What Does Not Change](#what-does-not-change)
 - [Migration Path from Podman Secrets](#migration-path-from-podman-secrets)
+- [Anti-Patterns to Avoid](#anti-patterns-to-avoid)
 - [Checkpoint](#checkpoint)
 - [Quick Quiz](#quick-quiz)
 - [Further Reading](#further-reading)
 
-Podman secrets are a good local-first baseline, but most teams eventually need one or more of:
+Podman secrets are a good local-first baseline. But most teams eventually need one or more of:
 
 - encryption-at-rest on the host
 - multi-host distribution
 - automated rotation
-- auditing and policy
+- auditing and access policy
 
-This module teaches the landscape so learners can choose an external approach confidently.
+This module teaches the landscape so you can choose an external approach confidently. It is intentionally **not** a single "do this" recipe — external secrets are an architecture and operations decision.
 
-This is intentionally not a single "do this" recipe.
+---
 
-External secrets are an architecture and operations decision.
+
+[↑ Go to TOC](#table-of-contents)
+
+## Why This Module Exists
+
+When you move from a single dev machine to production, the question is no longer _"how do I use a secret?"_ but _"how do I get the secret onto the host, keep it fresh, and revoke it when needed?"_
+
+Podman secrets (`podman secret create`) answer the first question. They do **not** answer:
+
+- How does a brand new host get the secret material?
+- How does a secret get rotated across 10 hosts automatically?
+- Who approved this secret being read by this service?
+- Was there an unauthorized read of this secret last Tuesday?
+
+This module surveys three families of answers. You apply the right one for your context.
+
+---
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## What You Are Optimizing For
 
-Use this checklist to pick a system:
+Use this checklist before choosing a system:
 
+**Scale and distribution:**
 - How many hosts need the secret?
-- How often does it rotate?
-- Who/what is allowed to read it (policy)?
-- Do you need audit logs?
-- What happens when the secrets system is down?
-- How do you bootstrap a brand new host?
+- Does it need to rotate without touching every host manually?
 
-Also consider:
+**Policy and governance:**
+- Who/what is allowed to read the secret (policy)?
+- Do you need audit logs of every read?
+- How do you revoke access?
 
-- do you need dynamic credentials (leases) or static secrets
-- how do you revoke access
-- how do you handle break-glass scenarios
+**Availability and bootstrapping:**
+- What happens when the secrets system is down during a deploy or reboot?
+- How does a brand new host bootstrap its ability to decrypt/fetch?
+- How do you handle break-glass scenarios (on-call, secrets system itself is broken)?
+
+**Credential type:**
+- Static long-lived secret (database password, API key) — any system works.
+- Dynamic short-lived credential (Vault-leased DB creds) — requires a Vault-class system.
+
+---
+
+
+[↑ Go to TOC](#table-of-contents)
+
+## The Decision Tree
+
+```mermaid
+flowchart TD
+    S(["Which secret manager?"]) --> Q1{"More than<br/>one host?"}
+    Q1 -->|"No"| Q2{"Need encryption-at-rest<br/>beyond filesystem?"}
+    Q2 -->|"No"| F1["Podman secrets<br/>(local baseline — this course)"]
+    Q2 -->|"Yes"| F2["systemd credentials<br/>(encrypted at rest, host-native)"]
+    Q1 -->|"Yes"| Q3{"Need central policy<br/>and audit? Or dynamic creds?"}
+    Q3 -->|"No — GitOps / small team"| F3["SOPS<br/>(encrypted in git, age/GPG)"]
+    Q3 -->|"Yes"| F4["Vault-class<br/>(HashiCorp Vault, AWS Secrets Manager,<br/>etc.)"]
+    F1 --> OUT["Delivery: file mount<br/>(all systems)"]
+    F2 --> OUT
+    F3 --> OUT
+    F4 --> OUT
+```
+
+All paths converge on the same delivery model: **a file** the container reads at runtime. This keeps your application code unchanged regardless of which secrets backend you use.
+
+---
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Option 1: systemd Credentials (Host-Native)
 
-What it is:
+### What It Is
 
-- systemd can provision credentials to services as files.
-- Credentials can be stored encrypted at rest on the host.
+systemd can provision credentials to services as files at runtime. Credentials can be stored **encrypted at rest** on the host and are decrypted by systemd when the service starts.
 
-Why it fits this course:
+### How It Fits This Course
 
-- Production baseline already uses systemd user services (Quadlet-first).
-- Delivery model matches the container best practice: read a file.
+The production baseline already uses systemd user services (Quadlet-first). systemd credentials are a natural next step:
 
-Typical pattern:
+- Delivery model: a file at a path like `/run/credentials/<unit>/dbpassword`
+- Container consumes: a volume mount or `--secret` pointing to that path
+- Application code: unchanged — it still reads a file
 
-- Store encrypted credential material on the host.
-- systemd materializes it to a runtime file.
-- Container reads that file via a mount.
+### Typical Pattern
 
-Operational notes:
+```mermaid
+sequenceDiagram
+    participant H as Host / Ansible
+    participant S as systemd
+    participant C as Container
 
-- great for systemd-first deployments
-- policy is typically "who can read files / run services" on that host
-- still need a story for distributing the encrypted credential material to new hosts
+    H->>H: Store encrypted credential<br/>(systemd-creds encrypt)
+    H->>S: Deploy unit file with<br/>LoadCredentialEncrypted=
+    S->>S: Decrypt on service start<br/>(uses host TPM or key)
+    S->>C: Mount credential as file<br/>at /run/credentials/...
+    C->>C: Read file at startup
+```
 
-When to choose it:
+### Operational Notes
 
-- Single host or small fleet.
-- You want minimal moving parts.
+- Works entirely within the systemd + Podman stack — no extra services needed.
+- Policy is: "who can run this systemd service on this host".
+- You still need a story for distributing the encrypted credential material to new hosts (typically via your config management tool: Ansible, Salt, etc.).
+- Encryption uses the host's TPM or a host-derived key — decryption only works on the provisioned host.
+
+### When to Choose It
+
+- Single host or small fleet you manage directly.
+- You want minimal moving parts (no extra services to run).
+- You already use systemd for everything.
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Option 2: SOPS (GitOps-Friendly Encrypted Files)
 
-What it is:
+### What It Is
 
-- Keep secrets encrypted in git.
-- Decrypt on the host/CI using an identity (age or GPG, plus cloud KMS in some setups).
+SOPS (Secrets OPerationS) lets you store **encrypted secrets in git**. The secret file is committed to your repository in encrypted form. Decryption happens on the host (or in CI) using an identity: an `age` key, a GPG key, or a cloud KMS key.
 
-Benefits:
+### Architecture
 
-- Change history and reviews are straightforward.
-- Bootstrapping is manageable for small teams.
+```mermaid
+flowchart LR
+    subgraph "Git Repository"
+        EF["secrets.env.enc<br/>(encrypted, safe to commit)"]
+    end
+    subgraph "CI / Host"
+        KEY["age private key<br/>(never in git)"]
+        SOPS["sops --decrypt<br/>secrets.env.enc"]
+        FILE["secrets.env<br/>(decrypted, 0600, root-owned)"]
+    end
+    subgraph "Container"
+        C["App reads<br/>/run/secrets/dbpassword"]
+    end
+    EF -->|"git clone / pull"| SOPS
+    KEY -->|"decryption identity"| SOPS
+    SOPS --> FILE
+    FILE -->|"mount"| C
+```
 
-Tradeoffs:
+### Benefits
 
-- Rotation is usually a process, not a lease.
-- You must secure decryption keys carefully.
+- **Change history**: every secret rotation is a git commit with author and timestamp.
+- **Reviews**: secret changes can go through pull requests.
+- **Bootstrapping**: provisioning a new host means deploying its age key (or granting KMS access).
 
-Bootstrap story:
+### Tradeoffs
 
-- you need a way to provision the age/GPG/KMS identity onto a new host
-- you need a safe place to store recovery keys
+- Rotation is a manual process: edit, encrypt, commit, deploy.
+- You must carefully secure decryption keys — if an age key leaks, all secrets encrypted to it are compromised.
+- Not suitable for dynamic/leased credentials (see Option 3).
 
-Best-fit pattern with containers:
+### Best-Fit Pattern with Containers
 
-- Decrypt to a root-owned file with `0600`.
-- Mount into the container read-only.
-- Never persist decrypted files into images.
+```bash
+# In CI or host provisioning:
+sops --decrypt secrets/db.yaml | \
+  install -m 600 /dev/stdin /run/secrets/dbpassword  # decrypt and write with restricted permissions
+
+# Container reads as usual:
+podman run --secret dbpassword,type=mount ...  # mount as file
+```
+
+Never persist decrypted files into images or build contexts.
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Option 3: Vault-Class Secret Managers (Centralized)
 
-What it is:
+### What It Is
 
-- Central policy + auth + audit.
-- Dynamic secrets (leases) and automated rotation.
+A centralized secret manager — HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Infisical, etc. — provides:
 
-Benefits:
+- Central policy and auth (who is allowed to read what)
+- Audit logs (who read what and when)
+- Automated rotation (the manager rotates DB passwords, API keys on a schedule)
+- **Dynamic credentials** (leased credentials that expire automatically)
 
-- Strong governance and scaling story.
-- Short-lived credentials reduce blast radius.
+### Architecture
 
-Costs:
+```mermaid
+flowchart TD
+    subgraph "Secret Manager (e.g. Vault)"
+        POL["Policy Engine"]
+        AUD["Audit Log"]
+        ROT["Auto-Rotation"]
+        DB_ROLE["DB secrets engine<br/>(dynamic creds)"]
+    end
+    subgraph "Host (Deployment)"
+        AUTH["Auth method<br/>(AppRole, OIDC, etc.)"]
+        AGENT["Vault Agent / sidecar<br/>OR systemd fetch unit"]
+        FILE["Secret file<br/>0600, root-owned"]
+    end
+    subgraph "Container"
+        APP["App reads<br/>/run/secrets/..."]
+    end
+    AUTH -->|"login"| POL
+    POL --> DB_ROLE
+    DB_ROLE -->|"lease: user + pass<br/>valid for 1h"| AGENT
+    AGENT -->|"writes file"| FILE
+    FILE -->|"volume mount"| APP
+    DB_ROLE --> AUD
+    AUTH --> AUD
+```
 
-- Operational overhead.
-- Availability becomes critical path for deploy/boot.
+### Benefits
 
-Common bridge patterns (recommended):
+- Strong governance: every read is audited, every identity is explicit.
+- Short-lived credentials reduce blast radius when a secret leaks.
+- Scales to hundreds of services and multiple teams.
 
-- Sidecar/agent writes a file to a shared volume; app reads the file.
-- systemd service fetches secret at start, writes to a protected file, then starts the container.
+### Costs
 
-Operational notes:
+- **Operational overhead**: Vault is another service to run, maintain, back up, and HA-ize.
+- **Availability dependency**: if Vault is unreachable at boot, services that need a fresh credential cannot start. You must design for this.
+- **Bootstrap complexity**: how does the first container on a fresh host authenticate to Vault?
 
-- design for availability: what happens on restart if Vault is unreachable
-- treat auth methods (Kubernetes auth, AppRole, OIDC, etc.) as part of the threat model
-- dynamic creds reduce blast radius but increase moving parts
+### Recommended Bridge Patterns for Containers
+
+Do not call Vault from inside your app. Instead:
+
+1. **Sidecar/agent writes a file**: a `vault-agent` container shares a volume with your app; it writes the secret to a file; your app reads the file.
+2. **systemd fetch unit**: a systemd `ExecStartPre=` step fetches the secret and writes it to a protected tmpfs path before the container starts.
+
+Both approaches keep the delivery model consistent: **the container reads a file**.
+
+### When to Choose It
+
+- Multiple teams sharing secrets infrastructure.
+- Compliance requirements (audit every read, enforce rotation policies).
+- Dynamic credentials (DB leases, ephemeral API tokens).
 
 
 [↑ Go to TOC](#table-of-contents)
 
-## Comparison Table (Mental Model)
+## Comparison Table
 
-Answer these questions:
+| Dimension | Podman Secrets | systemd Credentials | SOPS | Vault-class |
+|-----------|---------------|---------------------|------|-------------|
+| **Encryption at rest** | No (plain on disk) | Yes (TPM/host key) | Yes (age/GPG/KMS) | Yes (transit engine) |
+| **Multi-host** | No | Needs config management | Yes (git) | Yes (native) |
+| **Audit logs** | No | No | Git history | Yes (full) |
+| **Auto rotation** | No | No | Manual | Yes |
+| **Dynamic creds** | No | No | No | Yes |
+| **Operational cost** | Minimal | Low | Low-medium | High |
+| **Bootstrap story** | Manual | Config management | Key distribution | Auth method |
+| **Best fit** | Dev / single host | Single host + systemd | Small-medium fleet, GitOps | Org-scale / compliance |
 
-- "Do I need secrets on more than one host?"
-- "Do I need automatic rotation and revocation?"
-- "Do I need centralized policy and audit?"
-
-Typical outcomes:
-
-- single host: systemd creds or local secrets may be enough
-- small fleet, GitOps: SOPS is a strong fit
-- larger org/compliance: Vault-class is common
+---
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## What Does Not Change
 
-Regardless of external system:
+**Regardless of which external system you choose**, the container interface stays the same:
 
-- The container should read secrets from files.
-- Do not pass secret values in env vars, CLI args, or logs.
-- Use rotation-friendly names and restart/roll strategies.
+1. The secret arrives on the host as a **file** (decrypted, 0600, root-owned).
+2. The container reads it via a **mount** or Podman `--secret` (which is itself a file mount).
+3. The application code reads a file path — it does not know or care which backend provided it.
+
+This is the most important design insight in this module:
+
+> **Standardize on file delivery. Swap the backend without changing application code.**
+
+---
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Migration Path from Podman Secrets
 
-If you start with Podman secrets (local-first), the clean migration is:
+If you start with Podman secrets (local-first, this course) and later need to migrate:
 
-- external manager writes/refreshes a file
-- your service consumes that file (mount) or uses systemd credentials
+```mermaid
+flowchart LR
+    A["Podman secrets<br/>(current)"] -->|"same delivery model"| B["systemd credentials<br/>(next step for<br/>encryption at rest)"]
+    A -->|"scale to team"| C["SOPS<br/>(GitOps fleet)"]
+    A -->|"scale to org"| D["Vault-class<br/>(governance + dynamic)"]
+    B --> E["App reads /run/secrets/... file<br/>(unchanged)"]
+    C --> E
+    D --> E
+```
+
+Clean migration path:
+1. External manager writes/refreshes a **file** to a well-known path.
+2. Your `.container` unit mounts that file (or the directory containing it).
+3. The service consumes it as it always has.
 
 This avoids rewriting applications that already expect file-based secrets.
+
+---
+
+
+[↑ Go to TOC](#table-of-contents)
+
+## Anti-Patterns to Avoid
+
+These are the most common secret management mistakes, regardless of which system you use:
+
+| Anti-pattern | Why it is dangerous | Correct alternative |
+|---|---|---|
+| Secret in `ENV` in Containerfile | Baked into image layers, visible in `history` | Runtime file mount |
+| Secret in `-e MY_SECRET=value` on CLI | Visible in process list and shell history | Podman `--secret`, type=mount |
+| Secret in `.env` committed to git | Leaked to anyone with repo access | SOPS-encrypted file or git-ignored |
+| Base64-encoded "secret" | Base64 is encoding, not encryption — trivial to decode | Actual encryption at rest |
+| App reads `$SECRET_ENV_VAR` | Env vars can leak via `/proc`, subprocesses, logs | File read via explicit path |
+| Deleting old secret before verifying new | Locks you out if new secret is wrong | Keep both during rotation window |
+
+---
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Checkpoint
 
-- You can explain the tradeoffs between: systemd credentials, SOPS, and Vault-class secret managers.
-- You can describe a bootstrap story for a new host (how it gets the ability to decrypt/fetch).
-- You can describe a file-based delivery pattern that keeps apps unchanged.
+You should be able to:
+
+- Explain the tradeoffs between systemd credentials, SOPS, and Vault-class secret managers in one paragraph each.
+- Describe a bootstrap story for a new host under each approach (how it gets the ability to decrypt/fetch).
+- Describe a file-based delivery pattern that keeps application code unchanged across all backends.
+- Identify at least three anti-patterns and explain why they are dangerous.
+- Choose the right option given a simple scenario: single host, small fleet with GitOps, compliance-heavy org.
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Quick Quiz
 
-1) In one sentence: why is base64 not encryption?
+1. In one sentence: why is base64 not encryption?
 
-2) What question best distinguishes SOPS-style encrypted files from Vault-style leased secrets?
+2. What question best distinguishes SOPS-style encrypted files from Vault-style leased secrets?
+
+3. A teammate proposes storing the age private key in the git repo alongside the SOPS-encrypted secrets. What is wrong with this?
+
+4. You are using Vault for dynamic DB credentials. The credential has a 1-hour lease. The container has been running for 2 hours without renewal. What happens, and how should you handle lease renewal?
+
+5. A new engineer says: "I'll just pass all secrets as environment variables — it's simpler." Name three specific ways this can lead to a secret leak.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -209,9 +382,12 @@ This avoids rewriting applications that already expect file-based secrets.
 ## Further Reading
 
 - systemd credentials (service-provisioned files): https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Credentials
+- `systemd-creds` man page: https://www.freedesktop.org/software/systemd/man/latest/systemd-creds.html
 - Mozilla SOPS: https://github.com/getsops/sops
 - age (file encryption tool often used with SOPS): https://github.com/FiloSottile/age
 - HashiCorp Vault: https://www.vaultproject.io/
+- Vault Agent for file-based delivery: https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent
+- Infisical (open-source Vault alternative): https://infisical.com/
 - Kubernetes Secrets (baseline for comparison): https://kubernetes.io/docs/concepts/configuration/secret/
 
 

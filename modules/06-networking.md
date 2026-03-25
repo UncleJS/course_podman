@@ -74,6 +74,26 @@ When two containers are on the **same user-defined network**, the bridge lets th
 
 When a container is only on the **default network** (Podman's built-in `podman` bridge), DNS-based discovery is disabled. This is a deliberate design choice — it motivates you to create explicit named networks.
 
+```mermaid
+flowchart TD
+    subgraph "Host OS"
+        subgraph "User-Defined Network (appnet)"
+            A["Container A<br/>10.89.1.2"] <-->|"bridge + DNS"| B["Container B<br/>10.89.1.3"]
+        end
+        subgraph "Default Network (podman)"
+            C["Container C<br/>10.88.0.2"] ---|"IP only — no DNS"| D["Container D<br/>10.88.0.3"]
+        end
+        BR1["Linux Bridge<br/>(cni-podman0 / netavark)"]
+        BR2["Linux Bridge<br/>(podman0)"]
+    end
+    A --> BR1
+    B --> BR1
+    C --> BR2
+    D --> BR2
+    BR1 -->|"NAT / pasta"| I["Internet"]
+    BR2 -->|"NAT / pasta"| I
+```
+
 ### 1.1  The Four Network Drivers
 
 | Driver | What it does | When to use it |
@@ -100,6 +120,23 @@ In rootless mode Podman cannot create kernel-level bridges as a normal user. Ins
 |--------|-------|
 | **pasta** | Newer, faster, preferred on modern distros; fewer quirks with UDP/ICMP |
 | **slirp4netns** | Older, still common; slower but very portable |
+
+```mermaid
+flowchart LR
+    subgraph "Container Namespace"
+        C["App Process<br/>eth0: 10.0.2.100"]
+    end
+    subgraph "User Process (rootless)"
+        P["pasta / slirp4netns<br/>(user-space forwarder)"]
+    end
+    subgraph "Host Network Namespace"
+        H["Host Interface<br/>eth0 / wlan0"]
+        I["Internet"]
+    end
+    C -->|"packets via veth"| P
+    P -->|"forwarded as host user traffic"| H
+    H --> I
+```
 
 Check which backend your installation uses:
 
@@ -413,6 +450,22 @@ A container can be a member of more than one network simultaneously. This is the
 - `db` is only on `backend-net`.
 - `frontend` is only on `frontend-net`.
 
+```mermaid
+flowchart LR
+    I["Internet"] -->|"port 8080"| FE["frontend<br/>(nginx proxy)<br/>frontend-net only"]
+    subgraph "frontend-net"
+        FE
+        APP["app<br/>(API server)<br/>both networks"]
+    end
+    subgraph "backend-net (--internal)"
+        APP
+        DB["db<br/>(database)<br/>backend-net only"]
+    end
+    FE -->|"HTTP → api alias"| APP
+    APP -->|"SQL → db name"| DB
+    DB -. "NO outbound" .-> I
+```
+
 ### 6.1  Multi-Network Example
 
 ```bash
@@ -588,6 +641,26 @@ Default stance:
 - **Caches** → no port published, internal network only.
 - **APIs** → port published to loopback or internal network, reverse proxy in front.
 - **Reverse proxy** → the only container with a public port.
+
+```mermaid
+flowchart TD
+    USER["External User"] -->|"TCP 80/443"| PROXY["Reverse Proxy<br/>public-tier only<br/>port 80:80 published"]
+    subgraph "public-tier"
+        PROXY
+    end
+    PROXY -->|"HTTP → api"| API["API Server<br/>app-tier only<br/>no published port"]
+    subgraph "app-tier"
+        API
+    end
+    API -->|"SQL → db"| DB["Database<br/>data-tier (--internal)<br/>no published port"]
+    subgraph "data-tier (--internal)"
+        DB
+        CACHE["Cache<br/>data-tier (--internal)<br/>no published port"]
+    end
+    API -->|"Redis → cache"| CACHE
+    DB -. "blocked" .-> INET["Internet"]
+    CACHE -. "blocked" .-> INET
+```
 
 ### 9.2  Segment Networks by Trust Zone
 
@@ -788,6 +861,19 @@ Checklist:
 2. Is `dns_enabled: true` on that network?
 3. Are both containers **running** (not exited)?
 4. Are you using the **container name** (or an alias), not the hostname?
+
+```mermaid
+flowchart TD
+    S(["DNS resolution fails"]) --> Q1{"Same user-defined<br/>network?"}
+    Q1 -->|"No"| F1["Fix: podman network connect<br/>OR restart on correct network"]
+    Q1 -->|"Yes"| Q2{"dns_enabled: true<br/>on network?"}
+    Q2 -->|"No"| F2["Fix: recreate network<br/>(default networks have dns disabled)"]
+    Q2 -->|"Yes"| Q3{"Both containers<br/>running?"}
+    Q3 -->|"No"| F3["Fix: podman start <name>"]
+    Q3 -->|"Yes"| Q4{"Using container name<br/>or alias?"}
+    Q4 -->|"No — using hostname"| F4["Fix: use --name, not --hostname<br/>for DNS registration"]
+    Q4 -->|"Yes"| F5["Run debug sidecar:<br/>podman run --rm --network <net><br/>alpine getent hosts <target>"]
+```
 
 ```bash
 # Check network membership

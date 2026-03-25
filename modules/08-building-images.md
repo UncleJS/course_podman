@@ -84,6 +84,23 @@ Practical implications:
 - Put fast-changing steps late (your app source code).
 - Keep the build context small so `COPY` does not force expensive rebuilds.
 
+```mermaid
+flowchart TD
+    L0["Layer 0<br/>Base image (FROM)"]
+    L1["Layer 1<br/>RUN apt-get install ..."]
+    L2["Layer 2<br/>COPY package.json ./"]
+    L3["Layer 3<br/>RUN bun install"]
+    L4["Layer 4<br/>COPY src/ ./src"]
+    L5["Layer 5<br/>USER app / CMD"]
+
+    L0 --> L1 --> L2 --> L3 --> L4 --> L5
+
+    note1["Changes here<br/>→ invalidates L1..L5"]
+    note2["Changes here<br/>→ invalidates L4..L5 only"]
+    note1 -.-> L0
+    note2 -.-> L4
+```
+
 Terminology:
 
 - **Containerfile**: the build recipe (Dockerfile-compatible syntax).
@@ -282,6 +299,20 @@ If your directory contains:
 
 ...then a sloppy `COPY . .` can accidentally ship them inside your image.
 
+```mermaid
+flowchart LR
+    subgraph "Build Context (sent to builder)"
+        SRC["src/<br/>package.json"]
+        ENV[".env  ← DANGER"]
+        KEYS["id_rsa  ← DANGER"]
+        NM["node_modules/  ← bloat"]
+    end
+    CI[".containerignore<br/>(blocks bad files)"] -->|"filters out"| ENV
+    CI -->|"filters out"| KEYS
+    CI -->|"filters out"| NM
+    SRC -->|"COPY src/ /app/src"| IMG["Final Image<br/>(clean + small)"]
+```
+
 ### 5.1  Use `.containerignore`
 
 Create `.containerignore` next to your `Containerfile`:
@@ -403,6 +434,28 @@ Key properties:
 - stages have names: `FROM ... AS build`
 - later stages can `COPY --from=build ...`
 - `podman build --target <stage>` stops early (useful for debugging)
+
+```mermaid
+flowchart LR
+    subgraph "Stage 1: build"
+        B1["FROM golang:1.22 AS build"]
+        B2["COPY source code"]
+        B3["RUN go build -o /app/server"]
+    end
+    subgraph "Stage 2: runtime"
+        R1["FROM scratch (or alpine)"]
+        R2["COPY --from=build /app/server /server"]
+        R3["CMD ['/server']"]
+    end
+    B1 --> B2 --> B3
+    B3 -->|"only binary copied<br/>(no compiler, no src)"| R2
+    R1 --> R2 --> R3
+
+    SIZE1["Build image<br/>~1 GB (compiler + src)"]
+    SIZE2["Runtime image<br/>~10 MB (binary only)"]
+    SIZE1 -.-> B1
+    SIZE2 -.-> R1
+```
 
 ### 7.1  Lab C (Optional): Provided Go Multi-Stage Example
 
@@ -806,6 +859,21 @@ Fix:
 
 - confirm your build context: `podman build ... <context-dir>`
 - list files in the context dir
+
+```mermaid
+flowchart TD
+    S(["Build or runtime failure"]) --> Q1{"COPY file<br/>not found?"}
+    Q1 -->|"Yes"| F1["Check .containerignore<br/>Check build context dir<br/>Use explicit paths"]
+    Q1 -->|"No"| Q2{"exec format<br/>error?"}
+    Q2 -->|"Yes"| F2["Architecture mismatch<br/>Use --platform linux/amd64"]
+    Q2 -->|"No"| Q3{"Container exits<br/>immediately?"}
+    Q3 -->|"Yes"| F3["Wrong CMD / missing binary<br/>Debug: --entrypoint sh"]
+    Q3 -->|"No"| Q4{"Permission<br/>error?"}
+    Q4 -->|"Yes"| F4["Check USER order<br/>Use COPY --chown=app:app"]
+    Q4 -->|"No"| Q5{"Image very<br/>large?"}
+    Q5 -->|"Yes"| F5["Use multi-stage build<br/>Add .containerignore<br/>Check image history"]
+    Q5 -->|"No"| F6["Check podman logs<br/>Run interactively: -it --entrypoint sh"]
+```
 
 ### 15.2  Permission Errors in `RUN` Steps
 
