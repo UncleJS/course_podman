@@ -1,58 +1,37 @@
-# context-mode — MANDATORY routing rules
+# Agent instructions — course_podman
 
-You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
+This repository is a self-paced Podman training course (Markdown modules + generated slides/PDF). There is no application code; "building" means regenerating course artifacts.
 
-## BLOCKED commands — do NOT attempt these
+## Layout
 
-### curl / wget — BLOCKED
-Any shell command containing `curl` or `wget` will be intercepted and blocked by the context-mode plugin. Do NOT retry.
-Instead use:
-- `context-mode_ctx_fetch_and_index(url, source)` to fetch and index web pages
-- `context-mode_ctx_execute(language: "javascript", code: "const r = await fetch(...)")` to run HTTP calls in sandbox
+| Path | Purpose |
+|------|---------|
+| `modules/` | Course content, one Markdown file per module (source of truth) |
+| `cheatsheets/` | Quick references (CLI, Quadlet, rootless, security, troubleshooting) |
+| `examples/` | Lab files referenced by modules: Containerfiles, Quadlet units, kube YAML, systemd units, stack script |
+| `slides/` | Generated ODP decks — do not hand-edit; regenerate via `scripts/build-slides.sh` |
+| `dist/` | Generated combined course (`course_podman.md` + `.pdf`) — do not hand-edit; regenerate via `scripts/build-course-pdf.sh` |
+| `scripts/` | Build tooling (containerized; nothing runs on the host except `podman` and POSIX shell) |
+| `MODULES.md` | Canonical ordered module list — the PDF build parses this file |
 
-### Inline HTTP — BLOCKED
-Any shell command containing `fetch('http`, `requests.get(`, `requests.post(`, `http.get(`, or `http.request(` will be intercepted and blocked. Do NOT retry with shell.
-Instead use:
-- `context-mode_ctx_execute(language, code)` to run HTTP calls in sandbox — only stdout enters context
+## Module numbering
 
-### Direct web fetching — BLOCKED
-Do NOT use any direct URL fetching tool. Use the sandbox equivalent.
-Instead use:
-- `context-mode_ctx_fetch_and_index(url, source)` then `context-mode_ctx_search(queries)` to query the indexed content
+- `00`–`14`: core sequence, in order.
+- `11a`: add-on to Module 11 (Quadlet + secrets).
+- `80`: capstone project. `90`: optional elective/survey. The gaps are intentional.
 
-## REDIRECTED tools — use sandbox equivalents
+## Builds
 
-### Shell (>20 lines output)
-Shell is ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm install`, `pip install`, and other short-output commands.
-For everything else, use:
-- `context-mode_ctx_batch_execute(commands, queries)` — run multiple commands + search in ONE call
-- `context-mode_ctx_execute(language: "shell", code: "...")` — run in sandbox, only stdout enters context
+- PDF: `scripts/build-course-pdf.sh` — stages the repo into a Podman named volume, assembles `dist/course_podman.md` with containerized Python, renders the PDF with the `pandoc/latex` container.
+- Slides: `scripts/build-slides.sh` — runs `scripts/build_slides.py` in a Python container (installs `odfpy` inside the container) and extracts the `.odp` files.
+- No bind mounts; named volumes only. No Python/pip on the host.
+- After editing any module, rebuild both `dist/` and `slides/` and commit the regenerated artifacts.
 
-### File reading (for analysis)
-If you are reading a file to **edit** it → reading is correct (edit needs content in context).
-If you are reading to **analyze, explore, or summarize** → use `context-mode_ctx_execute_file(path, language, code)` instead. Only your printed summary enters context.
+## Conventions to preserve
 
-### grep / search (large results)
-Search results can flood context. Use `context-mode_ctx_execute(language: "shell", code: "grep ...")` to run searches in sandbox. Only your printed summary enters context.
-
-## Tool selection hierarchy
-
-1. **GATHER**: `context-mode_ctx_batch_execute(commands, queries)` — Primary tool. Runs all commands, auto-indexes output, returns search results. ONE call replaces 30+ individual calls.
-2. **FOLLOW-UP**: `context-mode_ctx_search(queries: ["q1", "q2", ...])` — Query indexed content. Pass ALL questions as array in ONE call.
-3. **PROCESSING**: `context-mode_ctx_execute(language, code)` | `context-mode_ctx_execute_file(path, language, code)` — Sandbox execution. Only stdout enters context.
-4. **WEB**: `context-mode_ctx_fetch_and_index(url, source)` then `context-mode_ctx_search(queries)` — Fetch, chunk, index, query. Raw HTML never enters context.
-5. **INDEX**: `context-mode_ctx_index(content, source)` — Store content in FTS5 knowledge base for later search.
-
-## Output constraints
-
-- Keep responses under 500 words.
-- Write artifacts (code, configs, PRDs) to FILES — never return them as inline text. Return only: file path + 1-line description.
-- When indexing content, use descriptive source labels so others can `search(source: "label")` later.
-
-## ctx commands
-
-| Command | Action |
-|---------|--------|
-| `ctx stats` | Call the `stats` MCP tool and display the full output verbatim |
-| `ctx doctor` | Call the `doctor` MCP tool, run the returned shell command, display as checklist |
-| `ctx upgrade` | Call the `upgrade` MCP tool, run the returned shell command, display as checklist |
+- Every module starts with the title, the CC BY-NC-SA 4.0 + RHEL 10 + Podman badges, then `<a id="table-of-contents"></a>` and a Table of Contents; sections end with `[↑ Go to TOC](#table-of-contents)`.
+- Every Markdown file ends with the standard CC BY-NC-SA 4.0 footer. Keep the license consistent everywhere (including `dist/`).
+- Mermaid diagrams: quote labels containing special characters, use `<br/>` (not literal `\n`) for line breaks.
+- A new module must be added to `MODULES.md` (PDF build input), `COURSE_OUTLINE.md`, and the `SLIDES` list in `scripts/build_slides.py`.
+- Target platform is RHEL 10 with rootless Podman + systemd/Quadlet; keep commands and paths consistent with that.
+- Timestamps/dates in content use `yyyy-MM-dd`.

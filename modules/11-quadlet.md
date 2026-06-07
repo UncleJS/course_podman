@@ -538,7 +538,7 @@ Secret=myapp_db_password
 # App reads: open('/run/secrets/myapp_db_password').read().strip()
 ```
 
-See `modules/11-quadlet-secrets.md` for the full lab with rotation.
+See `modules/11a-quadlet-secrets.md` for the full lab with rotation.
 
 For distributed or encrypted-at-rest secrets, see `modules/90-external-secrets-survey.md`.
 

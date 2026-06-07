@@ -8,4 +8,6 @@ spec:
       image: docker.io/library/nginx:stable
       ports:
         - containerPort: 80
+          # 8084 (not 8080) on purpose: the play-kube lab in Module 10 uses
+          # examples/kube/webpod.yaml on 8080, so both can run side by side.
           hostPort: 8084

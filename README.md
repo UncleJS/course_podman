@@ -30,15 +30,29 @@ This is a course-in-a-repo for taking a learner from zero container knowledge to
 - `COURSE_OUTLINE.md`: the full syllabus and learning goals
 - `MODULES.md`: reading order
 - `modules/`: lesson content (Markdown)
-- `cheatsheets/`: quick references
+- `cheatsheets/`: quick references (see below)
 - `examples/`: example YAML and unit files
 - `ASSESSMENTS.md`: practical exams and rubrics
 - `FAQ.md`: common gotchas and fast fixes
+
+Module numbering:
+
+- `00`–`14`: the core sequence, read in order.
+- `11a`: an add-on to Module 11 (secrets with Quadlet + systemd).
+- `80`: the capstone project; `90`: an optional elective/survey. The gaps are intentional — they separate the core sequence from the capstone and electives.
 
 Suggested path:
 
 - Start with `modules/00-setup.md`
 - Continue in numeric order
+
+Cheatsheets (use alongside the modules, and as a post-course reference):
+
+- [`cheatsheets/podman-cli.md`](cheatsheets/podman-cli.md): everyday `podman` commands (pairs with Modules 02–03)
+- [`cheatsheets/rootless.md`](cheatsheets/rootless.md): rootless-specific paths, ranges, and gotchas (Modules 00–01, 05–06)
+- [`cheatsheets/quadlet.md`](cheatsheets/quadlet.md): Quadlet unit keys and systemd workflow (Modules 11/11a, 14)
+- [`cheatsheets/security.md`](cheatsheets/security.md): hardening flags and SELinux labels (Module 12)
+- [`cheatsheets/troubleshooting.md`](cheatsheets/troubleshooting.md): symptom → diagnosis → fix tables (Module 13)
 
 [↑ Go to TOC](#table-of-contents)
 

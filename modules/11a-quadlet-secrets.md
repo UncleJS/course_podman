@@ -1,4 +1,4 @@
-# Module 11 Add-On: Secrets with Quadlet + systemd (Rootless)
+# Module 11a: Secrets with Quadlet + systemd (Rootless)
 [![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](../LICENSE.md)
 [![RHEL 10](https://img.shields.io/badge/platform-RHEL%2010-red)](https://access.redhat.com/products/red-hat-enterprise-linux)
 [![Podman](https://img.shields.io/badge/Podman-rootless-purple)](https://podman.io)
@@ -22,7 +22,7 @@
 - [Quick Quiz](#quick-quiz)
 - [Further Reading](#further-reading)
 
-This add-on shows how to run reboot-safe services while keeping secret material out of unit files and environment variables.
+This add-on to Module 11 shows how to run reboot-safe services while keeping secret material out of unit files and environment variables.
 
 
 [↑ Go to TOC](#table-of-contents)

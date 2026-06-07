@@ -5,7 +5,9 @@ build_slides.py — Generate one ODP per module from course content.
 Uses the odfpy library (python-odf) to produce valid OpenDocument Presentation
 files with a dark theme and full instructor notes on every slide.
 
-Run:
+Run (containerized, no host python/pip needed):
+    scripts/build-slides.sh
+Or directly, with odfpy available:
     python3 scripts/build_slides.py
 Output (one file per module):
     slides/00-setup.odp
@@ -16,16 +18,25 @@ Output (one file per module):
 """
 
 import os
+import sys
 import textwrap
-from odf.opendocument import OpenDocumentPresentation
-from odf.style import (
-    Style, MasterPage, PageLayout, PageLayoutProperties,
-    TextProperties, GraphicProperties, DrawingPageProperties,
-)
-from odf.text import P, Span
-from odf.draw import Frame, TextBox, Page
-from odf.presentation import Notes
-from odf.namespaces import PRESENTATIONNS
+
+try:
+    from odf.opendocument import OpenDocumentPresentation
+    from odf.style import (
+        Style, MasterPage, PageLayout, PageLayoutProperties,
+        TextProperties, GraphicProperties, DrawingPageProperties,
+    )
+    from odf.text import P, Span
+    from odf.draw import Frame, TextBox, Page
+    from odf.presentation import Notes
+    from odf.namespaces import PRESENTATIONNS
+except ImportError:
+    sys.exit(
+        "error: the 'odfpy' library is required.\n"
+        "Run this script via scripts/build-slides.sh, which installs odfpy "
+        "inside a container (no host pip needed)."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1133,16 +1144,114 @@ SLIDES = [
             "the file IS the configuration."
         ),
     },
+    # ──────────────────────────────────────────────────────────────
+    # MODULE 11a — SECRETS WITH QUADLET + SYSTEMD
+    # ──────────────────────────────────────────────────────────────
     {
-        "module": "11-quadlet",
+        "module": "11a-quadlet-secrets",
+        "type": "section",
+        "title": "Module 11a",
+        "subtitle": "Secrets with Quadlet + systemd   (45-75 min)",
+        "notes": (
+            "Module 11a is the add-on to Module 11: now that services are reboot-safe "
+            "under systemd, the secret material must stay out of the unit files. "
+            "At the podman run level secrets were a runtime flag; at the Quadlet level "
+            "they become deployment configuration — versioned, auditable, rotatable. "
+            "The whole module is one idea applied carefully: the unit file holds the "
+            "NAME of a secret, never its VALUE."
+        ),
+    },
+    {
+        "module": "11a-quadlet-secrets",
         "type": "content",
-        "title": "Secrets in Quadlet (Module 11a)",
+        "title": "Why systemd-Level Secrets Matter",
         "bullets": [
-            "In [Container]: Secret=db_password",
-            "Container reads from /run/secrets/db_password at runtime",
-            "Never put secret values in Environment= lines",
-            "Rotation: update Secret= to new versioned name, daemon-reload, restart",
-            "Verify: journalctl logs must not contain secret values",
+            "WRONG: [Container] Environment=DB_PASSWORD=hunter2",
+            "Exposed in: the .container file (git!), systemctl --user cat, podman inspect",
+            "Exposed in journalctl if the app logs its environment",
+            "CORRECT: [Container] Secret=db_password   (name only, value in secrets store)",
+        ],
+        "notes": (
+            "The most common mistake when moving from podman run to Quadlet is pasting "
+            "the secret value into an Environment= line. Walk through each exposure "
+            "surface: the unit file gets committed to git; anyone with read access can "
+            "systemctl --user cat the service; podman inspect prints the environment of "
+            "the running container; and journald keeps whatever the app logs. "
+            "With Secret= the unit file only names the secret — committing it is safe."
+        ),
+    },
+    {
+        "module": "11a-quadlet-secrets",
+        "type": "content",
+        "title": "Recommended Pattern",
+        "bullets": [
+            "printf '%s' 'value' | podman secret create db_password -",
+            "Stored at ~/.local/share/containers/storage/secrets/ (base64, NOT encrypted)",
+            "Quadlet: [Container] Secret=db_password",
+            "Mounted as tmpfs file: /run/secrets/db_password",
+            "Use versioned names for rotation: db_password_v1, db_password_v2",
+        ],
+        "notes": (
+            "printf '%s' avoids the trailing newline that echo would add — a newline in "
+            "a password is a painful bug to find. Emphasise what the file driver does "
+            "and does not give you: blobs are base64-encoded with owner-only filesystem "
+            "permissions, but there is NO encryption at rest, and secrets are local to "
+            "the host and the creating user. For encrypted-at-rest or multi-host "
+            "distribution, point at Module 90. "
+            "Treat secret names as deployment config: document them next to the unit files."
+        ),
+    },
+    {
+        "module": "11a-quadlet-secrets",
+        "type": "content",
+        "title": "The Three Levels of 'Not in the Unit File'",
+        "bullets": [
+            "Level 0: env var in unit — value visible in file, systemctl cat, podman inspect",
+            "Level 1: Podman secret — value in secrets store; only the NAME is in the unit",
+            "Level 2: systemd credentials — value injected at start, invisible to Podman tooling",
+            "Most workloads need Level 1",
+        ],
+        "notes": (
+            "Be explicit with students about which level they are operating at. "
+            "Level 0 is the anti-pattern from the earlier slide. Level 1 is the course "
+            "baseline: podman secret plus Secret= in the Quadlet unit. Level 2 uses "
+            "systemd credentials (LoadCredential=/SetCredential=) to inject material at "
+            "service start without even a local secrets store — useful for bootstrapping, "
+            "but more moving parts. Do not oversell Level 2; for single-host rootless "
+            "services Level 1 is the right default."
+        ),
+    },
+    {
+        "module": "11a-quadlet-secrets",
+        "type": "lab",
+        "title": "Lab 11a: Quadlet Unit Consuming a Secret",
+        "bullets": [
+            "printf '%s' 'example-password' | podman secret create db_password -",
+            "example-app.container: Secret=db_password + NoNewPrivileges + ReadOnly",
+            "systemctl --user daemon-reload && systemctl --user start example-app.service",
+            "podman exec systemd-example-app sh -lc 'ls -la /run/secrets'",
+            "env | grep -i password || echo 'not in env'   ->  not in env",
+        ],
+        "notes": (
+            "Full lab is in modules/11a-quadlet-secrets.md. Enable lingering first "
+            "(sudo loginctl enable-linger $USER) so the service is boot-safe. "
+            "The two verification steps are the heart of the lab: the secret IS present "
+            "as a tmpfs file under /run/secrets, and it is NOT in the environment. "
+            "Use wc -c on the secret file to prove it exists without printing the value "
+            "— model good hygiene even with example values. "
+            "Note the container name: Quadlet-generated containers are named "
+            "systemd-<unit-stem>, hence systemd-example-app."
+        ),
+    },
+    {
+        "module": "11a-quadlet-secrets",
+        "type": "content",
+        "title": "Rotation, Verification, Limits",
+        "bullets": [
+            "Rotate: create db_password_v2, edit Secret= line, daemon-reload, restart",
+            "Keep the old secret until the service is verified healthy, then podman secret rm",
+            "Verify: journalctl --user -u myapp.service | grep -i password  ->  nothing",
+            "Limits: no encryption at rest, per-machine, per-user — see Module 90",
         ],
         "notes": (
             "Rotation procedure: "
@@ -1151,9 +1260,11 @@ SLIDES = [
             "3. systemctl --user daemon-reload && systemctl --user restart myapp.service "
             "4. Verify the service is healthy "
             "5. podman secret rm db_password_v1 "
-            "The journald log verification step: journalctl --user -u myapp.service | grep -i password "
-            "should return nothing. If it returns something, the app is logging secrets — "
-            "fix the app before production."
+            "Keeping the old version until the new one is verified gives a rollback window. "
+            "The journald verification step: if grep -i password returns anything, the app "
+            "is logging secrets — fix the app before production. "
+            "Close by scoping what this does NOT solve: encrypted-at-rest storage and "
+            "multi-host distribution belong to external secret managers (Module 90)."
         ),
     },
 

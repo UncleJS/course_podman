@@ -1,20 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build a single course PDF using a Podman container (no host pandoc install).
-# Output: dist/course_podman.pdf
+# Build a single course PDF using Podman containers only:
+# no host pandoc/LaTeX, no host python, no bind mounts (named-volume staging).
+# Output: dist/course_podman.md + dist/course_podman.pdf
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 OUT_DIR="$ROOT_DIR/dist"
-OUT_MD="$OUT_DIR/course_podman.md"
-OUT_PDF="$OUT_DIR/course_podman.pdf"
-
-OUT_MD_IN_CONTAINER="dist/course_podman.md"
-OUT_PDF_IN_CONTAINER="dist/course_podman.pdf"
+VOLUME="course-build-pdf"
+PYTHON_IMAGE="docker.io/library/python:3-alpine"
+PANDOC_IMAGE="docker.io/pandoc/latex:latest"
 
 mkdir -p "$OUT_DIR"
 
-ROOT_DIR="$ROOT_DIR" python3 - <<'PY'
+cleanup() {
+  podman rm -f course-pdf-stage course-pdf-extract >/dev/null 2>&1 || true
+  podman volume rm -f "$VOLUME" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+cleanup
+
+# Stage the repo into a named volume (no bind mounts).
+podman volume create "$VOLUME" >/dev/null
+podman create --name course-pdf-stage -v "$VOLUME":/work "$PYTHON_IMAGE" true >/dev/null
+podman cp "$ROOT_DIR/." course-pdf-stage:/work/
+podman rm course-pdf-stage >/dev/null
+
+# Assemble dist/course_podman.md inside a container (no host python).
+podman run --rm -i -v "$VOLUME":/work -e ROOT_DIR=/work "$PYTHON_IMAGE" python3 - <<'PY'
 from __future__ import annotations
 
 import datetime as dt
@@ -24,6 +37,7 @@ from pathlib import Path
 
 root = Path(os.environ["ROOT_DIR"]).resolve()
 out_md = root / "dist" / "course_podman.md"
+out_md.parent.mkdir(parents=True, exist_ok=True)
 
 def read_text(p: Path) -> str:
     return p.read_text(encoding="utf-8")
@@ -87,21 +101,43 @@ for fp in appendix:
     parts.append(read_text(root / fp))
     parts.append("\n")
 
-out_md.write_text("".join(parts), encoding="utf-8")
+# Transliterate symbols pdflatex cannot typeset (sources keep the Unicode;
+# only this combined build output is downgraded to ASCII equivalents).
+LATEX_SAFE = {
+    "↑": "^",      # ↑ (Go to TOC links)
+    "→": "->",     # →
+    "←": "<-",     # ←
+    "≥": ">=",     # ≥
+    "≤": "<=",     # ≤
+    "✅": "[OK]",   # ✅
+    "❌": "[X]",    # ❌
+    "⚠": "(!)",    # ⚠
+    "️": "",       # variation selector (emoji presentation)
+}
+text = "".join(parts)
+for char, repl in LATEX_SAFE.items():
+    text = text.replace(char, repl)
+
+out_md.write_text(text, encoding="utf-8")
 print(str(out_md))
 PY
 
-# Build inside a container so the host does not need pandoc/LaTeX.
+# Render the PDF inside the pandoc/latex container (volume, not bind mount).
 podman run --rm \
-  -v "$ROOT_DIR:/data:Z" \
-  -w /data \
-  docker.io/pandoc/latex:latest \
-    "$OUT_MD_IN_CONTAINER" \
-    -o "$OUT_PDF_IN_CONTAINER" \
+  -v "$VOLUME":/work \
+  -w /work \
+  "$PANDOC_IMAGE" \
+    dist/course_podman.md \
+    -o dist/course_podman.pdf \
     --from markdown \
     --toc \
     --toc-depth=2 \
     --number-sections \
     -V geometry:margin=1in
 
-printf '%s\n' "Wrote: $OUT_PDF"
+# Extract the artifacts back out of the volume.
+podman create --name course-pdf-extract -v "$VOLUME":/work "$PYTHON_IMAGE" true >/dev/null
+podman cp course-pdf-extract:/work/dist/course_podman.md "$OUT_DIR/"
+podman cp course-pdf-extract:/work/dist/course_podman.pdf "$OUT_DIR/"
+
+printf '%s\n' "Wrote: $OUT_DIR/course_podman.md" "Wrote: $OUT_DIR/course_podman.pdf"

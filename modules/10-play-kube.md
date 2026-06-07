@@ -281,6 +281,8 @@ systemctl --user start webpod.service  # start the YAML-defined pod
 systemctl --user status webpod.service  # show status
 ```
 
+> **Note:** `examples/quadlet/webpod.yaml` publishes on host port **8084**, not 8080 like `examples/kube/webpod.yaml` from the earlier lab — intentionally, so you can run both versions side by side without a port conflict.
+
 Verify:
 
 ```bash
