@@ -1,4 +1,4 @@
-# Podman Zero-to-Expert Course (Draft)
+# Podman Zero-to-Expert Course
 
 This is a course-in-a-repo for taking a learner from zero container knowledge to running rootless Podman services with systemd (Quadlet), with strong security and troubleshooting fundamentals.
 
