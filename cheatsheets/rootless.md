@@ -24,6 +24,8 @@ Rootless Podman runs as your user and uses user namespaces.
 podman info  # show Podman host configuration
 grep "^$USER:" /etc/subuid /etc/subgid  # filter output
 podman unshare id  # run a command inside the user namespace
+podman unshare cat /proc/self/uid_map  # container UID 0 is your UID; UID 1 is the start of the subuid range
+podman info --format '{{.Host.RootlessNetworkCmd}}'  # pasta on Podman 5
 ```
 
 [↑ Go to TOC](#table-of-contents)
@@ -32,6 +34,8 @@ podman unshare id  # run a command inside the user namespace
 
 - storage: `~/.local/share/containers/`
 - runtime: `/run/user/<uid>/containers/`
+- default registry auth (lost on reboot): `${XDG_RUNTIME_DIR}/containers/auth.json`
+- auth that survives reboot: `podman login --authfile "$HOME/.config/containers/auth.json"`
 
 [↑ Go to TOC](#table-of-contents)
 

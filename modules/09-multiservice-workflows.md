@@ -176,7 +176,9 @@ podman volume create dbdata                                       # create persi
 **Step 2: Create the database password secret:**
 
 ```bash
-printf '%s' 'choose-a-lab-password' | podman secret create stack_mariadb_root_password -  # create secret, no trailing newline
+read -rs p   # type the lab password; -s keeps it off the screen and out of shell history
+printf '%s' "$p" | podman secret create stack_mariadb_root_password -
+unset p
 ```
 
 **Step 3: Start the database (no published port):**

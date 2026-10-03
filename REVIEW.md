@@ -22,11 +22,24 @@ A pass over every module, example, cheatsheet, exam, and the slide source, check
 - Quadlet `--dryrun` on this host: `capnet` is created with `--internal`, Adminer publishes `127.0.0.1:8082:8080`, auto-update uses `--sdnotify=healthy`, and the backup `ExecStart` keeps `$$` and `%%` so systemd expands them when the job starts. No `CapDrop=` and no empty `all-.sql`.
 - `podman info` on this host reports `NetworkBackend=netavark` and `RootlessNetworkCmd=pasta`. Learner docs point at `RootlessNetworkCmd`.
 - Modules 06, 08, and 13 use a single space in numbered headings so the GitHub-style TOC fragments match.
-- `dist/course_podman.md` and `dist/course_podman.pdf` were regenerated on 2026-10-03. The PDF still prints hyperref warnings for identifiers that start with a digit and for em dashes. Those links work in the Markdown sources.
+- `dist/course_podman.md` and `dist/course_podman.pdf` were regenerated on 2026-10-03.
+
+## Residual pass (same day)
+
+The Podman 5 and Quadlet fixes above were left in place. This pass closed what that review still had open.
+
+| # | Severity | Area | Finding | Status |
+|---|----------|------|---------|--------|
+| 11 | Medium | Combined PDF | In-document links missed their targets: em-dash slugs, headings whose ids start with a digit, and repeated titles such as Learning Goals | Resolved in the assembler only. Each source file gets a letter-prefixed heading id, and that file's `](#slug)` links are rewritten to it. Module files are unchanged. The pandoc log from this rebuild reports no undefined references |
+| 12 | Medium | Module 9 | The stack lab still created a secret with a literal `printf` password, which lands in shell history | Resolved. The create step uses `read -rs` and `printf '%s' "$p"`, then `unset` |
+| 13 | Low | Rootless cheat sheet | The sheet did not mention the UID map, pasta, or the auth file that disappears on reboot | Resolved |
+| 14 | Low | Exam A | The rubric scored a container that exits, and the exam never provided one | Resolved. `examples/exams/exam-a.sh` starts it. The prompt does not say why it exits |
+
+`dist/` and `slides/` were regenerated after the Module 9 edit.
 
 ## Left as written
 
-Module 9 and `examples/stack/stack.sh`, the tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten.
+`examples/stack/stack.sh`, the tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten. The rest of Module 9 was left as it was.
 
 ---
 

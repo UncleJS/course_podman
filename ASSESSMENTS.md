@@ -34,7 +34,8 @@ Sit this after Module 10. It covers the debug loop from Modules 02 and 13, plus 
 
 Scenario:
 
-- You are given a container that exits immediately.
+- Run `examples/exams/exam-a.sh`. It starts a named container that exits.
+- Apply the four-step loop from Modules 02 and 13.
 
 Requirements:
 
