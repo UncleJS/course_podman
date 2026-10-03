@@ -56,7 +56,7 @@ graph TD
         L5["Mandatory access control<br/>Labels restrict what files<br/>containers can access"]
     end
     subgraph "Layer 4: Seccomp"
-        L4["Syscall filtering<br/>Block kernel attack surface<br/>Default profile: ~300 syscalls blocked"]
+        L4["Syscall filtering<br/>Default action is deny<br/>Allow list of common syscalls"]
     end
     subgraph "Layer 3: Capabilities"
         L3["Drop ALL, add-back only needed<br/>--cap-drop=ALL --cap-add=NET_BIND_SERVICE"]
@@ -82,7 +82,7 @@ Apply these for every long-running service container:
 | Control | Flag / setting | Why |
 |---|---|---|
 | Rootless Podman | (run as non-root user on host) | Limits kernel attack surface |
-| Non-root inside container | `User=1001` in Containerfile or `--user 1001` | Process cannot affect host even if namespace leaks |
+| Non-root inside container | `User=1001` in Containerfile or `--user 1001` | The process is not UID 0 inside the container. A namespace escape still lands on a subordinate UID, not host root |
 | No new privileges | `--security-opt no-new-privileges` | Prevents `setuid` escalation inside container |
 | Drop all capabilities | `--cap-drop=ALL` | Removes almost all kernel privileges from PID 1 |
 | Add back only what's needed | `--cap-add=NET_BIND_SERVICE` etc. | Least privilege |
@@ -236,8 +236,10 @@ podman run --rm docker.io/library/alpine:latest id  # show current uid/gid
 2) Apply no-new-privileges:
 
 ```bash
-podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # same, but setuid disabled
+podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # id does not change
 ```
+
+`id` does not show the flag working. The flag changes `execve` of setuid binaries and file capabilities. Alpine's `id` is not setuid, so this step only confirms the container still starts.
 
 3) Combine with drop-all and non-root:
 
@@ -293,13 +295,14 @@ If it fails, read the error message — it is a map of which paths nginx needs t
 podman run --rm -p 8080:80 \
   --read-only \
   --cap-drop=ALL \
+  --cap-add=NET_BIND_SERVICE \
   --security-opt no-new-privileges \
   --memory 128m \
   --pids-limit 50 \
   --tmpfs /var/cache/nginx \
   --tmpfs /var/run \
   --tmpfs /tmp \
-  docker.io/library/nginx:stable  # fully hardened nginx
+  docker.io/library/nginx:stable  # nginx still binds container port 80, so NET_BIND_SERVICE stays
 ```
 
 ```mermaid
@@ -335,7 +338,7 @@ Both are desirable. They are independent:
 ```mermaid
 graph TD
     A["Host: non-root user (uid 1000)<br/>Rootless Podman"] --> B["Container: uid 0 (root inside)<br/>mapped to uid 1000 on host via userns"]
-    A --> C["Container: uid 1001 (non-root inside)<br/>mapped to uid 100001 on host via userns"]
+    A --> C["Container: uid 1001 (non-root inside)<br/>host uid = subuid_start + 1000"]
     B -->|"better"| D["User namespace isolates from host"]
     C -->|"best"| E["Non-root inside + userns isolation"]
 ```
@@ -391,7 +394,7 @@ getenforce  # show SELinux mode: Enforcing / Permissive / Disabled
 Check SELinux denials:
 
 ```bash
-ausearch -m avc -ts recent  # show recent SELinux denial audit messages
+sudo ausearch -m avc -ts recent  # audit log is not readable rootless
 ```
 
 
@@ -399,7 +402,7 @@ ausearch -m avc -ts recent  # show recent SELinux denial audit messages
 
 ## Seccomp Profiles
 
-Seccomp (Secure Computing Mode) filters which Linux **syscalls** a container process can make. Podman applies a default seccomp profile that blocks ~300 dangerous syscalls (`reboot`, `kexec_load`, `create_module`, etc.).
+Seccomp (Secure Computing Mode) filters which Linux **syscalls** a container process can make. The default profile's default action is **deny**. An allow list of a few hundred common syscalls is what gets through. `reboot`, `kexec_load`, and `create_module` stay denied. The allow list is not a list of 300 blocked calls.
 
 You rarely need to change the default. But knowing it exists matters:
 
@@ -506,7 +509,8 @@ Description=Hardened application service
 [Container]
 Image=docker.io/library/myapp@sha256:<digest>
 ReadOnly=true
-CapDrop=ALL
+DropCapability=ALL
+# AddCapability=NET_BIND_SERVICE only if this process binds a port below 1024
 SecurityLabelDisable=false
 NoNewPrivileges=true
 User=1001:1001

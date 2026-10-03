@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "log"
   "net/http"
   "os"
 )
@@ -17,5 +18,5 @@ func main() {
     fmt.Fprintln(w, "hello from a multi-stage build")
   })
 
-  _ = http.ListenAndServe(addr, nil)
+  log.Fatal(http.ListenAndServe(addr, nil))
 }

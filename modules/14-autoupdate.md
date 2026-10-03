@@ -187,6 +187,8 @@ systemctl --user status autoupdate-nginx.service                               #
 
 **Step 2: Inspect the label on the running container:**
 
+The example unit does not set `ContainerName=`, so Podman names the container `systemd-autoupdate-nginx`. It also sets `Notify=healthy` and a `HealthCmd` the nginx image can run. That is the rollback bridge, not a label by itself.
+
 ```bash
 podman inspect systemd-autoupdate-nginx --format='{{index .Config.Labels "io.containers.autoupdate"}}'  # should print: registry
 ```
@@ -232,31 +234,31 @@ systemctl --user daemon-reload                                                  
 
 ## Healthchecks and Auto-Rollback
 
-Auto-update's rollback feature only works if:
+`podman auto-update` rolls back when the **systemd start fails**. `--rollback` defaults to true. A `HealthCmd=` alone does not fail the start: with the default notify mode, systemd marks the service started when the container process starts, and a later healthcheck failure does not roll the image back.
 
-1. The container has a healthcheck (`HEALTHCHECK` instruction in `Containerfile`, or `HealthCmd=` in the Quadlet unit).
-2. The `podman auto-update` command is run with `--rollback` (or rollback is configured in the unit).
+The bridge is Quadlet `Notify=healthy`. The dry-run turns that into `--sdnotify=healthy`, so the unit stays `starting` until the healthcheck passes. If it never passes, the start fails and auto-update restores the previous image.
 
-**Adding a healthcheck in a Quadlet unit:**
+`HealthCmd` is passed to `/bin/sh -c`. Do not prefix `CMD-SHELL`. The official nginx image has no `curl`. It does have bash, and bash can open `/dev/tcp`.
 
 ```ini
 [Container]
 Image=docker.io/library/nginx:stable
 AutoUpdate=registry
-HealthCmd=CMD-SHELL curl -f http://localhost/ || exit 1
+HealthCmd=bash -c 'echo > /dev/tcp/127.0.0.1/80'
 HealthInterval=10s
 HealthTimeout=3s
 HealthRetries=3
 HealthStartPeriod=5s
+Notify=healthy
 ```
 
-**Running auto-update with rollback:**
+**Running auto-update with rollback** (already the default; the flag makes it explicit):
 
 ```bash
-podman auto-update --rollback  # update and rollback automatically if healthcheck fails
+podman auto-update --rollback
 ```
 
-If the new image starts but the healthcheck fails within the startup period, Podman reverts to the previous image and restarts the unit.
+If the new image's healthcheck never succeeds, the service start fails and Podman reverts to the previous image.
 
 **Check rollback events:**
 
@@ -270,51 +272,15 @@ journalctl --user -b -n 100 --no-pager | grep -i autoupdate  # look for auto-upd
 
 ## Automating Auto-Update with a systemd Timer
 
-Rather than a cron job, use a systemd user timer. Create two files:
-
-`~/.config/systemd/user/podman-auto-update.service`:
-
-```ini
-[Unit]
-Description=Podman auto-update containers
-Documentation=man:podman-auto-update(1)
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/podman auto-update --rollback
-```
-
-`~/.config/systemd/user/podman-auto-update.timer`:
-
-```ini
-[Unit]
-Description=Podman auto-update timer
-
-[Timer]
-# Run at 3:00 AM daily:
-OnCalendar=*-*-* 03:00:00
-RandomizedDelaySec=600
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable and start:
+Fedora and RHEL ship a user timer at `/usr/lib/systemd/user/podman-auto-update.timer` and a matching service. The packaged service runs `podman auto-update` (rollback already defaults on). Enable that timer. Do not write `~/.config/systemd/user/podman-auto-update.service`: a file with the same name masks the packaged unit.
 
 ```bash
-mkdir -p ~/.config/systemd/user                              # ensure directory exists
-# (write the files above)
-systemctl --user daemon-reload                               # pick up new units
-systemctl --user enable --now podman-auto-update.timer       # enable timer to start at boot
-systemctl --user list-timers podman-auto-update.timer        # verify timer is scheduled
+systemctl --user list-unit-files 'podman-auto-update.*'
+systemctl --user enable --now podman-auto-update.timer
+systemctl --user list-timers podman-auto-update.timer
 ```
 
-Note: on some distributions (Fedora, RHEL), Podman ships a pre-built `podman-auto-update.timer` you can simply enable. Check first:
-
-```bash
-systemctl --user list-unit-files | grep podman-auto-update  # check if pre-built timer exists
-```
+Rollback still depends on `Notify=healthy` on each container unit you want rolled back. The timer does not add that for you.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -331,7 +297,7 @@ Minimum rollback plan:
 
 ```mermaid
 flowchart TD
-    A["Auto-update triggers"] --> B{"Healthcheck passes?"}
+    A["Auto-update triggers"] --> B{"systemd start reaches ready?<br/>Notify=healthy"}
     B -->|"Yes"| C["Update complete<br/>Record new digest as known-good"]
     B -->|"No"| D["Rollback: set Image= to old digest"]
     D --> E["systemctl --user daemon-reload"]
@@ -346,12 +312,14 @@ If you rely on tags (mutable), your rollback procedure needs to:
 - Or maintain a local image cache/registry with the previous version.
 
 ```bash
-# Record the current digest BEFORE auto-update runs:
-PREV=$(podman inspect --format='{{.Image}}' systemd-myapp)
-echo "Rollback image: $PREV"   # save this somewhere
+# Record the registry digest BEFORE auto-update runs.
+# podman inspect on the container returns an image ID, not this digest.
+PREV=$(podman image inspect docker.io/library/nginx:stable --format '{{.Digest}}')
+echo "Rollback digest: $PREV"
 
 # To rollback manually:
-# Edit unit: Image=docker.io/library/nginx@sha256:<PREV_DIGEST>
+# Edit unit: Image=docker.io/library/nginx@${PREV}
+# PREV already starts with sha256:. Do not add a second prefix.
 # Then:
 systemctl --user daemon-reload && systemctl --user restart myapp.service
 ```
@@ -362,7 +330,7 @@ systemctl --user daemon-reload && systemctl --user restart myapp.service
 ## Safe Rollout Rules
 
 1. **Prefer digest-pinned images for production** unless you explicitly accept the risk of tag-based updates.
-2. **Always have healthchecks** before enabling auto-update. Without them, a broken image will restart successfully and you won't know until users report errors.
+2. **Set `Notify=healthy` and a `HealthCmd` the image can run** before enabling auto-update. A healthcheck that runs after systemd already marked the unit started does not roll the image back.
 3. **Test in staging first**: auto-update staging, verify, then allow production.
 4. **Alert on restart loops**: a container restarting 5 times in 2 minutes is a signal.
 5. **Coordinate with DB migrations**: if your update includes a DB schema migration, auto-update is not the right tool — use a controlled deploy.
@@ -399,8 +367,9 @@ podman volume prune -f  # remove volumes not used by any container
 **Prune everything unused at once:**
 
 ```bash
-podman system prune -f  # remove stopped containers, unused images, unused networks
-podman system prune -a -f  # also removes unused volumes (destructive!)
+podman system prune -f  # stopped containers, unused networks, dangling images; volumes stay
+podman system prune -a -f  # also unused images; volumes stay
+podman system prune --volumes -f  # also unused volumes (destructive)
 ```
 
 **Check disk usage:**

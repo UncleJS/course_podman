@@ -9,6 +9,7 @@
 
 - [Reading Order](#reading-order)
 - [Quick References](#quick-references)
+- [Glossary and exams](#glossary-and-exams)
 
 ## Reading Order
 
@@ -44,6 +45,13 @@ Cheatsheets to keep open while doing the labs:
 - `cheatsheets/quadlet.md` — Quadlet unit keys and systemd workflow
 - `cheatsheets/security.md` — hardening flags and SELinux labels
 - `cheatsheets/troubleshooting.md` — symptom → diagnosis → fix
+
+[↑ Go to TOC](#table-of-contents)
+
+## Glossary and exams
+
+- `GLOSSARY.md` — terms (pasta, Quadlet, seccomp, AutoUpdate, and the rest)
+- `ASSESSMENTS.md` — Exam A after Module 10, Exam B after Module 80. Checkpoints in each module stay ungraded.
 
 [↑ Go to TOC](#table-of-contents)
 

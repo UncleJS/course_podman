@@ -35,3 +35,5 @@ This repository is a self-paced Podman training course (Markdown modules + gener
 - A new module must be added to `MODULES.md` (PDF build input), `COURSE_OUTLINE.md`, and the `SLIDES` list in `scripts/build_slides.py`.
 - Target platform is RHEL 10 with rootless Podman + systemd/Quadlet; keep commands and paths consistent with that.
 - Timestamps/dates in content use `yyyy-MM-dd`.
+
+© 2026 UncleJS — Licensed under CC BY-NC-SA 4.0

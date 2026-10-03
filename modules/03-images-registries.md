@@ -115,7 +115,7 @@ nginx:stable        # short name — Podman must guess the registry
 alpine              # even shorter — registry AND tag are guessed
 ```
 
-**Why it matters**: short-name resolution depends on `/etc/containers/registries.conf`. On different systems, `alpine` might resolve to `docker.io/library/alpine` or `registry.access.redhat.com/ubi9-minimal` depending on search order. This makes automation unpredictable.
+**Why it matters**: short-name resolution depends on `/etc/containers/registries.conf` and the alias files under `registries.conf.d/`. Search registries look up the **same** short name; they do not rename `alpine` to a UBI repository. On Fedora and RHEL, `short-name-mode` is often `enforcing`, and `alpine` is already aliased to `docker.io/library/alpine`, so that name never walks the search list. A name that is **not** in the alias file is what triggers the prompt.
 
 Short names in labs are fine for exploration. Short names in scripts, Containerfiles, and Quadlet units should be replaced with fully qualified names.
 
@@ -135,15 +135,18 @@ cat /etc/containers/registries.conf  # show registry search order and aliases
 **Common settings:**
 
 ```toml
-# Ordered list of registries to search for short names:
-unqualified-search-registries = ["docker.io", "registry.access.redhat.com"]
+# /etc/containers/registries.conf — search list (Fedora/RHEL put Fedora and Red Hat before docker.io)
+unqualified-search-registries = ["registry.fedoraproject.org", "registry.access.redhat.com", "docker.io"]
 
-# Alias: "fedora" → fully qualified name:
-[[registry.aliases]]
+# /etc/containers/registries.conf.d/000-shortnames.conf — aliases win before the search list
+[aliases]
+"alpine" = "docker.io/library/alpine"
 "fedora" = "registry.fedoraproject.org/fedora"
 ```
 
-On RHEL systems, the `registries.conf` is often configured to prompt for registry selection interactively when a short name is used. This is intentional — it prevents silently pulling from the wrong registry.
+`[[registry.aliases]]` is not valid `registries.conf` syntax. The table is `[aliases]`. `[[registry]]` and `[[registry.mirror]]` are the array tables that do exist.
+
+On RHEL and Fedora, `short-name-mode = "enforcing"` prompts when a short name has no alias. That prompt is intentional — it prevents silently pulling from the wrong registry. Aliases are checked first, so stock `alpine` does not prompt.
 
 In automation (scripts, CIs, Containerfiles), always use fully qualified names to avoid this prompt.
 
@@ -163,23 +166,23 @@ podman images | grep alpine                  # confirm image is stored locally
 
 ```bash
 podman images --digests | grep alpine                                           # show digest column
-podman inspect docker.io/library/alpine:latest --format '{{.Digest}}'          # print digest only
+DIGEST=$(podman image inspect docker.io/library/alpine:latest --format '{{.Digest}}')  # includes the sha256: prefix
+echo "$DIGEST"  # looks like sha256:abc123...
 ```
-
-Record the digest — it looks like `sha256:abc123...`
 
 **Step 3: Pull the exact same image by digest:**
 
+Paste the entire `{{.Digest}}` value after `@`. Do not add a second `sha256:` prefix — `alpine@sha256:sha256:...` fails.
+
 ```bash
-# Replace <digest> with your actual digest from step 2:
-podman pull docker.io/library/alpine@sha256:<digest>  # pull by immutable digest
-podman images --digests | grep alpine                  # now you see both entries (same layers, different ref)
+podman pull "docker.io/library/alpine@${DIGEST}"  # pull by immutable digest
+podman images --digests | grep alpine              # same layers, tag ref and digest ref
 ```
 
 **Step 4: Run by digest:**
 
 ```bash
-podman run --rm docker.io/library/alpine@sha256:<digest> uname -a  # run pinned image
+podman run --rm "docker.io/library/alpine@${DIGEST}" uname -a  # run pinned image
 ```
 
 **Step 5: Verify layer sharing:**
@@ -200,7 +203,7 @@ podman login docker.io         # prompts for username and password interactively
 podman login registry.example.com  # login to a private registry
 ```
 
-Credentials are stored in: `${XDG_RUNTIME_DIR}/containers/auth.json`
+By default, credentials are stored in `${XDG_RUNTIME_DIR}/containers/auth.json`. That directory is under `/run` and **does not survive reboot**. To keep a login, use `--authfile "$HOME/.config/containers/auth.json"`.
 
 **Logout:**
 
@@ -378,7 +381,7 @@ podman images | grep nginx                                 # confirm restored
 
 Note:
 - `save/load` are file-based transport, not a registry.
-- The digest of a saved/loaded image is preserved — it is still content-addressed.
+- The default format is `docker-archive`. After `load`, the image ID is still there. `podman images --digests` commonly shows `<none>` for the registry digest (`RepoDigest`). Content identity survived; the registry reference did not.
 - Multiple images can be saved in one tar: `podman save -o multi.tar image1 image2`.
 
 

@@ -3,9 +3,17 @@ Description=Nginx with registry auto-update (course)
 
 [Container]
 Image=docker.io/library/nginx:stable
-ContainerName=autoupdate-nginx
 PublishPort=8083:80
 AutoUpdate=registry
+# Official nginx has no curl. bash /dev/tcp is in that image.
+# HealthCmd is passed to sh -c; do not prefix CMD-SHELL.
+HealthCmd=bash -c 'echo > /dev/tcp/127.0.0.1/80'
+HealthInterval=10s
+HealthTimeout=3s
+HealthRetries=3
+HealthStartPeriod=5s
+# Stay in "starting" until the healthcheck passes, so auto-update can roll back.
+Notify=healthy
 
 [Service]
 Restart=always

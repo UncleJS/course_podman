@@ -56,13 +56,13 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 7: 45-60 min
 - Module 8: 2-3 hours
 - Module 9: 60-90 min
-- Module 10: 45-75 min
+- Module 10: 45-75 min, then Practical Exam A (`ASSESSMENTS.md`)
 - Module 11: 2-3 hours
 - Module 11a: 45-75 min
 - Module 12: 60-120 min
 - Module 13: 60-120 min
 - Module 14: 45-75 min
-- Module 80 (Capstone): 3-6 hours
+- Module 80 (Capstone): 3-6 hours, then Practical Exam B (`ASSESSMENTS.md`)
 - Module 90 (Survey): 45-90 min
 
 [↑ Go to TOC](#table-of-contents)

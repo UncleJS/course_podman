@@ -98,9 +98,7 @@ rpm -q crun 2>/dev/null || true         # OCI runtime version
 uname -r                                # kernel version
 ```
 
-Minimum versions for this course:
-- Podman ≥ 4.4 (for Quadlet support)
-- cgroups v2 (kernel ≥ 5.2, all RHEL 9/10, Fedora 31+)
+This course assumes **Podman 5** on RHEL 10 or current Fedora, with cgroups v2 (kernel ≥ 5.2). Podman 4.4 introduced Quadlet, but a 4.4 host still defaults rootless networking to slirp4netns. Podman 5 defaults to pasta. The version table later in this module is feature history, not the course baseline.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -154,13 +152,26 @@ If those are missing, create them (coordinate the range with your admin policy):
 sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"  # grant subuid/subgid range
 ```
 
-**Log out and back in** after updating subuids/subgids — the kernel only reads these at session start.
+**Log out and back in** after updating subuids/subgids so the systemd user session picks up the new ranges. `newuidmap` reads `/etc/subuid` when a user namespace is created. If Podman storage was already initialized before those entries existed, also run:
+
+```bash
+podman system migrate  # rebuild storage mappings after a late subuid change
+```
 
 Verify the mapping is active:
 
 ```bash
 podman unshare cat /proc/self/uid_map  # show UID mapping inside user namespace
 ```
+
+A typical rootless map looks like this (your UID and subuid start will differ):
+
+```
+         0       1000          1
+         1     100000      65536
+```
+
+Line 1: container UID 0 is your own UID. Line 2: container UID 1 and up come from `/etc/subuid`. Compare this to the diagram in the next section.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -172,21 +183,26 @@ When you run `podman run` as a non-root user:
 ```mermaid
 graph LR
     subgraph "Inside container"
-        C1["root (uid 0)"]
+        C0["root (uid 0)"]
+        C1["uid 1"]
         C2["app user (uid 1001)"]
     end
     subgraph "Host kernel view"
-        H1["uid 100000 (your subuid start)"]
-        H2["uid 101001"]
+        H0["your UID (e.g. 1000)"]
+        H1["subuid start (e.g. 100000)"]
+        H2["subuid start + 1000 (e.g. 101000)"]
     end
+    C0 -->|"mapped to"| H0
     C1 -->|"mapped to"| H1
     C2 -->|"mapped to"| H2
 ```
 
-The container's `root (uid 0)` is mapped to your first subuid (e.g., 100000) on the host. This means:
+The container's `root (uid 0)` is mapped to **your** UID, not to the first subuid. Container UID 1 maps to the start of `/etc/subuid` (100000 in the example). Container UID 1001 maps to `subuid_start + 1000` (101000), because container UID 0 used the single slot for your own UID. This means:
+
 - The container process has "root" privileges inside its namespace.
-- On the host, it runs as an unprivileged user (uid 100000).
-- Even if the container escapes, the attacker has only uid 100000 — not real root.
+- On the host, that process runs as your unprivileged UID.
+- Processes that are not UID 0 inside the container run as subordinate UIDs from `/etc/subuid`.
+- Even if the container escapes, the attacker is still an unprivileged host user — not real root.
 
 This is why `/etc/subuid` and `/etc/subgid` are security-critical configuration, not just administrative overhead.
 
@@ -220,8 +236,10 @@ getenforce  # print SELinux mode: Enforcing, Permissive, or Disabled
 If you see `permission denied` errors that seem wrong, check for SELinux denials:
 
 ```bash
-ausearch -m avc -ts recent 2>/dev/null || journalctl -b -t kernel -g denied  # check SELinux denials
+sudo ausearch -m avc -ts recent 2>/dev/null || sudo journalctl -b -t audit -g denied  # audit log is not readable rootless
 ```
+
+An empty result means no recent AVC denials (or the audit daemon is not recording them). A rootless user cannot read the audit log, so `ausearch` without `sudo` fails even when denials exist.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -269,7 +287,13 @@ Understanding the directory layout helps you debug storage problems and know wha
 | Quadlet unit files | `~/.config/containers/systemd/` |
 | Podman secrets store | `~/.local/share/containers/storage/secrets/` |
 | Podman config | `~/.config/containers/` |
-| Registry auth cache | `${XDG_RUNTIME_DIR}/containers/auth.json` |
+| Registry auth (default) | `${XDG_RUNTIME_DIR}/containers/auth.json` |
+
+The default auth file lives under `/run` and **does not survive reboot**. For a login that should persist, pass an explicit file:
+
+```bash
+podman login --authfile "$HOME/.config/containers/auth.json" docker.io  # persist credentials across reboot
+```
 
 **Logs:**
 
@@ -356,7 +380,7 @@ This is a one-time setup per user on each machine.
 
 ## Version Matrix and Compatibility Notes
 
-Different RHEL/Fedora versions ship different Podman versions. Key feature availability:
+Different RHEL/Fedora versions shipped these features at different Podman releases. This table is **history**. This course assumes Podman 5, where all of them are present and rootless networking defaults to pasta:
 
 | Feature | Minimum Podman version |
 |---|---|
@@ -385,8 +409,10 @@ If a lab step fails unexpectedly, check whether your version supports the featur
 - `podman run --rm docker.io/library/alpine:latest uname -a` works rootless.
 - `podman info --format '{{.Host.CgroupsVersion}}'` prints `v2`.
 - `/etc/subuid` and `/etc/subgid` have entries for your user.
+- `podman unshare cat /proc/self/uid_map` shows container UID 0 mapped to your UID.
 - `getenforce` prints `Enforcing` or `Permissive` (not Disabled).
 - You know where container images are stored (`~/.local/share/containers/storage/`).
+- `loginctl show-user "$USER"` shows `Linger=yes` if this machine should start Quadlet services at boot.
 
 
 [↑ Go to TOC](#table-of-contents)

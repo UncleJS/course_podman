@@ -74,12 +74,12 @@ Secret=db_password
 
 ```mermaid
 flowchart TD
-    A["Admin creates secret<br/>printf '%s' value | podman secret create db_password -"] --> B["Secret stored in<br/>~/.local/share/containers/storage/secrets/"]
+    A["Admin creates secret<br/>read -rs, then printf '%s' of the variable"] --> B["Secret stored in<br/>~/.local/share/containers/storage/secrets/"]
     B --> C["Quadlet unit references<br/>Secret=db_password"]
     C --> D["systemctl --user daemon-reload<br/>systemctl --user start myapp.service"]
     D --> E["Podman mounts secret<br/>as /run/secrets/db_password (tmpfs)"]
-    E --> F["App reads file<br/>DB_PASSWORD=$(cat /run/secrets/db_password)"]
-    F --> G["Secret in process memory only<br/>Not in env, not in inspect, not in logs"]
+    E --> F["App reads the file<br/>into process memory"]
+    F --> G["Not in the unit, not in inspect,<br/>not in logs"]
 ```
 
 Guidelines:
@@ -146,9 +146,16 @@ loginctl show-user "$USER" | grep Linger  # verify Linger=yes
 **Step 2: Create the secret** (example only — do not use this value):
 
 ```bash
-printf '%s' 'example-password' | podman secret create db_password -  # create secret from stdin, no trailing newline
+umask 077
+read -rs PASSWORD  # type example-password; the literal is not in shell history
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 podman secret ls  # confirm secret exists
 ```
+
+`printf '%s'` avoids the trailing newline that `echo` adds. Typing the password as an argument still records it in shell history. `read -rs` does not.
 
 **Step 3: Write the Quadlet unit:**
 
@@ -242,16 +249,19 @@ dbPassword := strings.TrimSpace(string(data))
 ```
 
 ```bash
-# Shell
+# Shell — this exports the value into that process's environment.
+# Prefer the app reading the file itself. Use this only as a last resort.
 DB_PASSWORD=$(cat /run/secrets/db_password)
 ```
 
-```java
-// Spring Boot — application.properties
-spring.datasource.password=#{T(java.nio.file.Files).readString(T(java.nio.file.Path).of("/run/secrets/db_password")).trim()}
+```properties
+# Spring Boot — application.properties
+spring.config.import=configtree:/run/secrets/
 ```
 
-**Important**: trim the value. Depending on how the secret was created, there may or may not be a trailing newline. Always use `printf '%s' value | ...` when creating secrets to avoid trailing newlines.
+`#{T(java.nio.file.Files)...}` is not evaluated in `application.properties`.
+
+**Important**: trim the value. `echo 'value' | podman secret create` adds a newline. `printf '%s' "$VALUE"` does not. Do not put the literal value on the `printf` command line.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -283,7 +293,12 @@ sequenceDiagram
 **Step 1: Create the new secret version:**
 
 ```bash
-printf '%s' 'new-value' | podman secret create db_password_v2 -  # create version 2
+umask 077
+read -rs PASSWORD  # type the new value
+printf '%s' "$PASSWORD" > ./db_password_v2.txt
+unset PASSWORD
+podman secret create db_password_v2 ./db_password_v2.txt
+rm -f ./db_password_v2.txt
 ```
 
 **Step 2: Update the Quadlet file** — change `Secret=db_password_v1` to `Secret=db_password_v2`.
@@ -338,7 +353,7 @@ Secret=db_password,target=/etc/myapp/db.pass,mode=0400,uid=1001
 Secret=api_key,target=/etc/myapp/api.key,mode=0400,uid=1001
 ```
 
-Rotate each independently — you do not need to restart for unrelated secret changes.
+You can change one `Secret=` name without touching the others. A new name or a new value is visible only after that container restarts. The mount is created when the container starts.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -350,10 +365,11 @@ systemd 250+ supports **credentials** — a way to pass secret material to a ser
 ```ini
 [Service]
 LoadCredential=db_password:/etc/myapp/secrets/db_password
-# Secret available inside the service at $CREDENTIALS_DIRECTORY/db_password
+# Lands in the systemd service environment: $CREDENTIALS_DIRECTORY/db_password
+# That directory is on the host side of the Podman service, not inside the container.
 ```
 
-For containers specifically, you can combine systemd credentials with a bind mount (with caution — always ask before using bind mounts) or use it to pre-populate the Podman secrets store via an `ExecStartPre=` script.
+`LoadCredential=` does not mount the file into the container. To get it there, bind-mount that path (with `:Z` on enforcing SELinux) or copy it into a Podman secret from an `ExecStartPre=` script before the container starts. The container still reads a file.
 
 The systemd credentials approach is more appropriate for:
 - Secrets provisioned by configuration management (Ansible, Puppet).

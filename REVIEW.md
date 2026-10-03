@@ -1,31 +1,32 @@
-# Project Review — 2026-06-07
+# Project Review — 2026-10-03
 
-A full review of the course: structure and consistency, technical accuracy of all 18 modules and examples, and build tooling. Overall verdict: **technically sound and current**. The findings below were identified; all have been resolved in this revision unless marked otherwise.
+A pass over every module, example, cheatsheet, exam, and the slide source, checked against Podman 5.8.7 and `podman-systemd.unit(5)` on this host. The teaching sequences that were already right were left in place. The defects below were fixed in this revision.
 
 ## Findings
 
 | # | Severity | Area | Finding | Status |
 |---|----------|------|---------|--------|
-| 1 | High | `AGENTS.md` | Contained generic AI-tooling routing config unrelated to the course | Resolved — replaced with course-specific agent instructions |
-| 2 | High | Module numbering | `modules/11-quadlet-secrets.md` shared prefix `11` with `11-quadlet.md`, while `COURSE_OUTLINE.md` called it "11a" | Resolved — renamed to `modules/11a-quadlet-secrets.md`, heading and references updated |
-| 3 | Medium | `dist/` | Combined MD (2026-03-02) and PDF (2026-02-25) were stale vs the 2026-03-26 module rewrite; the rebuild also surfaced a latent break: post-rewrite Unicode (≥, ↑, ✅ …) made the pdflatex build fail | Resolved — assembly step now transliterates LaTeX-unfriendly symbols; both artifacts rebuilt |
-| 4 | Medium | Slides | No dedicated deck for the Quadlet-secrets add-on (one slide buried in `11-quadlet.odp`) | Resolved — six-slide `11a-quadlet-secrets.odp` deck added to `build_slides.py` |
-| 5 | Medium | Build tooling | `build-course-pdf.sh` bind-mounted the repo into the pandoc container and ran host python3; `build_slides.py` required an undeclared host `odfpy` install | Resolved — both builds now stage the repo into a Podman named volume and run python fully containerized (`scripts/build-slides.sh` added); no bind mounts, nothing installed on the host |
-| 6 | Medium | Cheatsheets | Five cheatsheets existed but were orphaned — not linked from README/MODULES learning path | Resolved — listed with descriptions in `README.md` and a Quick References section in `MODULES.md` |
-| 7 | Low | Module numbering | Gaps 14 → 80 → 90 unexplained | Resolved — numbering scheme documented in `README.md` and `MODULES.md` |
-| 8 | Low | Examples | `examples/quadlet/webpod.yaml` publishes host port 8084 vs 8080 in `examples/kube/webpod.yaml`, with no explanation | Resolved — intent (side-by-side labs without port conflict) documented in the YAML and in Module 10 |
-| 9 | Low | Module titles | Modules 80/90 titles lack the "Module N:" prefix used by 00–14 | Accepted — "Capstone:" / "External Secrets Survey:" titles communicate their role better than numbers |
-| 10 | Low | Build tooling | `build_slides.py` crashed with a bare traceback when `odfpy` was missing | Resolved — actionable error message pointing at the containerized wrapper |
+| 1 | High | Modules 00, 01, 12 | Container UID 0 was drawn as the first subuid. It maps to the logged-in UID; subordinate UIDs start at container UID 1 | Resolved |
+| 2 | High | Modules 11, 12 | `CapDrop=` / `CapAdd=` are rejected by the Quadlet generator. The keys are `DropCapability=` and `AddCapability=` | Resolved |
+| 3 | High | Module 11 | `Restart=unless-stopped` is not a systemd value and the unit fails to load | Resolved |
+| 4 | High | Module 06 | `{{.Host.NetworkBackend}}` reports netavark or cni. Pasta vs slirp4netns is `{{.Host.RootlessNetworkCmd}}`, and Podman 5 defaults to pasta | Resolved |
+| 5 | High | Capstone units | `capnet` was not internal, Adminer was published on all interfaces, and the backup filename used `${ts}`, which systemd expands to empty | Resolved |
+| 6 | High | Module 14 | Rollback was described as a late healthcheck. It follows a failed systemd start, which needs `Notify=healthy` | Resolved |
+| 7 | Medium | Modules 02, 03, 04, 05, 08, 10, 13, 90 | Labs and commands that do not do what the text claimed (missing `podman debug`, invalid `registries.conf`, SELinux type, play kube kinds, SOPS recipe, and others) | Resolved |
+| 8 | Medium | Modules 06, 08, 13 | Numbered headings used two spaces, so TOC anchors did not match the heading slug | Resolved |
+| 9 | Medium | Assessments, cheatsheets, glossary | Exams had no point scale. Security and troubleshooting sheets did not match their README descriptions. Glossary still called pasta optional | Resolved |
+| 10 | Low | Slides | A handful of bullets disagreed with the labs (lab path, backend field, 11a service name, capstone backup) | Resolved in `scripts/build_slides.py`; decks regenerated with this revision |
 
-## Verified clean (no action needed)
+## Verified in this pass
 
-- **Licensing** — every Markdown file (including `dist/`) consistently carries CC BY-NC-SA 4.0 badges and footers; no leftover BY-SA wording.
-- **TOC navigation** — all 18 modules implement the `<a id="table-of-contents">` anchor and `↑ Go to TOC` links; anchors match headings.
-- **Mermaid** — 64 diagram blocks scanned; labels quoted, `<br/>` used correctly, no literal `\n`, no render-breaking syntax.
-- **Technical accuracy** — Quadlet section names and keys, `AutoUpdate=registry` semantics, secret handling (tmpfs file mounts, no env vars), `CapDrop`/`CapAdd`, SELinux `:Z`/`:z`, cgroups-v2 requirements, and pasta/slirp4netns guidance are all correct and current.
-- **Examples** — Containerfiles (multi-stage Go/Bun), Quadlet units, kube YAML, and systemd units are syntactically sound; every example referenced from a module exists, no orphans.
-- **Repo hygiene** — no committed secrets/env files; `.gitignore` covers credential patterns; no oversized binaries (largest artifact ~700 KB).
-- **Targeting** — RHEL 10 + rootless Podman messaging is consistent across all modules and badges.
+- Quadlet `--dryrun` on this host: `capnet` is created with `--internal`, Adminer publishes `127.0.0.1:8082:8080`, auto-update uses `--sdnotify=healthy`, and the backup `ExecStart` keeps `$$` and `%%` so systemd expands them when the job starts. No `CapDrop=` and no empty `all-.sql`.
+- `podman info` on this host reports `NetworkBackend=netavark` and `RootlessNetworkCmd=pasta`. Learner docs point at `RootlessNetworkCmd`.
+- Modules 06, 08, and 13 use a single space in numbered headings so the GitHub-style TOC fragments match.
+- `dist/course_podman.md` and `dist/course_podman.pdf` were regenerated on 2026-10-03. The PDF still prints hyperref warnings for identifiers that start with a digit and for em dashes. Those links work in the Markdown sources.
+
+## Left as written
+
+Module 9 and `examples/stack/stack.sh`, the tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten.
 
 ---
 

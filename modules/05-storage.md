@@ -148,6 +148,8 @@ podman run --rm -v ./mnt-demo:/mnt:Z,ro \
 | `:z` | Relabel for shared use (multiple containers) | Multiple containers sharing the same path |
 | (none) | No relabelling | Volume mounts (handled automatically) |
 
+`:Z` and `:z` relabel the host directory and everything under it. Never use them on `$HOME`, `/`, or a path other confined services need. `podman-run(1)` warns that relabeling system content can break those services.
+
 **When NOT to use bind mounts:**
 
 - Long-running services in production (use volumes instead).
@@ -245,10 +247,11 @@ flowchart TD
 podman run --rm docker.io/library/alpine:latest id  # show UID inside container
 ```
 
-**Check what that UID maps to on the host:**
+**See the container-side identity, then the host mapping:**
 
 ```bash
-podman unshare id  # show UID as the user namespace sees it on the host
+podman unshare id  # prints uid=0(root) — the container-side view, not your host UID
+podman unshare cat /proc/self/uid_map  # host mapping: container UID 0 is your UID
 ```
 
 
@@ -286,7 +289,7 @@ Warning: `chown -R` on a large directory takes time. And the numbers `1000:1000`
 
 ## SELinux Drill (Fedora/RHEL)
 
-SELinux enforces label-based access control independent of Unix permissions. A container process has label `container_t` and can only access files labelled `container_file_t` or `svirt_sandbox_file_t`.
+SELinux enforces label-based access control independent of Unix permissions. A container process has label `container_t`. Podman labels content it is allowed to read as `container_file_t` (the current default). The older type `svirt_sandbox_file_t` is also allowed by policy. A private `:Z` label is `container_file_t` plus an MCS category pair such as `s0:c123,c456`.
 
 Named volumes are automatically labelled correctly. Bind mounts are not — you must tell Podman to relabel them.
 
@@ -295,8 +298,9 @@ Named volumes are automatically labelled correctly. Bind mounts are not — you 
 ```bash
 mkdir -p ./selinux-test
 echo "test" > ./selinux-test/data.txt
+getenforce  # Enforcing: the next command is denied. Permissive or Disabled: it succeeds.
 podman run --rm -v ./selinux-test:/mnt \
-  docker.io/library/alpine:latest cat /mnt/data.txt  # may get permission denied
+  docker.io/library/alpine:latest cat /mnt/data.txt
 ```
 
 **Step 2: Fix it with `:Z`:**
@@ -312,12 +316,12 @@ podman run --rm -v ./selinux-test:/mnt:Z \
 ls -laZ ./selinux-test/  # show SELinux context (requires `ls` with -Z flag)
 ```
 
-The label should now be `svirt_sandbox_file_t` — the type that containers are allowed to access.
+The type should now be `container_file_t`, with an MCS category pair (`s0:c…,c…`). That category is what makes `:Z` private to this container. If you still see `svirt_sandbox_file_t`, the policy allows it, but current Podman writes `container_file_t`.
 
 **Step 4: Check for SELinux denial messages:**
 
 ```bash
-ausearch -m avc -ts recent 2>/dev/null | head -20  # show recent SELinux denials
+sudo ausearch -m avc -ts recent 2>/dev/null | head -20  # audit log needs root
 ```
 
 **Cleanup:**
@@ -341,8 +345,15 @@ podman volume create mariadb-lab  # create persistent volume
 
 **Step 2: Start MariaDB with the volume:**
 
+`mariadb:11` is a moving tag. For a lab that is fine. After Module 3, production units pin the digest.
+
 ```bash
-printf '%s' 'labpass123' | podman secret create lab_db_pass -  # create secret for password
+umask 077
+read -rs PASSWORD  # type labpass123 for this lab
+printf '%s' "$PASSWORD" > ./lab_db_pass.txt
+unset PASSWORD
+podman secret create lab_db_pass ./lab_db_pass.txt
+rm -f ./lab_db_pass.txt
 podman run -d \
   --name mariadb-lab \
   -v mariadb-lab:/var/lib/mysql \
@@ -361,9 +372,10 @@ Press Ctrl+C when ready.
 
 **Step 4: Create a test record:**
 
+The server reads the password from the secret file. Do not pass `-p"labpass123"`: that lands in shell history and in the process list. Build a client defaults file inside the container from the mounted secret:
+
 ```bash
-podman exec mariadb-lab mariadb -uroot -p"labpass123" \
-  -e "CREATE DATABASE lab; USE lab; CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50)); INSERT INTO test VALUES (1, 'persistent');"  # create DB and insert data
+podman exec mariadb-lab sh -lc 'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/lab_db_pass)" > /tmp/client.cnf; mariadb --defaults-extra-file=/tmp/client.cnf -e "CREATE DATABASE lab; USE lab; CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50)); INSERT INTO test VALUES (1, '\''persistent'\'');"'
 ```
 
 **Step 5: Remove the container:**
@@ -388,8 +400,7 @@ podman logs -f mariadb-lab2  # wait for ready
 **Step 7: Verify the data is still there:**
 
 ```bash
-podman exec mariadb-lab2 mariadb -uroot -p"labpass123" \
-  -e "SELECT * FROM lab.test;"  # should return: 1 | persistent
+podman exec mariadb-lab2 sh -lc 'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/lab_db_pass)" > /tmp/client.cnf; mariadb --defaults-extra-file=/tmp/client.cnf -e "SELECT * FROM lab.test;"'  # expected: 1 | persistent
 ```
 
 **Cleanup:**
@@ -407,25 +418,36 @@ podman secret rm lab_db_pass
 
 Named volumes can be backed up by running a helper container that reads from the volume and writes a tar file.
 
+The previous lab's cleanup already removed `mariadb-lab`. This pattern uses its own volume so you can run it immediately after that lab.
+
 **Backup:**
 
 ```bash
+podman volume create backup-demo
+mkdir -p ./backups
+STAMP=$(date +%Y%m%d)
 podman run --rm \
-  -v mariadb-lab:/data:ro \
-  -v ./backups:/backup \
+  -v backup-demo:/data \
   docker.io/library/alpine:latest \
-  tar czf /backup/mariadb-lab-$(date +%Y%m%d).tar.gz -C /data .  # backup volume to tar
+  sh -lc 'echo course-backup > /data/marker.txt'
+podman run --rm \
+  -v backup-demo:/data:ro \
+  -v ./backups:/backup:Z \
+  docker.io/library/alpine:latest \
+  tar czf /backup/backup-demo-${STAMP}.tar.gz -C /data .  # :Z so enforcing SELinux allows the write
 ```
 
-**Restore** (to a fresh volume):
+**Restore** (to a fresh volume), using the same date stamp:
 
 ```bash
-podman volume create mariadb-lab-restore  # create destination volume
+podman volume create backup-demo-restore
 podman run --rm \
-  -v mariadb-lab-restore:/data \
-  -v ./backups:/backup:ro \
+  -v backup-demo-restore:/data \
+  -v ./backups:/backup:Z,ro \
   docker.io/library/alpine:latest \
-  tar xzf /backup/mariadb-lab-20260326.tar.gz -C /data  # restore from tar
+  tar xzf /backup/backup-demo-${STAMP}.tar.gz -C /data
+podman run --rm -v backup-demo-restore:/data:ro docker.io/library/alpine:latest cat /data/marker.txt  # expected: course-backup
+podman volume rm backup-demo backup-demo-restore
 ```
 
 This is a **logical backup** at the filesystem level. For database-consistent backups, prefer `mysqldump` / `mariadb-dump` over raw volume backups — they handle transactions correctly.

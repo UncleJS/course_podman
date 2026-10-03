@@ -59,7 +59,7 @@ By the end of this module you will be able to:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 1  The Debug Loop (Mental Model)
+## 1 The Debug Loop (Mental Model)
 
 Before reaching for a restart, follow this loop exactly once:
 
@@ -78,7 +78,7 @@ flowchart TD
 
 The goal is always to **understand before acting**. Random restarts hide real problems.
 
-### 1.1  The Four Steps
+### 1.1 The Four Steps
 
 **Step 1 — State check:**
 
@@ -119,9 +119,9 @@ podman run --rm -it --entrypoint sh <image>  # bypass the app entrypoint
 
 [↑ Go to TOC](#table-of-contents)
 
-## 2  Container State and Lifecycle Commands
+## 2 Container State and Lifecycle Commands
 
-### 2.1  Exit Codes Matter
+### 2.1 Exit Codes Matter
 
 | Exit code | Common meaning |
 |-----------|---------------|
@@ -138,7 +138,7 @@ podman inspect <name> --format '{{.State.ExitCode}}'  # get exit code
 podman inspect <name> --format '{{.State.Error}}'     # get runtime error string
 ```
 
-### 2.2  Container State Transitions
+### 2.2 Container State Transitions
 
 ```mermaid
 flowchart LR
@@ -153,7 +153,7 @@ flowchart LR
     F -->|"podman unpause"| C
 ```
 
-### 2.3  Useful State Commands
+### 2.3 Useful State Commands
 
 ```bash
 podman ps -a                                  # all containers with status
@@ -167,9 +167,9 @@ podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"  # custom table
 
 [↑ Go to TOC](#table-of-contents)
 
-## 3  Reading Logs
+## 3 Reading Logs
 
-### 3.1  Basic Log Commands
+### 3.1 Basic Log Commands
 
 ```bash
 podman logs <name>              # full output since container start
@@ -179,7 +179,7 @@ podman logs -f <name>           # follow live (Ctrl+C to stop)
 podman logs --timestamps <name> # include timestamps
 ```
 
-### 3.2  Multiple Containers (Quick Scan)
+### 3.2 Multiple Containers (Quick Scan)
 
 ```bash
 for name in app db proxy; do
@@ -187,7 +187,7 @@ for name in app db proxy; do
 done  # scan logs for multiple containers
 ```
 
-### 3.3  When the Container Is Gone
+### 3.3 When the Container Is Gone
 
 If the container was removed with `--rm`, its logs are gone. This is why ephemeral containers are not suitable for debugging production services.
 
@@ -197,7 +197,7 @@ For Quadlet/systemd services, logs survive in journald even after the container 
 journalctl --user -u cap-mariadb.service -n 200 --no-pager  # retrieve logs from journald
 ```
 
-### 3.4  Log Verbosity Tricks
+### 3.4 Log Verbosity Tricks
 
 Some images respect `DEBUG=1` or `LOG_LEVEL=debug`:
 
@@ -210,15 +210,15 @@ podman run --rm -e DEBUG=1 <image>  # enable debug logging if app supports it
 
 [↑ Go to TOC](#table-of-contents)
 
-## 4  Deep Inspection with `podman inspect`
+## 4 Deep Inspection with `podman inspect`
 
-### 4.1  Full Dump
+### 4.1 Full Dump
 
 ```bash
 podman inspect <name> | less  # full JSON
 ```
 
-### 4.2  Targeted Extractions
+### 4.2 Targeted Extractions
 
 ```bash
 # What ports are published?
@@ -243,7 +243,7 @@ podman inspect <name> --format '{{.State.ExitCode}} {{.State.Error}}'  # inspect
 podman inspect <name> --format '{{range .Config.Env}}{{println .}}{{end}}'  # inspect env
 ```
 
-### 4.3  Image Inspection
+### 4.3 Image Inspection
 
 ```bash
 podman image inspect <image>:<tag> | less  # full image metadata
@@ -256,19 +256,19 @@ podman image inspect <image>:<tag> --format '{{.Os}}/{{.Architecture}}'  # check
 
 [↑ Go to TOC](#table-of-contents)
 
-## 5  Interactive Debugging
+## 5 Interactive Debugging
 
-### 5.1  Exec Into a Running Container
+### 5.1 Exec Into a Running Container
 
 ```bash
 podman exec -it <name> sh          # open a shell
 podman exec -it <name> bash        # if bash is available
 podman exec -it <name> env         # print environment
-podman exec -it <name> ss -tlnp    # check listening ports
+podman exec <name> cat /proc/net/tcp  # ss is not in Alpine or official nginx
 podman exec -it <name> cat /etc/resolv.conf  # check DNS config
 ```
 
-### 5.2  Debug a Failing Container (Override Entrypoint)
+### 5.2 Debug a Failing Container (Override Entrypoint)
 
 ```bash
 podman run --rm -it --entrypoint sh <image>:<tag>  # bypass CMD/ENTRYPOINT
@@ -279,7 +279,7 @@ Now you have a shell inside the image and can:
 - check permissions
 - run the app command manually to see the real error
 
-### 5.3  Debug with a Sidecar on the Same Network
+### 5.3 Debug with a Sidecar on the Same Network
 
 ```bash
 podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # network debug sidecar
@@ -287,7 +287,7 @@ podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # n
 
 From here you can `getent hosts <name>`, `nc -zv <name> <port>`, etc.
 
-### 5.4  netshoot — When You Need More Tools
+### 5.4 netshoot — When You Need More Tools
 
 ```bash
 podman run --rm -it --network <net> docker.io/nicolaka/netshoot:latest  # network diagnostics image
@@ -300,7 +300,7 @@ podman run --rm -it --network <net> docker.io/nicolaka/netshoot:latest  # networ
 
 [↑ Go to TOC](#table-of-contents)
 
-## 6  Events and Timeline
+## 6 Events and Timeline
 
 `podman events` gives you a chronological record of Podman operations — starts, stops, network connects, volume mounts, errors.
 
@@ -324,9 +324,9 @@ podman events --filter container=<name> --filter event=die --since 24h  # find c
 
 [↑ Go to TOC](#table-of-contents)
 
-## 7  Resource Monitoring
+## 7 Resource Monitoring
 
-### 7.1  Live Stats
+### 7.1 Live Stats
 
 ```bash
 podman stats           # live CPU/mem/net/io for all running containers
@@ -334,27 +334,27 @@ podman stats <name>    # single container
 podman stats --no-stream <name>  # one snapshot, then exit
 ```
 
-### 7.2  Process Table
+### 7.2 Process Table
 
 ```bash
 podman top <name>           # show processes (like `ps aux` inside)
 podman top <name> pid,user,comm,args  # custom columns
 ```
 
-### 7.3  Disk Usage Summary
+### 7.3 Disk Usage Summary
 
 ```bash
 podman system df         # disk usage: images, containers, volumes
 podman system df -v      # verbose (per-item)
 ```
 
-### 7.4  OOM Kills
+### 7.4 OOM Kills
 
 If a container exits with code 137, it was OOM killed. Check:
 
 ```bash
 journalctl --user -u <service> --since "1 hour ago" | grep -i oom  # find OOM kills in journald
-podman events --filter event=oom                                    # OOM events
+podman inspect <name> --format '{{.State.ExitCode}}'                 # 137 means SIGKILL, often OOM
 ```
 
 Remedy: add `--memory` limit or fix a memory leak.
@@ -364,11 +364,11 @@ Remedy: add `--memory` limit or fix a memory leak.
 
 [↑ Go to TOC](#table-of-contents)
 
-## 8  Networking Troubleshooting
+## 8 Networking Troubleshooting
 
 This section summarizes the networking debug flows. See Module 6 (Section 13) for the full flowchart.
 
-### 8.1  Checklist: Container Cannot Reach Another by Name
+### 8.1 Checklist: Container Cannot Reach Another by Name
 
 ```mermaid
 flowchart TD
@@ -394,14 +394,14 @@ podman network inspect <net> --format '{{.DNSEnabled}}'  # check DNS flag
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent hosts <target>'  # test DNS
 ```
 
-### 8.2  Checklist: Port Reachable from Host
+### 8.2 Checklist: Port Reachable from Host
 
 ```bash
 # Is the port mapped?
 podman port <name>  # list port mappings
 
 # Is the container actually listening?
-podman exec <name> ss -tlnp  # inspect listening ports
+podman exec <name> cat /proc/net/tcp  # portable; ss is often missing
 
 # Is the host binding correct (0.0.0.0 vs 127.0.0.1)?
 podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # check HostIp field
@@ -411,7 +411,7 @@ sudo firewall-cmd --list-all   # firewalld rules
 sudo nft list ruleset          # nftables rules
 ```
 
-### 8.3  Checklist: Container Cannot Reach the Internet
+### 8.3 Checklist: Container Cannot Reach the Internet
 
 ```bash
 # Is the network marked internal?
@@ -432,9 +432,9 @@ podman exec <name> cat /etc/resolv.conf  # view DNS config
 
 [↑ Go to TOC](#table-of-contents)
 
-## 9  Storage Troubleshooting
+## 9 Storage Troubleshooting
 
-### 9.1  Checklist: Permission Denied on a Volume
+### 9.1 Checklist: Permission Denied on a Volume
 
 Common causes:
 1. Container runs as a non-root UID that does not own the volume data.
@@ -458,7 +458,7 @@ Fix: set volume data ownership before starting the service, or use `podman unsha
 podman unshare chown 1000:1000 ~/.local/share/containers/storage/volumes/<volname>/_data  # fix ownership in user namespace
 ```
 
-### 9.2  Checklist: Volume Data Missing After Restart
+### 9.2 Checklist: Volume Data Missing After Restart
 
 Verify you named the volume correctly and the unit references it:
 
@@ -468,9 +468,9 @@ podman volume inspect <volname>       # check mount point and driver
 podman inspect <name> --format '{{json .Mounts}}'  # confirm mount
 ```
 
-Named volumes are persistent; anonymous volumes (created without a name) are deleted with `podman rm` unless you use `-v` during removal explicitly to keep them.
+Named volumes survive `podman rm` and `podman rm -v`. Anonymous volumes (no name) also survive `podman rm`. `podman rm -v` removes anonymous volumes and leaves named volumes in place.
 
-### 9.3  Volume Disk Usage
+### 9.3 Volume Disk Usage
 
 ```bash
 podman system df -v  # per-volume disk usage
@@ -482,9 +482,9 @@ podman volume inspect <volname> --format '{{.Mountpoint}}'  # find physical path
 
 [↑ Go to TOC](#table-of-contents)
 
-## 10  systemd and Quadlet Troubleshooting
+## 10 systemd and Quadlet Troubleshooting
 
-### 10.1  The Three Commands You Always Need
+### 10.1 The Three Commands You Always Need
 
 ```bash
 # 1. Is the service running?
@@ -497,13 +497,15 @@ journalctl --user -u <service> -n 200 --no-pager  # last 200 log lines
 systemctl --user daemon-reload && systemctl --user restart <service>  # apply unit changes
 ```
 
-### 10.2  Quadlet Unit Errors
+### 10.2 Quadlet Unit Errors
 
 Quadlet translates `.container`, `.network`, `.volume`, `.kube` files into systemd units. If it fails silently, run:
 
 ```bash
-/usr/lib/systemd/user-generators/podman-user-generator "$HOME/.config/containers/systemd" /tmp/quadlet-test 2>&1 | head -40  # test Quadlet generator output
+/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun  # same dry-run as Module 11
 ```
+
+Do not pass `~/.config/containers/systemd` as the generator's output directory. That path is the source of your unit files. The command above prints the generated units and does not write them there.
 
 Or check the systemd generator log:
 
@@ -511,33 +513,30 @@ Or check the systemd generator log:
 journalctl --user -b --grep quadlet  # search boot log for Quadlet errors
 ```
 
-### 10.3  Dependency Failures
+### 10.3 Dependency Failures
 
 If a container service fails because a network or volume unit failed first:
 
 ```bash
-systemctl --user status capnet.service  # check network unit
-systemctl --user status mariadb-data-volume.service  # check volume unit
-journalctl --user -u capnet.service  # read network unit logs
+systemctl --user status capnet-network.service  # generated name is <name>-network.service
+systemctl --user status mariadb-data-volume.service  # generated name is <name>-volume.service
+journalctl --user -u capnet-network.service  # read network unit logs
 ```
 
 Quadlet auto-generates `After=` and `Requires=` dependencies when you use `Network=` and `Volume=` in `.container` units. If those dependencies are misconfigured, fix the unit name references.
 
-### 10.4  Service Does Not Start at Boot
+### 10.4 Service Does Not Start at Boot
+
+Quadlet units are transient. `systemctl --user enable` does not persist them. The generator applies `[Install] WantedBy=default.target` at `daemon-reload`. Boot start is linger plus that `[Install]` section.
 
 ```bash
-# Is linger enabled?
-loginctl show-user "$USER" | grep Linger  # check linger status
-
-# Is the service enabled?
-systemctl --user is-enabled <service>  # check enable status
-
-# Enable if needed
-systemctl --user enable <service>  # enable at boot
-sudo loginctl enable-linger "$USER"  # allow boot start without login
+loginctl show-user "$USER" | grep Linger  # expected: Linger=yes
+sudo loginctl enable-linger "$USER"
+grep -n WantedBy ~/.config/containers/systemd/<name>.container
+systemctl --user daemon-reload
 ```
 
-### 10.5  Common Quadlet Troubleshooting Flow
+### 10.5 Common Quadlet Troubleshooting Flow
 
 ```mermaid
 flowchart TD
@@ -558,22 +557,22 @@ flowchart TD
 
 [↑ Go to TOC](#table-of-contents)
 
-## 11  SELinux Troubleshooting
+## 11 SELinux Troubleshooting
 
 On RHEL 10 and Fedora, SELinux adds a second layer of access control on top of Unix permissions. Container workloads interact with SELinux primarily through **file labels**.
 
-### 11.1  Most Common Symptom
+### 11.1 Most Common Symptom
 
 A container exits with `permission denied` even though Unix permissions look correct.
 
-### 11.2  Check the Denial
+### 11.2 Check the Denial
 
 ```bash
 sudo ausearch -m avc -ts recent | tail -30  # show recent SELinux denials
 sudo journalctl -k --grep avc | tail -30    # kernel AVC denials
 ```
 
-### 11.3  The `:Z` Fix for Bind Mounts
+### 11.3 The `:Z` Fix for Bind Mounts
 
 For bind mounts (host paths mounted into containers), SELinux requires the correct label:
 
@@ -587,14 +586,14 @@ podman run -v /host/path:/container/path:z <image>  # relabel for shared use
 
 > `:Z` relabels the **entire host directory** — use with caution on important paths. Named volumes (not bind mounts) are automatically labeled correctly by Podman.
 
-### 11.4  Check Current Labels
+### 11.4 Check Current Labels
 
 ```bash
 ls -laZ /host/path  # show SELinux context
 podman exec <name> ls -laZ /container/path  # show label inside container
 ```
 
-### 11.5  When in Doubt: Prefer Named Volumes
+### 11.5 When in Doubt: Prefer Named Volumes
 
 Named volumes (`podman volume create`) are managed by Podman and automatically receive correct SELinux labels. Bind mounts require manual label management.
 
@@ -603,7 +602,7 @@ Named volumes (`podman volume create`) are managed by Podman and automatically r
 
 [↑ Go to TOC](#table-of-contents)
 
-## 12  Failure Drills (Do These in Practice)
+## 12 Failure Drills (Do These in Practice)
 
 Do these deliberately. Running scenarios on purpose makes you significantly faster during real incidents.
 
@@ -613,12 +612,10 @@ Do these deliberately. Running scenarios on purpose makes you significantly fast
 # Start a service on 8080
 podman run -d --name svc1 -p 8080:80 docker.io/library/nginx:stable  # start first service
 
-# Try to start a second on the same port
-podman run -d --name svc2 -p 8080:80 docker.io/library/nginx:stable  # this should fail
+# Try to start a second on the same port. The client fails before a container named svc2 exists.
+podman run -d --name svc2 -p 8080:80 docker.io/library/nginx:stable
 
-# Observe: error message, exit code
-podman ps -a  # check state
-podman logs svc2  # read the error
+# Read the podman run error above. podman logs svc2 has nothing to show.
 
 # Fix: change port
 podman run -d --name svc2 -p 8081:80 docker.io/library/nginx:stable  # use different port
@@ -688,7 +685,7 @@ podman volume rm drill-vol  # cleanup
 
 [↑ Go to TOC](#table-of-contents)
 
-## 13  Recovery Playbooks
+## 13 Recovery Playbooks
 
 Keep short, tested playbooks for common incidents. Copy these and adapt to your services.
 

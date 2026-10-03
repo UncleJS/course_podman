@@ -147,7 +147,7 @@ See Module 7 (Pods) for a deep-dive on the infra container and sidecar patterns.
 
 ```bash
 podman play kube stack.yaml   # create resources from Kubernetes YAML
-podman play kube --down stack.yaml  # tear down resources
+podman kube down stack.yaml  # tear down resources; same idea as Module 10
 ```
 
 See Module 10 (play kube) for the full lab.

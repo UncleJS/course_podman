@@ -7,7 +7,7 @@ After=capnet.network cap-mariadb.container
 Image=docker.io/library/adminer:4
 ContainerName=cap-adminer
 Network=capnet
-PublishPort=8082:8080
+PublishPort=127.0.0.1:8082:8080
 Environment=ADMINER_DEFAULT_SERVER=db
 
 [Service]

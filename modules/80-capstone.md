@@ -99,14 +99,13 @@ flowchart TD
             UI["Adminer<br/>port 127.0.0.1:8082:8080"]
         end
         SEC["Podman Secret<br/>mariadb_root_password"]
-        VOL["Volume: mariadb-data"]
-        BVOL["Volume: cap-backups"]
+        VOL["Volume: mariadb_data"]
+        BVOL["Volume: cap_backups"]
     end
     BROWSER["Browser<br/>http://127.0.0.1:8082/"] -->|"port 8082"| UI
     UI -->|"SQL via DNS alias 'db'"| DB
     DB --- VOL
     SEC -->|"mounted as file<br/>/run/secrets/..."| DB
-    SEC -->|"mounted as file<br/>/run/secrets/..."| UI
     QN --> DB
     QN --> UI
     QV --> VOL
@@ -119,7 +118,8 @@ Key design decisions:
 - The `capnet` network is `--internal`: DB cannot make outbound connections.
 - The DB secret is a **Podman secret** mounted as a file — never passed as an env var.
 - Both containers are managed by systemd with `WantedBy=default.target` for boot start.
-- Images are pinned to SHA256 digests for reproducible deploys and clean rollbacks.
+- Adminer does not mount the secret. You type the password in the browser.
+- The shipped units start on tags. The upgrade section records digests with `podman image inspect` and pins `Image=` before you change anything.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -133,7 +133,7 @@ Use the provided example units:
 - `examples/quadlet/cap-backups.volume`
 - `examples/quadlet/cap-mariadb.container`
 - `examples/quadlet/cap-adminer.container`
-- `examples/quadlet/cap-backup.container` (optional)
+- `examples/quadlet/cap-backup.container`
 
 ### Step 1 — Create the DB Root Password Secret
 
@@ -161,6 +161,7 @@ cp examples/quadlet/mariadb-data.volume ~/.config/containers/systemd/  # copy DB
 cp examples/quadlet/cap-backups.volume ~/.config/containers/systemd/  # copy backup volume unit
 cp examples/quadlet/cap-mariadb.container ~/.config/containers/systemd/  # copy DB container unit
 cp examples/quadlet/cap-adminer.container ~/.config/containers/systemd/  # copy UI container unit
+cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/  # required backup job
 ```
 
 ### Step 3 — Enable Linger (Boot Start Without Login)
@@ -205,7 +206,7 @@ Test connectivity inside the stack:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
 ```
 
 Expected: list of databases including `information_schema`.
@@ -220,8 +221,8 @@ Create test data so you have something meaningful to back up and restore.
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root -e "
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "
      CREATE DATABASE IF NOT EXISTS cap;
      CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY, label VARCHAR(80));
      INSERT IGNORE INTO cap.t1 VALUES (1, '"'"'first row'"'"');
@@ -237,32 +238,16 @@ Expected: a two-row result set.
 
 ## Optional: Scheduled Backups
 
-### Install Backup Units and Timer
+The backup **container** unit is installed in Build It. Only the timer is optional. A hand-written timer under `~/.config/systemd/user/` is a normal unit, so `systemctl enable` is correct for it. Quadlet container units are not enabled that way.
 
 ```bash
-cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/  # copy backup container unit
-mkdir -p ~/.config/systemd/user  # create user systemd directory
-cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/  # copy timer unit
-systemctl --user daemon-reload                  # reload new units
-systemctl --user enable --now cap-backup.timer  # enable and start timer
+mkdir -p ~/.config/systemd/user
+cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now cap-backup.timer
 ```
 
-### Trigger a Backup Immediately
-
-```bash
-systemctl --user start cap-backup.service  # run a one-shot backup now
-```
-
-### Verify Backup Files Exist
-
-```bash
-podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest ls -lah /backups  # list backup files in volume
-```
-
-Notes:
-- Backups are stored in the `cap_backups` volume as timestamped `.sql` files.
-- The backup unit runs `mysqldump` inside a MariaDB container — no client tools needed on the host.
-- The timer runs daily by default; edit the `.timer` file to adjust.
+Run the required backup section once before you trust the timer. The timer runs daily; edit `OnCalendar=` to change that.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -285,7 +270,10 @@ Trigger a backup immediately:
 
 ```bash
 systemctl --user start cap-backup.service  # run backup job
+systemctl --user status cap-backup.service  # oneshot success is "inactive (dead)" with exit status 0
 ```
+
+`inactive (dead)` after a successful oneshot is success. `RemainAfterExit` is unset so the timer can start the job again. A failed dump shows a non-zero exit in that status.
 
 Find the newest backup file:
 
@@ -311,8 +299,8 @@ BACKUP_FILE=all-<timestamp>.sql  # replace with actual filename
 
 podman run --rm --network capnet -v cap_backups:/backups --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore from backup file
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore from backup file
 ```
 
 Verify the data is present after restore:
@@ -320,8 +308,8 @@ Verify the data is present after restore:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root -e "SELECT * FROM cap.t1;"'  # verify restored data
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SELECT * FROM cap.t1;"'  # verify restored data
 ```
 
 ### Testing Restore on a Clean Volume (Advanced)
@@ -338,20 +326,30 @@ podman run -d --name test-db --network capnet \
   -e MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password \
   docker.io/library/mariadb:11  # start temporary test DB
 
-sleep 10  # wait for MariaDB init
+podman run --rm --network capnet --secret mariadb_root_password \
+  docker.io/library/mariadb:11 sh -lc '
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
+    for i in $(seq 1 60); do
+      mysqladmin --defaults-extra-file=/tmp/client.cnf ping -h test-db --silent && exit 0
+      sleep 2
+    done
+    echo "test-db did not accept connections" >&2
+    exit 1
+  '
 
 # Restore the backup into test-db
 BACKUP_FILE=all-<timestamp>.sql
 podman run --rm --network capnet -v cap_backups:/backups --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h test-db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore into test DB
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h test-db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore into test DB
 
 # Verify
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h test-db -u root -e "SELECT * FROM cap.t1;"'  # verify test DB data
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h test-db -u root -e "SELECT * FROM cap.t1;"'  # verify test DB data
 
 # Cleanup test resources
 podman rm -f test-db  # remove test container
@@ -369,7 +367,7 @@ This pattern is called **restore-to-alternate** and proves your backup is actual
 
 ```mermaid
 flowchart TD
-    A(["Current: digest v1"]) --> B["Record current digest<br/>podman inspect --format ImageName"]
+    A(["Current: digest v1"]) --> B["Record current digest<br/>podman image inspect Digest"]
     B --> C["Pull new image<br/>podman pull mariadb:11"]
     C --> D["Get new digest<br/>podman images --digests"]
     D --> E["Edit .container unit<br/>Image=...@sha256:newdigest"]
@@ -383,19 +381,15 @@ flowchart TD
 
 ### Record Current Image Digests (Before Any Upgrade)
 
-```bash
-podman inspect cap-mariadb --format '{{.ImageName}}'  # current DB image with digest
-podman inspect cap-adminer --format '{{.ImageName}}'  # current UI image with digest
-podman images --digests | grep -E 'mariadb|adminer'   # all local digests
-```
-
-Save these to a file before upgrading:
+`podman inspect` on the container prints the tag you started (`docker.io/library/mariadb:11`), not a manifest digest. Inspect the image:
 
 ```bash
-podman inspect cap-mariadb --format '{{.ImageName}}' > /tmp/current-digests.txt  # save DB digest
-podman inspect cap-adminer --format '{{.ImageName}}' >> /tmp/current-digests.txt  # save UI digest
-cat /tmp/current-digests.txt  # verify saved digests
+DB_DIGEST=$(podman image inspect docker.io/library/mariadb:11 --format '{{.Digest}}')
+UI_DIGEST=$(podman image inspect docker.io/library/adminer:4 --format '{{.Digest}}')
+printf 'mariadb %s\nadminer %s\n' "$DB_DIGEST" "$UI_DIGEST" | tee /tmp/current-digests.txt
 ```
+
+`{{.Digest}}` already includes the `sha256:` prefix. Do this before you change the tag.
 
 ### Pin by Digest in Quadlet Units
 
@@ -405,9 +399,11 @@ In your `.container` files, replace tag-based references with digest-pinned ones
 # Before (mutable tag — can change without warning)
 Image=docker.io/library/mariadb:11
 
-# After (immutable — this exact SHA will always be the same)
-Image=docker.io/library/mariadb@sha256:<digest>
+# After. Paste {{.Digest}} once. It already starts with sha256:.
+Image=docker.io/library/mariadb@sha256:<hex>
 ```
+
+Same change in `cap-adminer.container` for `docker.io/library/adminer`.
 
 Then apply:
 
@@ -431,7 +427,7 @@ systemctl --user restart cap-adminer.service
 Verify the rollback:
 
 ```bash
-podman inspect cap-mariadb --format '{{.ImageName}}'  # confirm old digest is back
+podman image inspect docker.io/library/mariadb:11 --format '{{.Digest}}'  # tag digest; the unit line is the pin that rolled back
 ```
 
 
@@ -450,7 +446,7 @@ flowchart TD
     C --> D["Update .container unit<br/>Secret=mariadb_root_password_v2"]
     D --> E["daemon-reload + restart MariaDB"]
     E --> F{"Login with new secret<br/>works?"}
-    F -->|"Yes"| G["podman secret rm mariadb_root_password_v1"]
+    F -->|"Yes"| G["Update backup unit Secret=<br/>then secret rm mariadb_root_password"]
     F -->|"No"| H["Restore old secret reference<br/>daemon-reload + restart"]
     G --> I(["Rotation complete"])
     H --> J(["Rollback to old password"])
@@ -472,23 +468,23 @@ podman run --rm --network capnet \
   --secret mariadb_root_password \
   --secret mariadb_root_password_v2 \
   docker.io/library/mariadb:11 sh -lc '
-    old=$(cat /run/secrets/mariadb_root_password)
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
     new=$(cat /run/secrets/mariadb_root_password_v2)
-    export MYSQL_PWD="$old"
-    mysql -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"
+    mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"
   '  # change password in DB using both old and new secrets
 ```
 
-### Step 3 — Update Quadlet Unit to Reference New Secret
+### Step 3 — Update Both Quadlet Units to Reference the New Secret
 
-Edit `~/.config/containers/systemd/cap-mariadb.container` — change:
+Edit `Secret=` in `cap-mariadb.container` and in `cap-backup.container` before you delete the old secret. The backup job still mounts `mariadb_root_password` until you change it.
 
 ```ini
 # Old
-Secret=mariadb_root_password,type=mount
+Secret=mariadb_root_password
 
 # New
-Secret=mariadb_root_password_v2,type=mount
+Secret=mariadb_root_password_v2
 ```
 
 ### Step 4 — Reload and Restart
@@ -498,13 +494,15 @@ systemctl --user daemon-reload                # reload unit changes
 systemctl --user restart cap-mariadb.service  # restart with new secret
 ```
 
+The backup unit picks up `Secret=` on its next start. It is a oneshot, so you do not restart it now.
+
 ### Step 5 — Verify Login with New Secret
 
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password_v2 \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password_v2)"; \
-   mysql -h db -u root -e "SELECT 1;"'  # verify new password works
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password_v2)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SELECT 1;"'  # verify new password works
 ```
 
 ### Step 6 — Remove Old Secret Only After Verification
@@ -527,8 +525,8 @@ Keep this as a living document for your stack. A runbook that is never tested is
 | **Tail logs** | `journalctl --user -fu cap-mariadb.service` | — |
 | **Manual backup** | `systemctl --user start cap-backup.service` | `ls` in `cap_backups` volume |
 | **Restore backup** | See "Restore" section | `SELECT *` to confirm row count |
-| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman inspect --format ImageName` |
-| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | `podman inspect --format ImageName` |
+| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman image inspect --format '{{.Digest}}'` |
+| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | unit `Image=` matches the saved digest |
 | **Rotate password** | 6-step rotation procedure above | `mysql -u root` with new secret |
 | **Full teardown** | `systemctl --user stop` + `podman volume rm` | — |
 

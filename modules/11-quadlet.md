@@ -147,7 +147,7 @@ Each generates a `<name>-<type>.service` or `<name>.service` unit that systemd c
 
 ## Anatomy of a .container Unit
 
-A `.container` file has INI-style sections. Here is a fully annotated example:
+A `.container` file has INI-style sections. The block below is a **key catalog**. Do not run it as the official nginx image: that image starts as root, binds port 80, and writes a pid file. `User=1001:1001`, `ReadOnly=true`, and `DropCapability=ALL` together will not serve. The lab unit in `examples/quadlet/hello-nginx.container` is the one you start.
 
 ```ini
 [Unit]
@@ -168,9 +168,10 @@ Network=labnet.network
 Volume=labdata.volume:/data
 # Secret defined via `podman secret create`:
 Secret=db_password
-# Drop all capabilities (security hardening):
-CapDrop=ALL
-# Prevent setuid escalation:
+# Drop all capabilities (security hardening). The key is DropCapability=, not CapDrop=.
+DropCapability=ALL
+# SecurityLabelDisable=false keeps SELinux on. It does not block setuid.
+# NoNewPrivileges=true is the setuid control:
 SecurityLabelDisable=false
 NoNewPrivileges=true
 # Read-only root filesystem:
@@ -207,8 +208,8 @@ Key `[Container]` fields map to `podman run` flags:
 | `Network=` | `--network` |
 | `Volume=` | `-v` |
 | `Secret=` | `--secret` |
-| `CapDrop=` | `--cap-drop` |
-| `CapAdd=` | `--cap-add` |
+| `DropCapability=` | `--cap-drop` |
+| `AddCapability=` | `--cap-add` |
 | `ReadOnly=true` | `--read-only` |
 | `Tmpfs=` | `--tmpfs` |
 | `User=` | `--user` |
@@ -507,9 +508,10 @@ Quadlet `[Service]` section accepts all standard systemd restart directives:
 | `on-failure` | Only on non-zero exit codes |
 | `on-abnormal` | On signal/timeout/watchdog failure |
 | `always` | Always, including clean exits |
-| `unless-stopped` | Always, unless explicitly stopped |
 
-For long-running services, `on-failure` is the safest default — it won't loop-restart if your container exits cleanly during shutdown.
+`unless-stopped` is a `podman run --restart` value. systemd rejects it, and Quadlet copies `[Service] Restart=` through unchanged. A unit with `Restart=unless-stopped` fails to load.
+
+`on-failure` is the safest default — it will not loop-restart if the container exits cleanly during shutdown. Lab units in this course (`hello-nginx.container`, the capstone units, `autoupdate-nginx.container`) use `Restart=always` so a clean exit still brings the service back. That is a choice for a service you want up, not a second name for `unless-stopped`.
 
 Pair with `RestartSec=` to add a backoff delay:
 
@@ -528,7 +530,7 @@ Do not store secret material in unit files — not in `Environment=` lines, not 
 
 The correct pattern:
 
-1. Create a Podman secret: `printf '%s' 'value' | podman secret create myapp_db_password -`
+1. Create a Podman secret with `read -rs` (Module 4). A literal `printf '%s' 'value' | podman secret create` is still shell history.
 2. Reference it by name in the unit: `Secret=myapp_db_password`
 3. The container reads from `/run/secrets/myapp_db_password`.
 

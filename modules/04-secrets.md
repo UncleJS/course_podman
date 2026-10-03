@@ -77,7 +77,7 @@ The secret value never appears in:
 - The image layer
 - `podman inspect` env output
 - `ps auxeww`
-- Shell history (if you used `printf` or a file)
+- Shell history (if the value was never typed as a literal argument — see the `read -rs` pattern below)
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -156,6 +156,7 @@ Summary of what to avoid:
 - `export DB_PASSWORD=...` in your shell
 - putting passwords in `.env` and committing it
 - `podman run -e DB_PASSWORD=...` for anything beyond a throwaway lab
+- `--secret name,type=env` — that option copies the value into the container environment and undoes the file-mount default (`type=mount`)
 - `ARG`/`ENV` in a `Containerfile` for secret material
 - logging connection strings that contain credentials
 
@@ -164,13 +165,20 @@ Summary of what to avoid:
 
 ## Commands Reference
 
-**Create a secret from stdin** (avoids shell history):
+**Create a secret without putting the value in shell history.** `printf '%s' 'literal' | podman secret create` avoids a trailing newline, but Bash still records the whole command line, password included. `printf` keeps the value out of `podman`'s argv. It does not keep it out of history.
 
 ```bash
-printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -  # create secret from stdin, no trailing newline
+umask 077
+read -rs PASSWORD  # type the value; it is not echoed and not stored as a command argument
+printf '%s' "$PASSWORD" > ./db_password.txt  # no trailing newline
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
-**Create a secret from a file** (file must have tight permissions):
+`printf '%s'` is still the right way to avoid the newline that `echo` adds. Use it on a variable or a file, not on a quoted password in the command you type.
+
+**Create a secret from a file** you already wrote with an editor (`umask 077` first):
 
 ```bash
 chmod 600 ./db_password.txt                          # restrict read to owner only
@@ -220,19 +228,24 @@ podman run --rm --secret db_password,uid=1000,gid=1000,mode=0400 \
 
 Notes:
 
-- Keep the secret value out of your shell history. Prefer `printf '%s' value | ...` or read from a file.
+- Keep the secret value out of your shell history. Use `read -rs` into a variable, or a mode `0600` file. `printf '%s'` only fixes the trailing newline.
 - Never print secret contents in logs.
-- Use `read -s VALUE` in shell scripts when value must come from stdin interactively.
+- Do not pass `--secret name,type=env`. The default is `type=mount`. `type=env` puts the value in the container environment.
 
 
 [↑ Go to TOC](#table-of-contents)
 
 ## Lab A: Create and Mount a Secret
 
-1) Create a secret from stdin (example password — do not use in production):
+1) Create a secret (example password — do not use in production). When prompted, type `correct-horse-battery-staple` so the inspect check in step 4 can search for that value. The password is not part of the command line:
 
 ```bash
-printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -  # print text without trailing newline
+umask 077
+read -rs PASSWORD
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
 2) Confirm the secret appears in the list:
@@ -252,7 +265,8 @@ podman run --rm --secret db_password docker.io/library/busybox:latest \
 
 ```bash
 podman run -d --name secret-demo --secret db_password docker.io/library/busybox:latest sleep 600  # run container
-podman inspect secret-demo | grep -i password || echo "not in inspect output"  # should print 'not in inspect output'
+podman inspect secret-demo --format '{{.Config.Env}}'  # environment only; the value is not here
+podman inspect secret-demo | grep -F 'correct-horse-battery-staple' || echo "value not in inspect output"  # expected: value not in inspect output
 podman rm -f secret-demo  # cleanup
 ```
 
@@ -301,6 +315,7 @@ podman exec secret-demo sh -lc 'wc -c /run/secrets/db_password'  # count bytes, 
 
 ```bash
 podman rm -f secret-demo  # stop and remove the demo container
+podman secret rm db_password  # Lab C creates this name again
 ```
 
 
@@ -313,8 +328,15 @@ Use versioned names so you can run old and new versions in parallel during a dep
 1) Create two versions of the secret:
 
 ```bash
-printf '%s' 'v1-value' | podman secret create db_password_v1 -  # create version 1
-printf '%s' 'v2-value' | podman secret create db_password_v2 -  # create version 2
+umask 077
+read -rs PASSWORD   # type v1-value
+printf '%s' "$PASSWORD" > ./v1.txt
+read -rs PASSWORD   # type v2-value
+printf '%s' "$PASSWORD" > ./v2.txt
+unset PASSWORD
+podman secret create db_password_v1 ./v1.txt
+podman secret create db_password_v2 ./v2.txt
+rm -f ./v1.txt ./v2.txt
 ```
 
 2) Start v1 service:
@@ -394,7 +416,13 @@ Some apps expect credentials at a specific path (e.g., `/etc/app/config/db.pass`
 1) Create the secret:
 
 ```bash
-printf '%s' 'mydbpass' | podman secret create db_password -  # create secret
+podman secret rm -f db_password  # Lab A may have left this name
+umask 077
+read -rs PASSWORD  # type mydbpass
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
 2) Mount at a custom path:
@@ -504,8 +532,8 @@ This is a last resort. If you control the app, prefer native file reads.
 | Node.js | `fs.readFileSync('/run/secrets/db_password', 'utf8').trim()` |
 | Python | `open('/run/secrets/db_password').read().strip()` |
 | Go | `os.ReadFile("/run/secrets/db_password")` |
-| Shell script | `DB_PASS=$(cat /run/secrets/db_password)` |
-| Java / Spring | Use `spring.datasource.password=file:/run/secrets/db_password` |
+| Shell script | Read the file in the process that needs it. `DB_PASS=$(cat /run/secrets/db_password)` puts the value in that process's environment. |
+| Java / Spring | `spring.config.import=configtree:/run/secrets/` (or read the file in code). `spring.datasource.password=file:...` is not Spring syntax. |
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -518,7 +546,7 @@ Be honest about the limitations to avoid false confidence:
 |---|---|
 | Accidental env var exposure | ✅ Yes — keeps secret out of env |
 | Leaking to image layers | ✅ Yes — secrets are runtime-only |
-| Shell history exposure | ✅ Yes — if you use printf/file input |
+| Shell history exposure | ✅ Yes — if the value is read with `read -rs` or from a file, not typed as a command argument |
 | Encryption at rest on disk | ❌ No — default driver stores base64 on disk |
 | Multi-host secret distribution | ❌ No — secrets are per-machine |
 | Automatic rotation | ❌ No — you must manually rotate |
@@ -542,7 +570,7 @@ For the ❌ rows, see Module 90 (External Secrets Survey) for HashiCorp Vault, A
 **Trailing newline in the secret value breaks passwords.**
 - Symptom: authentication fails with correct-looking password.
 - Cause: `echo 'value' | podman secret create ...` adds a newline.
-- Fix: always use `printf '%s' 'value' | ...` (no newline).
+- Fix: `printf '%s' "$VALUE"` (no newline). `echo` adds one. Do not put `$VALUE` in the command as a quoted literal if you care about shell history.
 
 **Secret not available because name was misspelled.**
 - Symptom: container fails to start with "secret not found".

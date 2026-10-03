@@ -181,7 +181,7 @@ graph TD
 
 A **namespace** wraps a global system resource so that processes inside the namespace see their own isolated copy. The kernel tracks which namespace each process belongs to.
 
-Podman uses all six isolation namespaces by default:
+Podman uses these isolation namespaces by default. A `/proc/<pid>/ns` listing also shows `cgroup` (the cgroup namespace). That one is real, and this chapter treats it as out of scope beyond "resource limits live there":
 
 | Namespace | Kernel flag | What it isolates | Effect in container |
 |---|---|---|---|
@@ -198,7 +198,7 @@ The **User namespace** is the one that makes rootless containers secure. When yo
 graph LR
     subgraph "Host"
         HU["Host UID 1000 (your user)"]
-        HU2["Host UID 100001 (subUID range)"]
+        HU2["Host UID 100000 (subuid start)"]
     end
     subgraph "User Namespace (inside container)"
         CU0["Container UID 0 (root inside)"]
@@ -207,6 +207,8 @@ graph LR
     CU0 -->|"maps to"| HU
     CU1 -->|"maps to"| HU2
 ```
+
+Container UID 0 is your UID. Container UID 1 is the first subordinate UID from `/etc/subuid` (100000 in this example), not 100001. Container UID N (for N ≥ 1) maps to `subuid_start + N - 1`. The same numbers are in Module 0's `uid_map` example.
 
 > **Why this matters:** Without user namespaces, a container running as root would be running as root on the host too. User namespaces are why rootless Podman is meaningfully more secure than rootful Docker for most workloads.
 
@@ -237,11 +239,11 @@ flowchart TD
     B --> C["Writes limits to cgroup v2 files"]
     C --> D["memory.max = 268435456"]
     C --> E["cpu.max = 50000 100000"]
-    C --> F["pids.max = 256"]
     D --> G["Kernel enforces limits<br/>on all container PIDs"]
     E --> G
-    F --> G
 ```
+
+`--memory 256m` writes `memory.max`. `--cpus 0.5` writes `cpu.max`. Neither flag sets `pids.max`. The default process limit comes from `containers.conf` (`pids_limit`, often 1024) unless you pass `--pids-limit`.
 
 > **Practical note:** cgroups v2 requires a systemd user session when running rootless. This is why the course targets RHEL 10 / Fedora with `loginctl enable-linger` — it keeps your user session and cgroup hierarchy alive even when you are logged out.
 
@@ -317,8 +319,8 @@ graph TD
 | **conmon** | Container monitor process — manages stdio and exit detection per container. |
 | **rootless** | Running Podman (and containers) as an unprivileged user, using user namespaces. |
 | **rootful** | Running Podman as root. Required for some advanced networking and capabilities. |
-| **slirp4netns** | Userspace network stack that gives rootless containers outbound connectivity. |
-| **pasta** | Newer, faster replacement for slirp4netns (available in RHEL 10 / Fedora 39+). |
+| **pasta** | Default rootless network helper on Podman 5 / RHEL 10. Connects the rootless network namespace to the host. |
+| **slirp4netns** | Previous default rootless network helper. Still used when `default_rootless_network_cmd` is set to it. |
 
 [↑ Go to TOC](#table-of-contents)
 
@@ -342,7 +344,7 @@ You will see dozens of processes with various PIDs. Now run the same command ins
 podman run --rm docker.io/library/alpine:latest ps aux  # run a container and list its processes
 ```
 
-You should see only two processes: `ps` itself and possibly the shell. The container has a completely separate PID namespace — it cannot see the host's processes.
+You should see one process line: `ps` itself. There is no shell. The container has a completely separate PID namespace — it cannot see the host's processes.
 
 **Step 2 — Check network isolation (network namespace)**
 
@@ -355,7 +357,7 @@ ip addr show  # show network interfaces on the host
 You will see your real `eth0` or `enpXs0`. Inside a container:
 
 ```bash
-podman run --rm docker.io/library/alpine:latest ip addr show  # run a container and show its interfaces
+podman run --rm registry.fedoraproject.org/fedora:latest ip addr show  # alpine has no ip; fedora does
 ```
 
 The container sees only `lo` (loopback) and `eth0` inside its own network namespace. The `eth0` inside is a virtual ethernet device — not the host's real interface.
@@ -430,6 +432,8 @@ lrwxrwxrwx ... user   -> user:[4026532765]
 lrwxrwxrwx ... uts    -> uts:[4026532767]
 ```
 
+`cgroup` is in the listing too. The table earlier in this module covers the six isolation namespaces; the cgroup namespace is where resource limits attach, and Module 0 already required cgroups v2.
+
 Each inode number (the number after the colon) is the unique identity of that namespace. Compare these to your shell's namespaces:
 
 ```bash
@@ -454,7 +458,7 @@ Before moving on, confirm you can answer these without referring to notes:
 
 - [ ] I can explain the difference between an image and a container.
 - [ ] I know that containers share the host kernel and why that matters for security.
-- [ ] I can name the six namespaces Podman uses and what each one isolates.
+- [ ] I can name the isolation namespaces Podman uses and what each one isolates.
 - [ ] I understand that rootless Podman maps container UID 0 to an unprivileged host UID.
 - [ ] I can explain what cgroups do and why they matter.
 - [ ] I know what OCI stands for and why the standard matters for portability.

@@ -89,7 +89,7 @@ SLIDES = [
         "bullets": [
             "Foundations  (Modules 00-03):  setup, concepts, commands, images",
             "Intermediate (Modules 04-07):  secrets, storage, networking, pods",
-            "Production   (Modules 08-11):  building images, Quadlet, multi-service",
+            "Production   (Modules 08-11a): images, play kube, Quadlet, secrets",
             "Operations   (Modules 12-14):  security, troubleshooting, auto-updates",
             "Capstone     (Module 80):      full stack with backups & upgrades",
             "Optional     (Module 90):      external secrets survey",
@@ -100,9 +100,8 @@ SLIDES = [
             "Each module has labs — hands-on commands you run yourself. There is also "
             "a capstone project that ties everything together into a reboot-safe stack "
             "with real secrets, backups, and a documented upgrade procedure. "
-            "Module 90 on external secrets is optional but recommended if your team "
-            "will eventually use Vault or SOPS. Total course time is roughly 30-50 hours "
-            "including all labs."
+            "Module 11a is the Quadlet secrets add-on. Module 90 on external secrets "
+            "is optional. The outline's high-end pacing adds up to about 35 hours."
         ),
     },
     {
@@ -157,8 +156,8 @@ SLIDES = [
             "cgroups v2 is required for Quadlet — check before anything else",
         ],
         "notes": (
-            "On Fedora 40+ and RHEL 9+ cgroups v2 is the default. On older systems "
-            "you may need to add systemd.unified_cgroup_hierarchy=1 to the kernel "
+            "This course assumes Podman 5 on RHEL 10 or current Fedora, where cgroups v2 "
+            "is the default. On an older system you may need systemd.unified_cgroup_hierarchy=1 on the kernel "
             "command line and reboot. Quadlet will not work without cgroups v2, so "
             "this check is mandatory. Record the Podman version now — it is the first "
             "thing to share when filing a bug report or asking for help."
@@ -190,11 +189,11 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 00: Workspace Setup",
         "bullets": [
-            "mkdir -p ~/course_podman-labs && cd ~/course_podman-labs",
+            "mkdir -p ~/podman-labs && cd ~/podman-labs",
             "podman run --rm docker.io/library/alpine:latest uname -a",
             "Checkpoint: 'podman info' runs without errors",
             "Checkpoint: cgroups version reports v2",
-            "Checkpoint: first container runs without sudo",
+            "Checkpoint: linger is Linger=yes if this host should boot Quadlet",
         ],
         "notes": (
             "Give students 10 minutes for this lab. The most common failure is a "
@@ -633,7 +632,7 @@ SLIDES = [
             "Virtual ethernet pair (veth) connects container to bridge",
             "User-defined network: DNS enabled — containers find each other by name",
             "Default 'podman' bridge: NO automatic DNS (use named networks!)",
-            "Rootless helpers: pasta (preferred, modern) or slirp4netns",
+            "Podman 5 rootless helper: pasta ({{.Host.RootlessNetworkCmd}})",
         ],
         "notes": (
             "Mental model: think of a user-defined network as a private LAN segment. "
@@ -641,8 +640,8 @@ SLIDES = [
             "its container name. The Podman DNS resolver (aardvark-dns) handles the DNS. "
             "The default network is a legacy artifact — it has no DNS, so containers "
             "cannot find each other by name. Always create explicit named networks. "
-            "Check your rootless backend: podman info --format {{.Host.NetworkBackend}}. "
-            "Pasta is newer and handles UDP/ICMP more cleanly than slirp4netns."
+            "NetworkBackend is netavark or cni. The pasta vs slirp4netns choice is "
+            "RootlessNetworkCmd. On Podman 5 that value is pasta."
         ),
     },
     {
@@ -693,11 +692,11 @@ SLIDES = [
         "type": "content",
         "title": "Multi-Network Segmentation",
         "bullets": [
-            "[internet] -> [frontend-net] -> [proxy] -> [app] -> [backend-net] -> [db]",
+            "[internet] -> [frontend-net] -> [proxy] -> [app] -> [app-net] -> [db]",
             "proxy: only on frontend-net",
-            "app: on BOTH frontend-net AND backend-net",
-            "db: only on backend-net (--internal, no outbound access)",
-            "podman network connect backend-net app   # add second network live",
+            "app: on BOTH frontend-net AND app-net",
+            "db: only on app-net (--internal, no outbound access)",
+            "podman network connect frontend-net app   # add second network live",
         ],
         "notes": (
             "This is the production architecture pattern for the course. "
@@ -1105,10 +1104,9 @@ SLIDES = [
         "bullets": [
             "[Unit]      Description=My App",
             "[Container] Image=docker.io/library/nginx:stable",
-            "[Container] PublishPort=127.0.0.1:8081:80",
-            "[Container] Network=appnet.network  /  Volume=appdata.volume:/data",
-            "[Service]   Restart=always",
-            "[Install]   WantedBy=default.target",
+            "[Container] PublishPort=8081:80   (hello-nginx.container)",
+            "[Service]   Restart=always   (lab units stay up after a clean exit)",
+            "[Install]   WantedBy=default.target   (not systemctl enable)",
         ],
         "notes": (
             "Walk through a real unit file from examples/quadlet/hello-nginx.container. "
@@ -1250,14 +1248,14 @@ SLIDES = [
         "bullets": [
             "Rotate: create db_password_v2, edit Secret= line, daemon-reload, restart",
             "Keep the old secret until the service is verified healthy, then podman secret rm",
-            "Verify: journalctl --user -u myapp.service | grep -i password  ->  nothing",
+            "Verify: journalctl --user -u example-app.service | grep -i password  ->  nothing",
             "Limits: no encryption at rest, per-machine, per-user — see Module 90",
         ],
         "notes": (
             "Rotation procedure: "
             "1. Create new secret: printf '%s' 'newval' | podman secret create db_password_v2 - "
             "2. Edit the .container file: change Secret=db_password_v1 to Secret=db_password_v2 "
-            "3. systemctl --user daemon-reload && systemctl --user restart myapp.service "
+            "3. systemctl --user daemon-reload && systemctl --user restart example-app.service "
             "4. Verify the service is healthy "
             "5. podman secret rm db_password_v1 "
             "Keeping the old version until the new one is verified gives a rollback window. "
@@ -1497,7 +1495,7 @@ SLIDES = [
         "type": "content",
         "title": "Capstone: What You Will Build",
         "bullets": [
-            "MariaDB (private, no published port) + Adminer (UI on port 8082)",
+            "MariaDB (private) + Adminer on 127.0.0.1:8082 only",
             "Private network (capnet) — DB cannot reach internet (--internal)",
             "Named volumes for data and backups",
             "Podman secrets for the DB root password",
@@ -1509,7 +1507,7 @@ SLIDES = [
             "The Adminer web UI gives a visual way to verify DB state. "
             "Architecture: capnet (--internal) -> only cap-mariadb and cap-adminer attached "
             "-> DB cannot reach internet, admin UI reaches DB via DNS name 'db' "
-            "-> only Adminer publishes a port (8082) to the host "
+            "-> Adminer publishes 127.0.0.1:8082:8080 only "
             "-> passwords live in Podman secrets referenced by name in .container units."
         ),
     },
@@ -1518,7 +1516,7 @@ SLIDES = [
         "type": "content",
         "title": "Capstone: Backup, Restore, Upgrade",
         "bullets": [
-            "Backup: mysqldump via throwaway container -> cap-backups volume",
+            "Backup: systemctl --user start cap-backup.service -> cap_backups volume",
             "Restore: feed .sql into mysql -h db via throwaway container, verify data",
             "Upgrade: record digest -> pull new -> update Image= -> restart",
             "Rollback: restore previous digest -> daemon-reload -> restart -> verify",

@@ -225,7 +225,7 @@ podman run -d --pod webpod --name nginx docker.io/library/nginx:stable  # run ng
 Verify it is reachable from the host:
 
 ```bash
-podman port webpod  # show published ports for the pod
+podman port webpod-infra  # podman port takes a container; the infra container owns the publish
 ```
 
 From the host (or inside a debug shell):

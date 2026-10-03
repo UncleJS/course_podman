@@ -3,6 +3,7 @@ Description=Capstone network
 
 [Network]
 NetworkName=capnet
+Internal=true
 
 [Install]
 WantedBy=default.target

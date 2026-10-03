@@ -114,7 +114,7 @@ systemd can provision credentials to services as files at runtime. Credentials c
 
 The production baseline already uses systemd user services (Quadlet-first). systemd credentials are a natural next step:
 
-- Delivery model: a file at a path like `/run/credentials/<unit>/dbpassword`
+- Delivery model: a file under `$CREDENTIALS_DIRECTORY`. For a user service that is typically `/run/user/$UID/credentials/<unit>/dbpassword`. `/run/credentials/<unit>/` is the system-service path.
 - Container consumes: a volume mount or `--secret` pointing to that path
 - Application code: unchanged — it still reads a file
 
@@ -129,7 +129,7 @@ sequenceDiagram
     H->>H: Store encrypted credential<br/>(systemd-creds encrypt)
     H->>S: Deploy unit file with<br/>LoadCredentialEncrypted=
     S->>S: Decrypt on service start<br/>(uses host TPM or key)
-    S->>C: Mount credential as file<br/>at /run/credentials/...
+    S->>C: Credential file under<br/>$CREDENTIALS_DIRECTORY
     C->>C: Read file at startup
 ```
 
@@ -165,7 +165,7 @@ flowchart LR
     subgraph "CI / Host"
         KEY["age private key<br/>(never in git)"]
         SOPS["sops --decrypt<br/>secrets.env.enc"]
-        FILE["secrets.env<br/>(decrypted, 0600, root-owned)"]
+        FILE["secrets.env<br/>(decrypted, mode 0600,<br/>owned by the host user)"]
     end
     subgraph "Container"
         C["App reads<br/>/run/secrets/dbpassword"]
@@ -191,13 +191,18 @@ flowchart LR
 ### Best-Fit Pattern with Containers
 
 ```bash
-# In CI or host provisioning:
-sops --decrypt secrets/db.yaml | \
-  install -m 600 /dev/stdin /run/secrets/dbpassword  # decrypt and write with restricted permissions
+# Decrypt to a user-owned file. A rootless user cannot create /run/secrets.
+umask 077
+sops --decrypt secrets/db.yaml > ./dbpassword.txt
+podman secret create dbpassword ./dbpassword.txt
+rm -f ./dbpassword.txt
 
-# Container reads as usual:
-podman run --secret dbpassword,type=mount ...  # mount as file
+# --secret looks up a Podman secret by name. It does not mount that host path.
+podman run --rm --secret dbpassword docker.io/library/busybox:latest \
+  sh -lc 'test -f /run/secrets/dbpassword && echo mounted'
 ```
+
+The alternative is a read-only bind of the mode `0600` file, with `:Z` when SELinux is enforcing. This survey does not turn that into a SOPS lab. Podman secret mounts default to mode `0444` and container UID 0, which is your host user under rootless.
 
 Never persist decrypted files into images or build contexts.
 
@@ -228,7 +233,7 @@ flowchart TD
     subgraph "Host (Deployment)"
         AUTH["Auth method<br/>(AppRole, OIDC, etc.)"]
         AGENT["Vault Agent / sidecar<br/>OR systemd fetch unit"]
-        FILE["Secret file<br/>0600, root-owned"]
+        FILE["Secret file<br/>mode 0600, user-owned"]
     end
     subgraph "Container"
         APP["App reads<br/>/run/secrets/..."]
@@ -276,9 +281,9 @@ Both approaches keep the delivery model consistent: **the container reads a file
 
 | Dimension | Podman Secrets | systemd Credentials | SOPS | Vault-class |
 |-----------|---------------|---------------------|------|-------------|
-| **Encryption at rest** | No (plain on disk) | Yes (TPM/host key) | Yes (age/GPG/KMS) | Yes (transit engine) |
+| **Encryption at rest** | No (base64 on disk) | Yes (TPM/host key) | Yes (age/GPG/KMS) | Yes (seal and storage backend) |
 | **Multi-host** | No | Needs config management | Yes (git) | Yes (native) |
-| **Audit logs** | No | No | Git history | Yes (full) |
+| **Audit logs** | No | No | Git history of changes, not of reads | Yes (full) |
 | **Auto rotation** | No | No | Manual | Yes |
 | **Dynamic creds** | No | No | No | Yes |
 | **Operational cost** | Minimal | Low | Low-medium | High |
@@ -294,7 +299,7 @@ Both approaches keep the delivery model consistent: **the container reads a file
 
 **Regardless of which external system you choose**, the container interface stays the same:
 
-1. The secret arrives on the host as a **file** (decrypted, 0600, root-owned).
+1. The secret arrives on the host as a **file** (decrypted, mode `0600`, owned by the user who runs rootless Podman).
 2. The container reads it via a **mount** or Podman `--secret` (which is itself a file mount).
 3. The application code reads a file path — it does not know or care which backend provided it.
 

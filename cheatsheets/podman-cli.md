@@ -42,8 +42,9 @@ podman inspect <image-or-container>                 # show JSON metadata
 podman rmi <image>                                   # remove an image from local storage
 
 # Cleanup
-podman image prune          # remove unused images (frees disk)
-podman system prune         # remove unused objects (be careful)
+podman image prune          # dangling images only; -a removes unused images
+podman system prune         # stopped containers, unused networks, dangling images; not volumes
+podman system prune --volumes  # also unused volumes (data loss)
 podman builder prune        # remove build cache (if supported)
 ```
 

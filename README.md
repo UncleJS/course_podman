@@ -32,7 +32,8 @@ This is a course-in-a-repo for taking a learner from zero container knowledge to
 - `modules/`: lesson content (Markdown)
 - `cheatsheets/`: quick references (see below)
 - `examples/`: example YAML and unit files
-- `ASSESSMENTS.md`: practical exams and rubrics
+- `ASSESSMENTS.md`: practical exams and rubrics (Exam A after Module 10, Exam B after the capstone)
+- `GLOSSARY.md`: terms used across the modules
 - `FAQ.md`: common gotchas and fast fixes
 
 Module numbering:
@@ -45,6 +46,9 @@ Suggested path:
 
 - Start with `modules/00-setup.md`
 - Continue in numeric order
+- After Module 10, sit Exam A in `ASSESSMENTS.md`
+- After Module 80, sit Exam B
+- Keep `GLOSSARY.md` open when a term is new
 
 Cheatsheets (use alongside the modules, and as a post-course reference):
 

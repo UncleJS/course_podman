@@ -135,7 +135,7 @@ podman inspect sleep1 --format '{{.State.ExitCode}}'  # get last exit code
 | `--rm` | Auto-remove on exit | For experiments only |
 | `-it` | Interactive + TTY | `podman run -it alpine sh` |
 | `-e KEY=VALUE` | Environment variable | Avoid for secrets |
-| `-v name:/path` | Mount named volume | `--v dbdata:/var/lib/mysql` |
+| `-v name:/path` | Mount named volume | `-v dbdata:/var/lib/mysql` |
 | `-p host:container` | Publish port | `-p 8080:80` |
 | `--network <net>` | Join a network | `--network mynet` |
 | `--user <uid[:gid]>` | Run as specific user | `--user 1001:1001` |
@@ -169,9 +169,11 @@ podman inspect sleep1  # full JSON metadata: config, state, mounts, network, etc
 ```bash
 podman inspect sleep1 --format '{{.State.Status}}'         # running / exited
 podman inspect sleep1 --format '{{.State.ExitCode}}'       # exit code
-podman inspect sleep1 --format '{{.NetworkSettings.IPAddress}}'  # container IP
+podman inspect sleep1 --format '{{.NetworkSettings.IPAddress}}'  # empty on the default rootless network
 podman inspect sleep1 --format '{{json .HostConfig}}'      # host config as JSON
 ```
+
+On the default rootless network, `.NetworkSettings.IPAddress` is empty. An address appears under `.NetworkSettings.Networks` only after the container joins a user-defined bridge. Module 6 covers that. Do not treat the empty field as "the container has no IP."
 
 **Check what ports are published:**
 
@@ -193,16 +195,11 @@ podman stats --no-stream  # single snapshot of CPU/memory/IO usage for all runni
 
 **Debug a minimal image without a shell:**
 
-If your production image is distroless or has no shell, use `podman debug`:
-
-```bash
-podman debug sleep1  # attach a debug container to an existing container's namespaces
-```
-
-Or use an ephemeral container on the same network:
+Podman has no `debug` subcommand. Share the target container's network namespace (and PID namespace if you need a process list) from a small image that does have tools:
 
 ```bash
 podman run --rm --network container:sleep1 docker.io/library/busybox:latest netstat -tlnp  # share network namespace
+podman run --rm --pid container:sleep1 docker.io/library/busybox:latest ps  # share PID namespace
 ```
 
 
@@ -285,9 +282,9 @@ podman exec worker-b hostname  # prints worker-b
 podman run -d --name worker-a docker.io/library/alpine:latest sleep 300  # should fail
 ```
 
-Expected: `Error: container name "worker-a" is already in use`
+Expected: an error that the name `worker-a` is already in use by a container ID, and that mentions `--replace`.
 
-This teaches you to clean up before re-running scripts, or use `podman rm -f worker-a` first.
+Recover with `podman rm -f worker-a` before re-running, or pass `--replace` on the second `podman run`.
 
 **Cleanup:**
 
@@ -339,9 +336,12 @@ echo "Exit code: $?"  # print the exit code
 **Step 4: Observe OOM kill (code 137) — safe with a memory limit:**
 
 ```bash
-podman run --rm --memory 4m docker.io/library/alpine:latest sh -c 'dd if=/dev/zero of=/tmp/x bs=1M count=10'
-echo "Exit code: $?"  # 137 if OOM-killed, or the dd may just fail
+podman run --rm --memory 32m --memory-swap 32m docker.io/library/alpine:latest \
+  sh -c 'x=a; while true; do x=$x$x; done'  # grow a string until the cgroup kills it
+echo "Exit code: $?"  # expected: 137
 ```
+
+Writing a file under `/tmp` uses the writable layer, not anonymous memory, so it often does not trip `memory.max`. Doubling a shell string does.
 
 
 [↑ Go to TOC](#table-of-contents)
@@ -448,7 +448,7 @@ Rule of thumb: `container prune` is safe to run daily. `image prune -a` should b
 
 5) Exit code 137 — what likely happened?
 
-6) How would you get the IP address of a running container without using `podman exec`?
+6) A container is on a user-defined network. How do you print its IP without `podman exec`? Why is `.NetworkSettings.IPAddress` the wrong field on the default rootless network?
 
 
 [↑ Go to TOC](#table-of-contents)

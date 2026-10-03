@@ -62,7 +62,7 @@ If you only do a small slice of this module, do these:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 1  How Container Networking Works (Mental Model)
+## 1 How Container Networking Works (Mental Model)
 
 Before running commands, build the mental model. Every container gets:
 
@@ -76,15 +76,15 @@ When a container is only on the **default network** (Podman's built-in `podman` 
 
 ```mermaid
 flowchart TD
-    subgraph "Host OS"
+    subgraph "Rootless network namespace"
         subgraph "User-Defined Network (appnet)"
             A["Container A<br/>10.89.1.2"] <-->|"bridge + DNS"| B["Container B<br/>10.89.1.3"]
         end
         subgraph "Default Network (podman)"
-            C["Container C<br/>10.88.0.2"] ---|"IP only — no DNS"| D["Container D<br/>10.88.0.3"]
+            C["Container C<br/>10.89.0.2"] ---|"IP only — no DNS"| D["Container D<br/>10.89.0.3"]
         end
-        BR1["Linux Bridge<br/>(cni-podman0 / netavark)"]
-        BR2["Linux Bridge<br/>(podman0)"]
+        BR1["netavark bridge<br/>podman1"]
+        BR2["netavark bridge<br/>podman0"]
     end
     A --> BR1
     B --> BR1
@@ -94,61 +94,59 @@ flowchart TD
     BR2 -->|"NAT / pasta"| I
 ```
 
-### 1.1  The Four Network Drivers
+### 1.1 The Four Network Drivers
 
 | Driver | What it does | When to use it |
 |--------|-------------|----------------|
 | `bridge` | Virtual L2 bridge; default for user-defined networks | Almost everything |
-| `host` | Container shares the host network namespace | Low-level tools, benchmarking, rootful only (rootless has caveats) |
+| `host` | Container joins the host network namespace | Low-level tools. Rootless can use it; ports below 1024 still fail without extra config |
 | `none` | No network interface except loopback | Batch jobs, maximum isolation |
 | `macvlan` | Container appears as a separate MAC on your LAN | IoT, legacy apps that need a real LAN address |
 
-> **Rootless note:** `host` network mode has limited usefulness in rootless Podman because the container still cannot bind privileged ports without extra capability. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
+> **Rootless note:** `--network=host` does join the host network namespace, including for a rootless user. The container process still cannot bind ports below 1024 unless you lower `net.ipv4.ip_unprivileged_port_start` or grant `CAP_NET_BIND_SERVICE`. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
+
+The bridges in the diagram live in the **rootless network namespace**, not in the host's network namespace. `ip link` on the host does not show them. Section 7.6 has the command that does.
 
 ---
 
 
 [↑ Go to TOC](#table-of-contents)
 
-## 2  Rootless Networking In Depth
+## 2 Rootless Networking In Depth
 
-### 2.1  User-Mode Networking Helpers
+### 2.1 User-Mode Networking Helpers
 
-In rootless mode Podman cannot create kernel-level bridges as a normal user. Instead it delegates packet forwarding to a user-space helper:
+Rootless Podman uses two different pictures. Do not mix them.
 
-| Helper | Notes |
-|--------|-------|
-| **pasta** | Newer, faster, preferred on modern distros; fewer quirks with UDP/ICMP |
-| **slirp4netns** | Older, still common; slower but very portable |
+**Picture 1 — normal and user-defined networks (what the labs use).** Podman creates a rootless network namespace. Inside it, netavark builds bridges (`podman0` for the default network, another bridge per user-defined network) and aardvark-dns answers names. pasta (the Podman 5 default) connects that namespace to the host. Container addresses look like `10.89.0.0/24`, not `10.0.2.0/24`.
+
+**Picture 2 — slirp4netns, or an explicit `--network=pasta`.** That is a per-container stack. `podman-run(1)` documents `10.0.2.0/24` for that mode. It is not the address plan of a rootless bridge network.
+
+| Helper | When you see it |
+|--------|-----------------|
+| **pasta** | Podman 5 / RHEL 10 default (`default_rootless_network_cmd`) |
+| **slirp4netns** | Previous default, or when `containers.conf` still sets it |
 
 ```mermaid
 flowchart LR
-    subgraph "Container Namespace"
-        C["App Process<br/>eth0: 10.0.2.100"]
+    subgraph "Rootless network namespace"
+        C["Container eth0<br/>10.89.0.x"]
+        BR["netavark bridge podman0<br/>aardvark-dns"]
     end
-    subgraph "User Process (rootless)"
-        P["pasta / slirp4netns<br/>(user-space forwarder)"]
+    subgraph "Host network namespace"
+        P["pasta"]
+        H["Host interface"]
     end
-    subgraph "Host Network Namespace"
-        H["Host Interface<br/>eth0 / wlan0"]
-        I["Internet"]
-    end
-    C -->|"packets via veth"| P
-    P -->|"forwarded as host user traffic"| H
-    H --> I
+    C --> BR
+    BR --> P
+    P --> H
 ```
 
-Check which backend your installation uses:
+`{{.Host.NetworkBackend}}` is `netavark` or `cni`. It is not pasta vs slirp4netns. The helper is `RootlessNetworkCmd`. `Slirp4NetnsOptions` and `PastaOptions` are both filled in even when only one helper is active.
 
 ```bash
-podman info --format '{{.Host.NetworkBackend}}'  # show Podman host configuration
-```
-
-Check which per-network helper is active:
-
-```bash
-podman info --format '{{.Host.Slirp4NetnsOptions}}'  # show Podman host configuration
-podman info --format '{{.Host.PastaOptions}}'  # show Podman host configuration
+podman info --format '{{.Host.NetworkBackend}}'       # netavark or cni
+podman info --format '{{.Host.RootlessNetworkCmd}}'   # pasta on Podman 5
 ```
 
 You can switch the rootless backend in `~/.config/containers/containers.conf`:
@@ -158,13 +156,13 @@ You can switch the rootless backend in `~/.config/containers/containers.conf`:
 default_rootless_network_cmd = "pasta"
 ```
 
-### 2.2  What Rootless Networking Cannot Do (by default)
+### 2.2 What Rootless Networking Cannot Do (by default)
 
-- Bind ports < 1024 without extra OS configuration.
+- Bind ports < 1024 without extra OS configuration. On this platform `net.ipv4.ip_unprivileged_port_start` is typically 1024, and `/usr/bin/pasta` has no file capabilities, so those binds fail until you lower the sysctl or add `CAP_NET_BIND_SERVICE`.
 - Create `macvlan` / `ipvlan` adapters (kernel requires `CAP_NET_ADMIN`).
-- Use `host` network mode and see the real host interfaces in the traditional sense.
+- Skip the rootless network namespace. `--network=host` joins the host network namespace. The limit that remains is privileged ports, not "the interfaces are invisible."
 
-### 2.3  Allowing Privileged Ports for Rootless (When Needed)
+### 2.3 Allowing Privileged Ports for Rootless (When Needed)
 
 Option A — lower the unprivileged port minimum (system-wide, only if you own the machine):
 
@@ -177,16 +175,16 @@ sudo sysctl -p /etc/sysctl.d/99-lowport.conf  # apply the persistent config
 
 Option B — use a high port and put a reverse proxy (nginx, Caddy) in front. Strongly preferred in production.
 
-Option C — use `systemd` socket activation (covered in Module 11).
+Prefer a high port. This course does not use systemd socket activation for published ports.
 
 ---
 
 
 [↑ Go to TOC](#table-of-contents)
 
-## 3  Port Publishing
+## 3 Port Publishing
 
-### 3.1  Basic Port Mapping
+### 3.1 Basic Port Mapping
 
 Syntax: `-p <host-port>:<container-port>`
 
@@ -195,7 +193,7 @@ podman run -d --name web1 -p 8080:80 docker.io/library/nginx:stable  # run a con
 curl -sS http://127.0.0.1:8080/ | head  # verify HTTP endpoint
 ```
 
-### 3.2  Bind to a Specific Host Address
+### 3.2 Bind to a Specific Host Address
 
 By default `-p 8080:80` listens on all host interfaces (`0.0.0.0`).
 To restrict to loopback only:
@@ -212,26 +210,26 @@ podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:
 
 This is important for security: a backend service should never be published to `0.0.0.0` when it only needs to be reachable by a local proxy.
 
-### 3.3  Multiple Port Mappings
+### 3.3 Multiple Port Mappings
 
 ```bash
 podman run -d --name multi -p 8080:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
 ```
 
-### 3.4  UDP Port Mapping
+### 3.4 UDP Port Mapping
 
 ```bash
 podman run -d --name dns-demo -p 5053:53/udp -p 5053:53/tcp docker.io/library/alpine:latest sleep 600  # run a container
 ```
 
-### 3.5  Random Host Port (Ephemeral)
+### 3.5 Random Host Port (Ephemeral)
 
 ```bash
 podman run -d --name rand-port -p 80 docker.io/library/nginx:stable  # run a container
 podman port rand-port          # see what port was assigned
 ```
 
-### 3.6  Inspect Published Ports
+### 3.6 Inspect Published Ports
 
 ```bash
 # Quick view
@@ -255,9 +253,9 @@ podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
 
 [↑ Go to TOC](#table-of-contents)
 
-## 4  The Default Network vs User-Defined Networks
+## 4 The Default Network vs User-Defined Networks
 
-### 4.1  Why the Default Network Is Not Enough
+### 4.1 Why the Default Network Is Not Enough
 
 When you run `podman run` without `--network`, the container joins the default `podman` bridge.
 
@@ -267,7 +265,7 @@ Problems with the default network:
 2. **Shared blast radius.** All containers on the default network can reach each other at the IP level.
 3. **No isolation.** A compromised container can attempt connections to any other container on the same bridge.
 
-### 4.2  Creating a User-Defined Network
+### 4.2 Creating a User-Defined Network
 
 ```bash
 podman network create appnet  # create a network
@@ -297,7 +295,7 @@ Key fields to understand:
 
 Notice `dns_enabled: true` — this is the key difference from the default network.
 
-### 4.3  Custom Subnet and Gateway
+### 4.3 Custom Subnet and Gateway
 
 ```bash
 podman network create --subnet 172.28.0.0/24 --gateway 172.28.0.1 myapp-net  # create a network
@@ -307,7 +305,7 @@ Use custom subnets when:
 - You need deterministic IPs (rare; prefer DNS names instead).
 - You need to avoid subnet collisions with your VPN or office network.
 
-### 4.4  Internal Networks (No External Access)
+### 4.4 Internal Networks (No External Access)
 
 An internal network has no route to the outside world. Containers on it cannot reach the internet.
 
@@ -325,7 +323,7 @@ podman run --rm --network db-internal docker.io/library/alpine:latest sh -lc 'wg
 
 Expected: connection times out or is refused. That is the intended behavior.
 
-### 4.5  Remove a Network
+### 4.5 Remove a Network
 
 ```bash
 podman network rm appnet  # remove the network
@@ -345,9 +343,9 @@ podman network rm appnet  # remove a network
 
 [↑ Go to TOC](#table-of-contents)
 
-## 5  Container DNS and Service Discovery
+## 5 Container DNS and Service Discovery
 
-### 5.1  How It Works
+### 5.1 How It Works
 
 Podman runs an embedded DNS resolver (backed by **aardvark-dns** on modern versions). When `dns_enabled: true` on a network:
 
@@ -355,7 +353,7 @@ Podman runs an embedded DNS resolver (backed by **aardvark-dns** on modern versi
 - DNS queries inside containers are answered by the Podman DNS resolver.
 - The resolver is reachable at the network gateway address (usually the first usable IP on the subnet).
 
-### 5.2  Basic DNS Lab
+### 5.2 Basic DNS Lab
 
 ```bash
 podman network create testdns  # create a network
@@ -375,7 +373,7 @@ Test TCP connectivity:
 podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'  # run a container
 ```
 
-### 5.3  Network Aliases
+### 5.3 Network Aliases
 
 An alias lets you give a container an **additional DNS name** on a specific network. This is useful for:
 
@@ -393,7 +391,7 @@ podman run --rm --network alias-demo docker.io/library/alpine:latest sh -lc 'get
 
 Both the container name (`primary-db`) and the alias (`db`) resolve to the same IP.
 
-### 5.4  Multiple Containers Sharing an Alias (Load-Balancing Pattern)
+### 5.4 Multiple Containers Sharing an Alias (Load-Balancing Pattern)
 
 When multiple containers share the same alias on a network, DNS returns **all IPs** (round-robin).
 
@@ -413,7 +411,7 @@ podman network rm lb-demo # remove the network
 
 > This is primitive load balancing. For production you want a real load balancer in front. But the DNS pattern is real.
 
-### 5.5  Custom DNS Servers
+### 5.5 Custom DNS Servers
 
 Override the DNS server used inside a container (useful on corporate networks or when using a split-horizon DNS):
 
@@ -438,7 +436,7 @@ podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest s
 
 [↑ Go to TOC](#table-of-contents)
 
-## 6  Connecting Containers to Multiple Networks
+## 6 Connecting Containers to Multiple Networks
 
 A container can be a member of more than one network simultaneously. This is the correct way to build a tiered architecture:
 
@@ -466,7 +464,7 @@ flowchart LR
     DB -. "NO outbound" .-> I
 ```
 
-### 6.1  Multi-Network Example
+### 6.1 Multi-Network Example
 
 ```bash
 podman network create frontend-net  # create a network
@@ -498,7 +496,7 @@ podman rm -f db app frontend               # stop and remove containers
 podman network rm frontend-net backend-net # remove networks
 ```
 
-### 6.2  Disconnect from a Network Without Stopping
+### 6.2 Disconnect from a Network Without Stopping
 
 ```bash
 podman network disconnect backend-net app  # detach a container from a network
@@ -507,7 +505,7 @@ podman network disconnect backend-net app  # detach a container from a network
 Verify the container no longer has the interface:
 
 ```bash
-podman exec app ip addr  # run a command in a running container
+podman exec app cat /proc/net/dev  # alpine has no ip; this lists interfaces
 ```
 
 Reconnect:
@@ -521,15 +519,15 @@ podman network connect backend-net app  # attach a container to a network
 
 [↑ Go to TOC](#table-of-contents)
 
-## 7  Inspecting Network State
+## 7 Inspecting Network State
 
-### 7.1  List All Networks
+### 7.1 List All Networks
 
 ```bash
 podman network ls  # list networks
 ```
 
-### 7.2  Detailed Network Info
+### 7.2 Detailed Network Info
 
 ```bash
 podman network inspect appnet  # inspect a network
@@ -537,7 +535,7 @@ podman network inspect appnet  # inspect a network
 
 Shows: driver, subnets, gateways, connected containers, DNS state.
 
-### 7.3  Which Network Is a Container On?
+### 7.3 Which Network Is a Container On?
 
 ```bash
 podman inspect <name> --format '{{json .NetworkSettings.Networks}}'  # inspect container/image metadata
@@ -549,7 +547,7 @@ Or see all networks and their connected containers:
 podman network inspect appnet --format '{{json .Containers}}'  # inspect a network
 ```
 
-### 7.4  Show Container IP Address
+### 7.4 Show Container IP Address
 
 ```bash
 podman inspect <name> --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'  # inspect container/image metadata
@@ -561,21 +559,22 @@ For multi-network containers:
 podman inspect app --format '{{range $name, $net := .NetworkSettings.Networks}}{{$name}}: {{$net.IPAddress}}{{"\n"}}{{end}}'  # inspect container/image metadata
 ```
 
-### 7.5  View Interfaces Inside a Running Container
+### 7.5 View Interfaces Inside a Running Container
+
+`ip` is not in Alpine or the official nginx image. Use an image that has iproute2, or read `/proc/net/dev`.
 
 ```bash
-podman exec <name> ip addr  # run a command in a running container
-podman exec <name> ip route  # run a command in a running container
+podman exec <name> cat /proc/net/dev  # interfaces without the ip command
+podman exec <name> cat /proc/net/route  # routes without the ip command
 podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 ```
 
-### 7.6  Host-Side View
+### 7.6 Host-Side View
 
-On the host, Podman bridge networks appear as `podman` prefixed virtual bridges:
+Rootless bridges are not in the host network namespace. `ip link` on the host shows nothing for them. Look inside the rootless netns:
 
 ```bash
-ip link show type bridge  # show network links
-ip addr show  # show interfaces
+podman unshare --rootless-netns ip link show type bridge  # podman0 and user-defined bridges
 ```
 
 ---
@@ -583,39 +582,38 @@ ip addr show  # show interfaces
 
 [↑ Go to TOC](#table-of-contents)
 
-## 8  Network Drivers — Deeper Look
+## 8 Network Drivers — Deeper Look
 
-### 8.1  Bridge (Default)
+### 8.1 Bridge (Default)
 
 ```bash
 podman network create --driver bridge mybridge  # create a network
 ```
 
 Characteristics:
-- Creates a Linux bridge on the host.
-- Uses NAT (masquerade) for outbound traffic.
-- Containers get private IPs; host reaches them via the bridge.
+- Creates a Linux bridge in the rootless network namespace (netavark's default bridge is `podman0`). It is not visible to `ip link` in the host netns.
+- Uses NAT (masquerade) for outbound traffic, with pasta carrying packets to the host.
+- Containers get private IPs (often `10.89.0.0/24`). The host reaches published ports through pasta, not by routing onto that bridge.
 
-### 8.2  None (No Networking)
+### 8.2 None (No Networking)
 
 ```bash
-podman run --rm --network none docker.io/library/alpine:latest ip addr  # run a container
+podman run --rm --network none registry.fedoraproject.org/fedora:latest ip addr  # alpine has no ip
 ```
 
 Only `lo` (loopback) is present. Useful for:
 - Batch jobs that need complete network isolation.
 - Security-sensitive workloads that must never dial out.
 
-### 8.3  Host (Rootful Only — with Caveats)
+### 8.3 Host
 
 ```bash
-# Note: limited usefulness in rootless mode
-podman run --rm --network host docker.io/library/alpine:latest ip addr  # run a container
+podman run --rm --network host registry.fedoraproject.org/fedora:latest ip addr  # joins the host netns
 ```
 
-The container sees the host's network interfaces directly. There is no NAT, no port mapping needed. Avoid this in production rootless workloads.
+The container sees the host's network interfaces. There is no NAT and no port mapping. Rootless processes still cannot bind ports below 1024. Avoid `--network=host` for production services in this course.
 
-### 8.4  macvlan (Requires Root or Capabilities)
+### 8.4 macvlan (Requires Root or Capabilities)
 
 ```bash
 # rootful or with NET_ADMIN capability only
@@ -629,9 +627,9 @@ The container appears as a distinct host on your physical LAN. Useful for legacy
 
 [↑ Go to TOC](#table-of-contents)
 
-## 9  Network Security Patterns
+## 9 Network Security Patterns
 
-### 9.1  The Principle: Expose Nothing You Don't Need To
+### 9.1 The Principle: Expose Nothing You Don't Need To
 
 Every port you publish is an attack surface. Every network link you create is a potential pivot point.
 
@@ -662,7 +660,7 @@ flowchart TD
     CACHE -. "blocked" .-> INET
 ```
 
-### 9.2  Segment Networks by Trust Zone
+### 9.2 Segment Networks by Trust Zone
 
 ```
 [public-net]   web / proxy containers only
@@ -672,16 +670,25 @@ flowchart TD
 
 The DB is never on `public-net`. The proxy is never on `db-net`.
 
-### 9.3  Combine with `--internal` Flag
+### 9.3 Combine with `--internal` Flag
 
 ```bash
 podman network create --internal private-db  # create a network
-podman run -d --name postgres --network private-db -e POSTGRES_PASSWORD=secret docker.io/library/postgres:16-alpine  # run a container
+umask 077
+read -rs PASSWORD
+printf '%s' "$PASSWORD" > ./pgpass.txt
+unset PASSWORD
+podman secret create pg_password ./pgpass.txt
+rm -f ./pgpass.txt
+podman run -d --name postgres --network private-db \
+  --secret pg_password \
+  -e POSTGRES_PASSWORD_FILE=/run/secrets/pg_password \
+  docker.io/library/postgres:16-alpine  # password from a file, not -e POSTGRES_PASSWORD
 ```
 
 This DB can never initiate outbound connections. It cannot call home, exfiltrate data to an external server, or participate in an outbound botnet.
 
-### 9.4  Use `--network-alias` for Service Contracts
+### 9.4 Use `--network-alias` for Service Contracts
 
 Name your services after their role, not their implementation:
 
@@ -693,7 +700,7 @@ Name your services after their role, not their implementation:
 
 When you upgrade a service, you swap the container and preserve the alias. Nothing else needs to change.
 
-### 9.9  Avoid Publishing to 0.0.0.0 Unnecessarily
+### 9.5 Avoid Publishing to 0.0.0.0 Unnecessarily
 
 ```bash
 # Bad for an internal API
@@ -708,7 +715,7 @@ When you upgrade a service, you swap the container and preserve the alias. Nothi
 
 [↑ Go to TOC](#table-of-contents)
 
-## 10  Full Lab: Three-Tier Isolated Stack
+## 10 Full Lab: Three-Tier Isolated Stack
 
 Build a realistic, isolated three-tier stack:
 
@@ -791,7 +798,7 @@ podman network rm frontend-net app-net # remove networks
 
 [↑ Go to TOC](#table-of-contents)
 
-## 11  Connecting Containers to Pods on a Network
+## 11 Connecting Containers to Pods on a Network
 
 Pods (covered in Module 7) and user-defined networks interact naturally. You can place an entire pod on a named network:
 
@@ -815,11 +822,11 @@ podman network rm podnet  # remove the network
 
 [↑ Go to TOC](#table-of-contents)
 
-## 12  Networking in Quadlet (systemd) Deployments
+## 12 Networking in Quadlet (systemd) Deployments
 
 Quadlet `.network` unit files let you declare Podman networks as systemd-managed resources. This ensures networks exist before containers start.
 
-### 12.1  Declare a Network Unit
+### 12.1 Declare a Network Unit
 
 Create `~/.config/containers/systemd/appnet.network`:
 
@@ -832,7 +839,7 @@ Driver=bridge
 Internal=true
 ```
 
-### 12.2  Reference the Network in a Container Unit
+### 12.2 Reference the Network in a Container Unit
 
 In your `.container` unit file:
 
@@ -851,9 +858,9 @@ Full Quadlet networking is covered in Module 11.
 
 [↑ Go to TOC](#table-of-contents)
 
-## 13  Troubleshooting Networking
+## 13 Troubleshooting Networking
 
-### 13.1  Symptom: Container Cannot Reach Another Container by Name
+### 13.1 Symptom: Container Cannot Reach Another Container by Name
 
 Checklist:
 
@@ -886,7 +893,7 @@ podman network inspect <net> --format '{{.DNSEnabled}}'  # inspect a network
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent hosts <target-name>'  # run a container
 ```
 
-### 13.2  Symptom: Cannot Connect Even Though DNS Resolves
+### 13.2 Symptom: Cannot Connect Even Though DNS Resolves
 
 DNS working but TCP failing means the service is not listening, is on the wrong port, or there is a firewall rule.
 
@@ -900,25 +907,25 @@ podman exec <target> ss -tlnp  # run a command in a running container
 podman exec <target> netstat -tlnp  # run a command in a running container
 ```
 
-### 13.3  Symptom: Port Published But Cannot Reach from Host
+### 13.3 Symptom: Port Published But Cannot Reach from Host
 
 ```bash
 # Confirm the port mapping
 podman port <name>  # show published ports
 
-# Confirm the process is listening inside the container
-podman exec <name> ss -tlnp  # run a command in a running container
+# Confirm the process is listening inside the container.
+# ss is not in Alpine or the official nginx image; /proc/net/tcp is.
+podman exec <name> cat /proc/net/tcp
 
-# Check host firewall
-sudo firewall-cmd --list-all   # firewalld
-sudo iptables -L -n            # iptables / nftables
+# Check host firewall (firewalld is the RHEL/Fedora tool)
+sudo firewall-cmd --list-all
 
 # Check the container's host binding
 podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # inspect container/image metadata
 # Look for "HostIp" - if it's 127.0.0.1, you can only reach from localhost
 ```
 
-### 13.4  Symptom: `nc` or `wget` Not Available in Container
+### 13.4 Symptom: `nc` or `wget` Not Available in Container
 
 Use a debug sidecar with networking tools:
 
@@ -932,7 +939,7 @@ Or use a minimal alpine with a one-liner install:
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'apk add -q curl && curl -v http://<target>:<port>/'  # run a container
 ```
 
-### 13.5  Symptom: Container Cannot Reach the Internet
+### 13.5 Symptom: Container Cannot Reach the Internet
 
 ```bash
 # Verify DNS
@@ -952,17 +959,19 @@ If the network is `internal: true`, outbound traffic is intentionally blocked.
 
 If DNS fails but the IP works, the problem is your DNS resolver configuration.
 
-### 13.6  Symptom: Sporadic Connection Failures (Rootless)
+### 13.6 Symptom: Sporadic Connection Failures (Rootless)
 
 This is often a pasta/slirp4netns quirk with UDP under high load, or a port exhaustion issue.
 
 ```bash
-# Check for errors in the rootless network helper
-journalctl --user -u podman.socket  # view user-service logs
-podman events --filter type=network  # show Podman lifecycle events
+# pasta errors show up on the container, not on the Podman API socket
+podman logs <name>
+journalctl --user -u <name>.service -n 50 --no-pager   # when the container is a Quadlet unit
 ```
 
-### 13.7  Useful Debugging One-Liners
+`podman.socket` is the API socket. It does not log pasta failures.
+
+### 13.7 Useful Debugging One-Liners
 
 ```bash
 # All running container IPs
@@ -983,31 +992,33 @@ podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 
 [↑ Go to TOC](#table-of-contents)
 
-## 14  Common Patterns Reference
+## 14 Common Patterns Reference
+
+These are **sketches**, not labs. `myapp:latest` is not an image in this course. The ports and image names below follow the course rules (high ports, fully qualified names, no password in the environment) so you can adapt them. Do not publish host port 80 from a rootless user.
 
 ### Pattern A — Single Shared App Network (Simple Stack)
 
 ```bash
-podman network create app  # create a network
-podman run -d --name db    --network app docker.io/library/postgres:16-alpine  # run a container
-podman run -d --name cache --network app docker.io/library/redis:7-alpine  # run a container
-podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest  # run a container
-podman run -d --name proxy --network app -p 0.0.0.0:80:80     nginx:stable  # run a container
+podman network create app
+podman run -d --name db    --network app docker.io/library/alpine:latest sleep infinity  # stand-in; a real Postgres needs a secret file
+podman run -d --name cache --network app docker.io/library/redis:7-alpine
+podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest
+podman run -d --name proxy --network app -p 127.0.0.1:8080:80 docker.io/library/nginx:stable
 ```
 
 ### Pattern B — Segmented Networks (Recommended for Production)
 
 ```bash
-podman network create --internal data-tier  # create a network
-podman network create app-tier  # create a network
-podman network create public-tier  # create a network
+podman network create --internal data-tier
+podman network create app-tier
+podman network create public-tier
 
-podman run -d --name db     --network data-tier   postgres:16-alpine  # run a container
-podman run -d --name cache  --network data-tier   redis:7-alpine  # run a container
-podman run -d --name api    --network app-tier    myapp:latest  # run a container
+podman run -d --name db     --network data-tier   docker.io/library/alpine:latest sleep infinity
+podman run -d --name cache  --network data-tier   docker.io/library/redis:7-alpine
+podman run -d --name api    --network app-tier    myapp:latest
 podman network connect data-tier api              # api reaches db and cache
 
-podman run -d --name proxy  --network public-tier -p 80:80 nginx:stable  # run a container
+podman run -d --name proxy  --network public-tier -p 127.0.0.1:8080:80 docker.io/library/nginx:stable
 podman network connect app-tier proxy             # proxy reaches api
 ```
 
@@ -1021,7 +1032,7 @@ podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # r
 ### Pattern D — One-Time Migration Container
 
 ```bash
-podman run --rm --network app-tier --env-file .env myapp:latest ./migrate.sh  # run a container
+podman run --rm --network app-tier myapp:latest ./migrate.sh  # do not pass secrets with --env-file
 ```
 
 ---

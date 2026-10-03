@@ -70,7 +70,7 @@ By the end of this module you will be able to:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 1  Images, Layers, and the Build Mental Model
+## 1 Images, Layers, and the Build Mental Model
 
 An image build is a series of filesystem snapshots.
 
@@ -113,9 +113,9 @@ Terminology:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 2  `podman build` Fundamentals
+## 2 `podman build` Fundamentals
 
-### 2.1  Basic Build
+### 2.1 Basic Build
 
 ```bash
 podman build -t localhost/myapp:1 .  # build an image
@@ -137,7 +137,7 @@ Notes:
 - `--no-cache` is useful when debugging, but do not make it your default.
 - `--target` builds only a named stage from a multi-stage Containerfile.
 
-### 2.2  Naming: Why `localhost/` Is Used in Labs
+### 2.2 Naming: Why `localhost/` Is Used in Labs
 
 Using `localhost/<name>` makes it explicit that the tag is local and not in a remote registry namespace.
 
@@ -147,7 +147,7 @@ podman images | head  # list images
 
 You will see `localhost/myapp:1` locally even if you are not logged into a registry.
 
-### 2.3  What Builds What
+### 2.3 What Builds What
 
 Podman builds are typically executed by Buildah under the hood.
 
@@ -158,7 +158,7 @@ You do not need to become a Buildah expert, but this matters when you search for
 
 [↑ Go to TOC](#table-of-contents)
 
-## 3  Containerfile Instructions: The Practical Subset
+## 3 Containerfile Instructions: The Practical Subset
 
 You can build most real images with these instructions:
 
@@ -174,7 +174,7 @@ You can build most real images with these instructions:
 - `LABEL` attach metadata
 - `HEALTHCHECK` basic liveness signal (optional)
 
-### 3.1  `COPY` vs `ADD`
+### 3.1 `COPY` vs `ADD`
 
 Rule of thumb:
 
@@ -183,7 +183,7 @@ Rule of thumb:
 
 Do not use `ADD` to fetch URLs.
 
-### 3.2  Shell Form vs Exec Form
+### 3.2 Shell Form vs Exec Form
 
 Exec form (recommended for servers):
 
@@ -203,7 +203,7 @@ Why exec form is better:
 - Your process becomes PID 1 (no intermediate shell).
 - Arguments are not re-parsed by a shell.
 
-### 3.3  `ENTRYPOINT` vs `CMD`
+### 3.3 `ENTRYPOINT` vs `CMD`
 
 - `CMD` is the default that users commonly override.
 - `ENTRYPOINT` is for the command you almost never want overridden.
@@ -215,7 +215,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["/app/server"]
 ```
 
-### 3.4  `EXPOSE` Does Not Publish Ports
+### 3.4 `EXPOSE` Does Not Publish Ports
 
 `EXPOSE 8080` is documentation inside the image.
 
@@ -230,7 +230,7 @@ podman run -p 8080:8080 localhost/myapp:1  # run a container
 
 [↑ Go to TOC](#table-of-contents)
 
-## 4  Lab A: Build a Tiny HTTP Image (Warm-Up)
+## 4 Lab A: Build a Tiny HTTP Image (Warm-Up)
 
 Create a new directory:
 
@@ -285,7 +285,7 @@ rm -rf ./image-lab                 # delete the lab directory
 
 [↑ Go to TOC](#table-of-contents)
 
-## 5  Build Context Hygiene (The Most Common Image Leak)
+## 5 Build Context Hygiene (The Most Common Image Leak)
 
 Your build context is everything in the directory you pass to `podman build`.
 
@@ -313,7 +313,7 @@ flowchart LR
     SRC -->|"COPY src/ /app/src"| IMG["Final Image<br/>(clean + small)"]
 ```
 
-### 5.1  Use `.containerignore`
+### 5.1 Use `.containerignore`
 
 Create `.containerignore` next to your `Containerfile`:
 
@@ -332,7 +332,7 @@ tmp
 
 Podman commonly supports `.containerignore` and often also `.dockerignore`.
 
-### 5.2  Prefer Explicit Copies
+### 5.2 Prefer Explicit Copies
 
 Instead of:
 
@@ -354,7 +354,7 @@ This prevents accidental inclusion and improves caching.
 
 [↑ Go to TOC](#table-of-contents)
 
-## 6  Running as Non-Root (Image-Level Least Privilege)
+## 6 Running as Non-Root (Image-Level Least Privilege)
 
 Rootless Podman protects the host.
 
@@ -364,7 +364,7 @@ Running as non-root inside the container protects you from:
 - accidental writes to system locations in the image
 - overly-permissive defaults (root can write almost anywhere)
 
-### 6.1  The Three Places You Usually Need Write Access
+### 6.1 The Three Places You Usually Need Write Access
 
 - `/tmp`
 - an app state directory (like `/var/lib/myapp`)
@@ -375,12 +375,13 @@ Best practice:
 - treat the root filesystem as read-only when possible (Module 12)
 - use a dedicated volume or tmpfs for the few paths that must be writable
 
-### 6.2  Pattern: Create a User and Own the App Directory
+### 6.2 Pattern: Create a User and Own the App Directory
 
 ```Dockerfile
 FROM docker.io/library/alpine:3.20
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app app \
+ && mkdir -p /app && chown app:app /app
 WORKDIR /app
 COPY --chown=app:app . /app
 USER app
@@ -392,7 +393,7 @@ Notes:
 - `COPY --chown=...` is often cleaner than `RUN chown -R ...`.
 - Some minimal images do not include `adduser`/`addgroup` (use their native tools).
 
-### 6.3  Lab B: Verify Non-Root Actually Works
+### 6.3 Lab B: Verify Non-Root Actually Works
 
 ```bash
 mkdir -p ./nonroot-lab  # create directory
@@ -401,7 +402,8 @@ cd ./nonroot-lab  # change directory
 cat > Containerfile <<'EOF'
 FROM docker.io/library/alpine:3.20
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app app \
+ && mkdir -p /app && chown app:app /app
 WORKDIR /app
 COPY --chown=app:app . /app
 USER app
@@ -415,14 +417,14 @@ cd ..  # change directory
 rm -rf ./nonroot-lab            # delete the lab directory
 ```
 
-If `touch /app/ok` fails, you did not set ownership correctly.
+`COPY --chown` changes the copied files, not the `WORKDIR` directory. `WORKDIR` creates `/app` as root mode 755, so `touch /app/ok` fails unless `mkdir` and `chown` run before `USER`.
 
 ---
 
 
 [↑ Go to TOC](#table-of-contents)
 
-## 7  Multi-Stage Builds (Small Images, Fast Builds)
+## 7 Multi-Stage Builds (Small Images, Fast Builds)
 
 Multi-stage builds let you:
 
@@ -457,7 +459,7 @@ flowchart LR
     SIZE2 -.-> R1
 ```
 
-### 7.1  Lab C (Optional): Provided Go Multi-Stage Example
+### 7.1 Lab C (Optional): Provided Go Multi-Stage Example
 
 This repository includes:
 
@@ -479,7 +481,7 @@ podman images | head  # list images
 podman image history localhost/hello-go:1  # show image layer history
 ```
 
-### 7.2  Pattern: Build Dependencies First, Copy Source Later
+### 7.2 Pattern: Build Dependencies First, Copy Source Later
 
 This pattern maximizes cache reuse:
 
@@ -490,14 +492,17 @@ This pattern maximizes cache reuse:
 
 Even if you do not use multi-stage, the order still matters.
 
-### 7.3  Example Pattern: Bun App (Build + Runtime)
+### 7.3 Example Pattern: Bun App (Build + Runtime)
 
-This is an example Containerfile shape for Bun-based services. Adapt it to your project.
+The snippet below is a **sketch** (it expects `package.json` and `bun.lockb`). The files in this repo are different: `examples/build/hello-bun/` only copies `server.ts` and `healthcheck.ts`. Build that example with `--format docker`, because OCI images drop `HEALTHCHECK`:
 
-Try the repo-backed example:
+```bash
+podman build --format docker -t localhost/hello-bun:1 examples/build/hello-bun
+```
 
-- `examples/build/hello-bun/Containerfile`
-- `examples/build/hello-bun/server.ts`
+The `oven/bun` image sets `USER bun`. A `RUN` in the build stage that writes to a root-owned `/app` fails unless that stage switches back to `USER root`. The runtime stage is where `USER bun` belongs. See the Containerfile in the example directory.
+
+Sketch (not the repo file):
 
 ```Dockerfile
 FROM docker.io/oven/bun:1.2.0 AS build
@@ -528,7 +533,7 @@ Notes:
 - If your build outputs different paths, adjust `COPY --from=build`.
 - If you need native modules, your runtime base must be compatible.
 
-### 7.4  Example Pattern: Static Web Build (Build Stage + nginx)
+### 7.4 Example Pattern: Static Web Build (Build Stage + nginx)
 
 ```Dockerfile
 FROM docker.io/library/node:22-alpine AS build
@@ -549,18 +554,18 @@ This keeps Node and build tools out of the runtime image.
 
 [↑ Go to TOC](#table-of-contents)
 
-## 8  Caching: Make Rebuilds Fast
+## 8 Caching: Make Rebuilds Fast
 
 Most slow builds are slow because caching is accidentally disabled.
 
-### 8.1  Common Cache-Busters
+### 8.1 Common Cache-Busters
 
 - `COPY . .` early in the file
 - including `node_modules/` or `target/` in the context
 - running `apt-get update` in a separate layer from `apt-get install`
 - using floating package versions
 
-### 8.2  Linux Packages: One Layer, Clean Up
+### 8.2 Linux Packages: One Layer, Clean Up
 
 For Debian/Ubuntu bases:
 
@@ -576,7 +581,7 @@ For Alpine:
 RUN apk add --no-cache ca-certificates curl
 ```
 
-### 8.3  Use Stage Targets for Faster Debugging
+### 8.3 Use Stage Targets for Faster Debugging
 
 If a multi-stage build fails late, rebuild only to the stage you care about:
 
@@ -595,9 +600,9 @@ podman run --rm -it localhost/myapp:build sh  # run a container
 
 [↑ Go to TOC](#table-of-contents)
 
-## 9  `ARG`, `ENV`, and Configuration
+## 9 `ARG`, `ENV`, and Configuration
 
-### 9.1  `ARG` Is Build-Time
+### 9.1 `ARG` Is Build-Time
 
 `ARG` values exist during build, and can influence caching.
 
@@ -612,7 +617,7 @@ Build:
 podman build --build-arg APP_VERSION=1.2.3 -t localhost/myapp:1 .  # build an image
 ```
 
-### 9.2  `ENV` Is Runtime Default
+### 9.2 `ENV` Is Runtime Default
 
 ```Dockerfile
 ENV PORT=3000
@@ -626,7 +631,7 @@ Override at runtime:
 podman run --rm -e PORT=8080 localhost/myapp:1  # run a container
 ```
 
-### 9.3  Do Not Put Secrets in `ARG` or `ENV`
+### 9.3 Do Not Put Secrets in `ARG` or `ENV`
 
 If you do this:
 
@@ -648,7 +653,7 @@ Use runtime secrets (Module 4) or build-time secret mechanisms (next section).
 
 [↑ Go to TOC](#table-of-contents)
 
-## 10  Secrets and Private Dependencies (Build-Time)
+## 10 Secrets and Private Dependencies (Build-Time)
 
 Rules you can rely on:
 
@@ -656,7 +661,7 @@ Rules you can rely on:
 - never commit secrets into the build context
 - prefer fetching private dependencies outside the build and copying only artifacts
 
-### 10.1  If Your Podman Supports Build Secrets
+### 10.1 If Your Podman Supports Build Secrets
 
 Some Podman/Buildah versions support `podman build --secret ...`.
 
@@ -670,7 +675,7 @@ In a Containerfile, the secret is mounted at build time (not copied into layers)
 
 If your version does not support it, use the safe fallback below.
 
-### 10.2  Safe Fallback: Fetch in CI, Copy Artifacts
+### 10.2 Safe Fallback: Fetch in CI, Copy Artifacts
 
 Instead of cloning or downloading private content during image build:
 
@@ -686,7 +691,7 @@ This keeps secrets entirely out of the image build process.
 
 [↑ Go to TOC](#table-of-contents)
 
-## 11  Labels, Metadata, and Image Introspection
+## 11 Labels, Metadata, and Image Introspection
 
 Labels help you operate images later.
 
@@ -718,15 +723,15 @@ podman image inspect localhost/myapp:1 --format '{{json .Labels}}'  # inspect im
 
 [↑ Go to TOC](#table-of-contents)
 
-## 12  Tagging, Digests, and Promotion
+## 12 Tagging, Digests, and Promotion
 
-### 12.1  Tags Are Mutable
+### 12.1 Tags Are Mutable
 
 `myapp:latest` can point to different content over time.
 
 This is convenient, but it is not auditable.
 
-### 12.2  Digests Are Immutable
+### 12.2 Digests Are Immutable
 
 Pull and run by digest:
 
@@ -740,7 +745,7 @@ For production:
 - build from pinned bases when you need repeatability
 - promote images by digest (not by tag) when you need audit trails
 
-### 12.3  A Simple Promotion Flow
+### 12.3 A Simple Promotion Flow
 
 1. build locally or in CI as `myapp:git-<sha>`
 2. run tests
@@ -759,27 +764,27 @@ podman tag localhost/myapp:git-abc123 localhost/myapp:prod  # add another tag/na
 
 [↑ Go to TOC](#table-of-contents)
 
-## 13  Pushing Images to a Registry
+## 13 Pushing Images to a Registry
 
-### 13.1  Login
+### 13.1 Login
 
 ```bash
 podman login <registry>  # log into a container registry
 ```
 
-### 13.2  Tag for the Registry Namespace
+### 13.2 Tag for the Registry Namespace
 
 ```bash
 podman tag localhost/myapp:1 registry.example.com/team/myapp:1  # add another tag/name
 ```
 
-### 13.3  Push
+### 13.3 Push
 
 ```bash
 podman push registry.example.com/team/myapp:1  # push an image to a registry
 ```
 
-### 13.4  Pull and Verify
+### 13.4 Pull and Verify
 
 ```bash
 podman pull registry.example.com/team/myapp:1  # pull an image
@@ -796,7 +801,7 @@ Production habit:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 14  Testing the Image You Built
+## 14 Testing the Image You Built
 
 Your build is not done when `podman build` finishes.
 
@@ -808,19 +813,19 @@ Minimum checks:
 4. container runs as non-root (if intended)
 5. container writes only to intended paths
 
-### 14.1  Smoke Test
+### 14.1 Smoke Test
 
 ```bash
 podman run --rm -p 8080:8080 localhost/myapp:1  # run a container
 ```
 
-### 14.2  Confirm Effective User
+### 14.2 Confirm Effective User
 
 ```bash
 podman run --rm localhost/myapp:1 id  # run a container
 ```
 
-### 14.3  Healthcheck (If You Define One)
+### 14.3 Healthcheck (If You Define One)
 
 If your Containerfile includes `HEALTHCHECK`:
 
@@ -845,9 +850,9 @@ podman rm -f hc  # stop and remove the container
 
 [↑ Go to TOC](#table-of-contents)
 
-## 15  Troubleshooting Builds (Common Failures)
+## 15 Troubleshooting Builds (Common Failures)
 
-### 15.1  `COPY failed: file not found in build context`
+### 15.1 `COPY failed: file not found in build context`
 
 Causes:
 
@@ -875,7 +880,7 @@ flowchart TD
     Q5 -->|"No"| F6["Check podman logs<br/>Run interactively: -it --entrypoint sh"]
 ```
 
-### 15.2  Permission Errors in `RUN` Steps
+### 15.2 Permission Errors in `RUN` Steps
 
 Typical in rootless builds when scripts assume root-only locations.
 
@@ -885,7 +890,7 @@ Fix patterns:
 - ensure `WORKDIR` exists
 - if you switch to `USER app`, do it after you finish root-only install steps
 
-### 15.3  Container Starts Then Exits Immediately
+### 15.3 Container Starts Then Exits Immediately
 
 Causes:
 
@@ -899,7 +904,7 @@ Debug:
 podman run --rm -it --entrypoint sh localhost/myapp:1  # run a container
 ```
 
-### 15.4  `exec format error`
+### 15.4 `exec format error`
 
 Cause:
 
@@ -915,7 +920,7 @@ podman build --platform linux/amd64 -t localhost/myapp:amd64 .  # build an image
 
 Cross-building often requires extra host setup (emulation). Treat it as an advanced topic.
 
-### 15.5  Huge Images
+### 15.5 Huge Images
 
 Causes:
 
@@ -940,7 +945,7 @@ podman image history localhost/myapp:1  # show image layer history
 
 [↑ Go to TOC](#table-of-contents)
 
-## 16  Cleanup: Keep Your Machine Healthy
+## 16 Cleanup: Keep Your Machine Healthy
 
 Image builds create intermediate images and caches.
 
@@ -967,7 +972,7 @@ Be careful:
 
 [↑ Go to TOC](#table-of-contents)
 
-## 17  Extended Lab: A Small "Real" Service Image
+## 17 Extended Lab: A Small "Real" Service Image
 
 This lab builds a service image with:
 
@@ -978,7 +983,7 @@ This lab builds a service image with:
 
 It uses only shell + Python standard library so you do not need extra tooling.
 
-### 17.1  Create a Small App
+### 17.1 Create a Small App
 
 ```bash
 mkdir -p ./svc-lab  # create directory

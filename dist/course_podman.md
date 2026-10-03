@@ -1,13 +1,13 @@
 ---
 title: "Podman Zero-to-Expert Course"
-date: "2026-06-07"
+date: "2026-10-03"
 ---
 
 # Front Matter
 
 ## README.md
 
-# Podman Zero-to-Expert Course (Draft)
+# Podman Zero-to-Expert Course
 
 This is a course-in-a-repo for taking a learner from zero container knowledge to running rootless Podman services with systemd (Quadlet), with strong security and troubleshooting fundamentals.
 
@@ -41,7 +41,8 @@ This is a course-in-a-repo for taking a learner from zero container knowledge to
 - `modules/`: lesson content (Markdown)
 - `cheatsheets/`: quick references (see below)
 - `examples/`: example YAML and unit files
-- `ASSESSMENTS.md`: practical exams and rubrics
+- `ASSESSMENTS.md`: practical exams and rubrics (Exam A after Module 10, Exam B after the capstone)
+- `GLOSSARY.md`: terms used across the modules
 - `FAQ.md`: common gotchas and fast fixes
 
 Module numbering:
@@ -54,6 +55,9 @@ Suggested path:
 
 - Start with `modules/00-setup.md`
 - Continue in numeric order
+- After Module 10, sit Exam A in `ASSESSMENTS.md`
+- After Module 80, sit Exam B
+- Keep `GLOSSARY.md` open when a term is new
 
 Cheatsheets (use alongside the modules, and as a post-course reference):
 
@@ -160,13 +164,13 @@ These are rough time boxes for a first pass (reading + doing the labs).
 - Module 7: 45-60 min
 - Module 8: 2-3 hours
 - Module 9: 60-90 min
-- Module 10: 45-75 min
+- Module 10: 45-75 min, then Practical Exam A (`ASSESSMENTS.md`)
 - Module 11: 2-3 hours
 - Module 11a: 45-75 min
 - Module 12: 60-120 min
 - Module 13: 60-120 min
 - Module 14: 45-75 min
-- Module 80 (Capstone): 3-6 hours
+- Module 80 (Capstone): 3-6 hours, then Practical Exam B (`ASSESSMENTS.md`)
 - Module 90 (Survey): 45-90 min
 
 [^ Go to TOC](#table-of-contents)
@@ -188,6 +192,7 @@ These are rough time boxes for a first pass (reading + doing the labs).
 
 - [Reading Order](#reading-order)
 - [Quick References](#quick-references)
+- [Glossary and exams](#glossary-and-exams)
 
 ## Reading Order
 
@@ -223,6 +228,13 @@ Cheatsheets to keep open while doing the labs:
 - `cheatsheets/quadlet.md` — Quadlet unit keys and systemd workflow
 - `cheatsheets/security.md` — hardening flags and SELinux labels
 - `cheatsheets/troubleshooting.md` — symptom -> diagnosis -> fix
+
+[^ Go to TOC](#table-of-contents)
+
+## Glossary and exams
+
+- `GLOSSARY.md` — terms (pasta, Quadlet, seccomp, AutoUpdate, and the rest)
+- `ASSESSMENTS.md` — Exam A after Module 10, Exam B after Module 80. Checkpoints in each module stay ungraded.
 
 [^ Go to TOC](#table-of-contents)
 
@@ -334,9 +346,7 @@ rpm -q crun 2>/dev/null || true         # OCI runtime version
 uname -r                                # kernel version
 ```
 
-Minimum versions for this course:
-- Podman >= 4.4 (for Quadlet support)
-- cgroups v2 (kernel >= 5.2, all RHEL 9/10, Fedora 31+)
+This course assumes **Podman 5** on RHEL 10 or current Fedora, with cgroups v2 (kernel >= 5.2). Podman 4.4 introduced Quadlet, but a 4.4 host still defaults rootless networking to slirp4netns. Podman 5 defaults to pasta. The version table later in this module is feature history, not the course baseline.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -390,13 +400,26 @@ If those are missing, create them (coordinate the range with your admin policy):
 sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"  # grant subuid/subgid range
 ```
 
-**Log out and back in** after updating subuids/subgids — the kernel only reads these at session start.
+**Log out and back in** after updating subuids/subgids so the systemd user session picks up the new ranges. `newuidmap` reads `/etc/subuid` when a user namespace is created. If Podman storage was already initialized before those entries existed, also run:
+
+```bash
+podman system migrate  # rebuild storage mappings after a late subuid change
+```
 
 Verify the mapping is active:
 
 ```bash
 podman unshare cat /proc/self/uid_map  # show UID mapping inside user namespace
 ```
+
+A typical rootless map looks like this (your UID and subuid start will differ):
+
+```
+         0       1000          1
+         1     100000      65536
+```
+
+Line 1: container UID 0 is your own UID. Line 2: container UID 1 and up come from `/etc/subuid`. Compare this to the diagram in the next section.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -408,21 +431,26 @@ When you run `podman run` as a non-root user:
 ```mermaid
 graph LR
     subgraph "Inside container"
-        C1["root (uid 0)"]
+        C0["root (uid 0)"]
+        C1["uid 1"]
         C2["app user (uid 1001)"]
     end
     subgraph "Host kernel view"
-        H1["uid 100000 (your subuid start)"]
-        H2["uid 101001"]
+        H0["your UID (e.g. 1000)"]
+        H1["subuid start (e.g. 100000)"]
+        H2["subuid start + 1000 (e.g. 101000)"]
     end
+    C0 -->|"mapped to"| H0
     C1 -->|"mapped to"| H1
     C2 -->|"mapped to"| H2
 ```
 
-The container's `root (uid 0)` is mapped to your first subuid (e.g., 100000) on the host. This means:
+The container's `root (uid 0)` is mapped to **your** UID, not to the first subuid. Container UID 1 maps to the start of `/etc/subuid` (100000 in the example). Container UID 1001 maps to `subuid_start + 1000` (101000), because container UID 0 used the single slot for your own UID. This means:
+
 - The container process has "root" privileges inside its namespace.
-- On the host, it runs as an unprivileged user (uid 100000).
-- Even if the container escapes, the attacker has only uid 100000 — not real root.
+- On the host, that process runs as your unprivileged UID.
+- Processes that are not UID 0 inside the container run as subordinate UIDs from `/etc/subuid`.
+- Even if the container escapes, the attacker is still an unprivileged host user — not real root.
 
 This is why `/etc/subuid` and `/etc/subgid` are security-critical configuration, not just administrative overhead.
 
@@ -456,8 +484,10 @@ getenforce  # print SELinux mode: Enforcing, Permissive, or Disabled
 If you see `permission denied` errors that seem wrong, check for SELinux denials:
 
 ```bash
-ausearch -m avc -ts recent 2>/dev/null || journalctl -b -t kernel -g denied  # check SELinux denials
+sudo ausearch -m avc -ts recent 2>/dev/null || sudo journalctl -b -t audit -g denied  # audit log is not readable rootless
 ```
+
+An empty result means no recent AVC denials (or the audit daemon is not recording them). A rootless user cannot read the audit log, so `ausearch` without `sudo` fails even when denials exist.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -505,7 +535,13 @@ Understanding the directory layout helps you debug storage problems and know wha
 | Quadlet unit files | `~/.config/containers/systemd/` |
 | Podman secrets store | `~/.local/share/containers/storage/secrets/` |
 | Podman config | `~/.config/containers/` |
-| Registry auth cache | `${XDG_RUNTIME_DIR}/containers/auth.json` |
+| Registry auth (default) | `${XDG_RUNTIME_DIR}/containers/auth.json` |
+
+The default auth file lives under `/run` and **does not survive reboot**. For a login that should persist, pass an explicit file:
+
+```bash
+podman login --authfile "$HOME/.config/containers/auth.json" docker.io  # persist credentials across reboot
+```
 
 **Logs:**
 
@@ -592,7 +628,7 @@ This is a one-time setup per user on each machine.
 
 ## Version Matrix and Compatibility Notes
 
-Different RHEL/Fedora versions ship different Podman versions. Key feature availability:
+Different RHEL/Fedora versions shipped these features at different Podman releases. This table is **history**. This course assumes Podman 5, where all of them are present and rootless networking defaults to pasta:
 
 | Feature | Minimum Podman version |
 |---|---|
@@ -621,8 +657,10 @@ If a lab step fails unexpectedly, check whether your version supports the featur
 - `podman run --rm docker.io/library/alpine:latest uname -a` works rootless.
 - `podman info --format '{{.Host.CgroupsVersion}}'` prints `v2`.
 - `/etc/subuid` and `/etc/subgid` have entries for your user.
+- `podman unshare cat /proc/self/uid_map` shows container UID 0 mapped to your UID.
 - `getenforce` prints `Enforcing` or `Permissive` (not Disabled).
 - You know where container images are stored (`~/.local/share/containers/storage/`).
+- `loginctl show-user "$USER"` shows `Linger=yes` if this machine should start Quadlet services at boot.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -841,7 +879,7 @@ graph TD
 
 A **namespace** wraps a global system resource so that processes inside the namespace see their own isolated copy. The kernel tracks which namespace each process belongs to.
 
-Podman uses all six isolation namespaces by default:
+Podman uses these isolation namespaces by default. A `/proc/<pid>/ns` listing also shows `cgroup` (the cgroup namespace). That one is real, and this chapter treats it as out of scope beyond "resource limits live there":
 
 | Namespace | Kernel flag | What it isolates | Effect in container |
 |---|---|---|---|
@@ -858,7 +896,7 @@ The **User namespace** is the one that makes rootless containers secure. When yo
 graph LR
     subgraph "Host"
         HU["Host UID 1000 (your user)"]
-        HU2["Host UID 100001 (subUID range)"]
+        HU2["Host UID 100000 (subuid start)"]
     end
     subgraph "User Namespace (inside container)"
         CU0["Container UID 0 (root inside)"]
@@ -867,6 +905,8 @@ graph LR
     CU0 -->|"maps to"| HU
     CU1 -->|"maps to"| HU2
 ```
+
+Container UID 0 is your UID. Container UID 1 is the first subordinate UID from `/etc/subuid` (100000 in this example), not 100001. Container UID N (for N >= 1) maps to `subuid_start + N - 1`. The same numbers are in Module 0's `uid_map` example.
 
 > **Why this matters:** Without user namespaces, a container running as root would be running as root on the host too. User namespaces are why rootless Podman is meaningfully more secure than rootful Docker for most workloads.
 
@@ -897,11 +937,11 @@ flowchart TD
     B --> C["Writes limits to cgroup v2 files"]
     C --> D["memory.max = 268435456"]
     C --> E["cpu.max = 50000 100000"]
-    C --> F["pids.max = 256"]
     D --> G["Kernel enforces limits<br/>on all container PIDs"]
     E --> G
-    F --> G
 ```
+
+`--memory 256m` writes `memory.max`. `--cpus 0.5` writes `cpu.max`. Neither flag sets `pids.max`. The default process limit comes from `containers.conf` (`pids_limit`, often 1024) unless you pass `--pids-limit`.
 
 > **Practical note:** cgroups v2 requires a systemd user session when running rootless. This is why the course targets RHEL 10 / Fedora with `loginctl enable-linger` — it keeps your user session and cgroup hierarchy alive even when you are logged out.
 
@@ -977,8 +1017,8 @@ graph TD
 | **conmon** | Container monitor process — manages stdio and exit detection per container. |
 | **rootless** | Running Podman (and containers) as an unprivileged user, using user namespaces. |
 | **rootful** | Running Podman as root. Required for some advanced networking and capabilities. |
-| **slirp4netns** | Userspace network stack that gives rootless containers outbound connectivity. |
-| **pasta** | Newer, faster replacement for slirp4netns (available in RHEL 10 / Fedora 39+). |
+| **pasta** | Default rootless network helper on Podman 5 / RHEL 10. Connects the rootless network namespace to the host. |
+| **slirp4netns** | Previous default rootless network helper. Still used when `default_rootless_network_cmd` is set to it. |
 
 [^ Go to TOC](#table-of-contents)
 
@@ -1002,7 +1042,7 @@ You will see dozens of processes with various PIDs. Now run the same command ins
 podman run --rm docker.io/library/alpine:latest ps aux  # run a container and list its processes
 ```
 
-You should see only two processes: `ps` itself and possibly the shell. The container has a completely separate PID namespace — it cannot see the host's processes.
+You should see one process line: `ps` itself. There is no shell. The container has a completely separate PID namespace — it cannot see the host's processes.
 
 **Step 2 — Check network isolation (network namespace)**
 
@@ -1015,7 +1055,7 @@ ip addr show  # show network interfaces on the host
 You will see your real `eth0` or `enpXs0`. Inside a container:
 
 ```bash
-podman run --rm docker.io/library/alpine:latest ip addr show  # run a container and show its interfaces
+podman run --rm registry.fedoraproject.org/fedora:latest ip addr show  # alpine has no ip; fedora does
 ```
 
 The container sees only `lo` (loopback) and `eth0` inside its own network namespace. The `eth0` inside is a virtual ethernet device — not the host's real interface.
@@ -1090,6 +1130,8 @@ lrwxrwxrwx ... user   -> user:[4026532765]
 lrwxrwxrwx ... uts    -> uts:[4026532767]
 ```
 
+`cgroup` is in the listing too. The table earlier in this module covers the six isolation namespaces; the cgroup namespace is where resource limits attach, and Module 0 already required cgroups v2.
+
 Each inode number (the number after the colon) is the unique identity of that namespace. Compare these to your shell's namespaces:
 
 ```bash
@@ -1114,7 +1156,7 @@ Before moving on, confirm you can answer these without referring to notes:
 
 - [ ] I can explain the difference between an image and a container.
 - [ ] I know that containers share the host kernel and why that matters for security.
-- [ ] I can name the six namespaces Podman uses and what each one isolates.
+- [ ] I can name the isolation namespaces Podman uses and what each one isolates.
 - [ ] I understand that rootless Podman maps container UID 0 to an unprivileged host UID.
 - [ ] I can explain what cgroups do and why they matter.
 - [ ] I know what OCI stands for and why the standard matters for portability.
@@ -1296,7 +1338,7 @@ podman inspect sleep1 --format '{{.State.ExitCode}}'  # get last exit code
 | `--rm` | Auto-remove on exit | For experiments only |
 | `-it` | Interactive + TTY | `podman run -it alpine sh` |
 | `-e KEY=VALUE` | Environment variable | Avoid for secrets |
-| `-v name:/path` | Mount named volume | `--v dbdata:/var/lib/mysql` |
+| `-v name:/path` | Mount named volume | `-v dbdata:/var/lib/mysql` |
 | `-p host:container` | Publish port | `-p 8080:80` |
 | `--network <net>` | Join a network | `--network mynet` |
 | `--user <uid[:gid]>` | Run as specific user | `--user 1001:1001` |
@@ -1330,9 +1372,11 @@ podman inspect sleep1  # full JSON metadata: config, state, mounts, network, etc
 ```bash
 podman inspect sleep1 --format '{{.State.Status}}'         # running / exited
 podman inspect sleep1 --format '{{.State.ExitCode}}'       # exit code
-podman inspect sleep1 --format '{{.NetworkSettings.IPAddress}}'  # container IP
+podman inspect sleep1 --format '{{.NetworkSettings.IPAddress}}'  # empty on the default rootless network
 podman inspect sleep1 --format '{{json .HostConfig}}'      # host config as JSON
 ```
+
+On the default rootless network, `.NetworkSettings.IPAddress` is empty. An address appears under `.NetworkSettings.Networks` only after the container joins a user-defined bridge. Module 6 covers that. Do not treat the empty field as "the container has no IP."
 
 **Check what ports are published:**
 
@@ -1354,16 +1398,11 @@ podman stats --no-stream  # single snapshot of CPU/memory/IO usage for all runni
 
 **Debug a minimal image without a shell:**
 
-If your production image is distroless or has no shell, use `podman debug`:
-
-```bash
-podman debug sleep1  # attach a debug container to an existing container's namespaces
-```
-
-Or use an ephemeral container on the same network:
+Podman has no `debug` subcommand. Share the target container's network namespace (and PID namespace if you need a process list) from a small image that does have tools:
 
 ```bash
 podman run --rm --network container:sleep1 docker.io/library/busybox:latest netstat -tlnp  # share network namespace
+podman run --rm --pid container:sleep1 docker.io/library/busybox:latest ps  # share PID namespace
 ```
 
 
@@ -1446,9 +1485,9 @@ podman exec worker-b hostname  # prints worker-b
 podman run -d --name worker-a docker.io/library/alpine:latest sleep 300  # should fail
 ```
 
-Expected: `Error: container name "worker-a" is already in use`
+Expected: an error that the name `worker-a` is already in use by a container ID, and that mentions `--replace`.
 
-This teaches you to clean up before re-running scripts, or use `podman rm -f worker-a` first.
+Recover with `podman rm -f worker-a` before re-running, or pass `--replace` on the second `podman run`.
 
 **Cleanup:**
 
@@ -1500,9 +1539,12 @@ echo "Exit code: $?"  # print the exit code
 **Step 4: Observe OOM kill (code 137) — safe with a memory limit:**
 
 ```bash
-podman run --rm --memory 4m docker.io/library/alpine:latest sh -c 'dd if=/dev/zero of=/tmp/x bs=1M count=10'
-echo "Exit code: $?"  # 137 if OOM-killed, or the dd may just fail
+podman run --rm --memory 32m --memory-swap 32m docker.io/library/alpine:latest \
+  sh -c 'x=a; while true; do x=$x$x; done'  # grow a string until the cgroup kills it
+echo "Exit code: $?"  # expected: 137
 ```
+
+Writing a file under `/tmp` uses the writable layer, not anonymous memory, so it often does not trip `memory.max`. Doubling a shell string does.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -1609,7 +1651,7 @@ Rule of thumb: `container prune` is safe to run daily. `image prune -a` should b
 
 5) Exit code 137 — what likely happened?
 
-6) How would you get the IP address of a running container without using `podman exec`?
+6) A container is on a user-defined network. How do you print its IP without `podman exec`? Why is `.NetworkSettings.IPAddress` the wrong field on the default rootless network?
 
 
 [^ Go to TOC](#table-of-contents)
@@ -1747,7 +1789,7 @@ nginx:stable        # short name — Podman must guess the registry
 alpine              # even shorter — registry AND tag are guessed
 ```
 
-**Why it matters**: short-name resolution depends on `/etc/containers/registries.conf`. On different systems, `alpine` might resolve to `docker.io/library/alpine` or `registry.access.redhat.com/ubi9-minimal` depending on search order. This makes automation unpredictable.
+**Why it matters**: short-name resolution depends on `/etc/containers/registries.conf` and the alias files under `registries.conf.d/`. Search registries look up the **same** short name; they do not rename `alpine` to a UBI repository. On Fedora and RHEL, `short-name-mode` is often `enforcing`, and `alpine` is already aliased to `docker.io/library/alpine`, so that name never walks the search list. A name that is **not** in the alias file is what triggers the prompt.
 
 Short names in labs are fine for exploration. Short names in scripts, Containerfiles, and Quadlet units should be replaced with fully qualified names.
 
@@ -1767,15 +1809,18 @@ cat /etc/containers/registries.conf  # show registry search order and aliases
 **Common settings:**
 
 ```toml
-# Ordered list of registries to search for short names:
-unqualified-search-registries = ["docker.io", "registry.access.redhat.com"]
+# /etc/containers/registries.conf — search list (Fedora/RHEL put Fedora and Red Hat before docker.io)
+unqualified-search-registries = ["registry.fedoraproject.org", "registry.access.redhat.com", "docker.io"]
 
-# Alias: "fedora" -> fully qualified name:
-[[registry.aliases]]
+# /etc/containers/registries.conf.d/000-shortnames.conf — aliases win before the search list
+[aliases]
+"alpine" = "docker.io/library/alpine"
 "fedora" = "registry.fedoraproject.org/fedora"
 ```
 
-On RHEL systems, the `registries.conf` is often configured to prompt for registry selection interactively when a short name is used. This is intentional — it prevents silently pulling from the wrong registry.
+`[[registry.aliases]]` is not valid `registries.conf` syntax. The table is `[aliases]`. `[[registry]]` and `[[registry.mirror]]` are the array tables that do exist.
+
+On RHEL and Fedora, `short-name-mode = "enforcing"` prompts when a short name has no alias. That prompt is intentional — it prevents silently pulling from the wrong registry. Aliases are checked first, so stock `alpine` does not prompt.
 
 In automation (scripts, CIs, Containerfiles), always use fully qualified names to avoid this prompt.
 
@@ -1795,23 +1840,23 @@ podman images | grep alpine                  # confirm image is stored locally
 
 ```bash
 podman images --digests | grep alpine                                           # show digest column
-podman inspect docker.io/library/alpine:latest --format '{{.Digest}}'          # print digest only
+DIGEST=$(podman image inspect docker.io/library/alpine:latest --format '{{.Digest}}')  # includes the sha256: prefix
+echo "$DIGEST"  # looks like sha256:abc123...
 ```
-
-Record the digest — it looks like `sha256:abc123...`
 
 **Step 3: Pull the exact same image by digest:**
 
+Paste the entire `{{.Digest}}` value after `@`. Do not add a second `sha256:` prefix — `alpine@sha256:sha256:...` fails.
+
 ```bash
-# Replace <digest> with your actual digest from step 2:
-podman pull docker.io/library/alpine@sha256:<digest>  # pull by immutable digest
-podman images --digests | grep alpine                  # now you see both entries (same layers, different ref)
+podman pull "docker.io/library/alpine@${DIGEST}"  # pull by immutable digest
+podman images --digests | grep alpine              # same layers, tag ref and digest ref
 ```
 
 **Step 4: Run by digest:**
 
 ```bash
-podman run --rm docker.io/library/alpine@sha256:<digest> uname -a  # run pinned image
+podman run --rm "docker.io/library/alpine@${DIGEST}" uname -a  # run pinned image
 ```
 
 **Step 5: Verify layer sharing:**
@@ -1832,7 +1877,7 @@ podman login docker.io         # prompts for username and password interactively
 podman login registry.example.com  # login to a private registry
 ```
 
-Credentials are stored in: `${XDG_RUNTIME_DIR}/containers/auth.json`
+By default, credentials are stored in `${XDG_RUNTIME_DIR}/containers/auth.json`. That directory is under `/run` and **does not survive reboot**. To keep a login, use `--authfile "$HOME/.config/containers/auth.json"`.
 
 **Logout:**
 
@@ -2010,7 +2055,7 @@ podman images | grep nginx                                 # confirm restored
 
 Note:
 - `save/load` are file-based transport, not a registry.
-- The digest of a saved/loaded image is preserved — it is still content-addressed.
+- The default format is `docker-archive`. After `load`, the image ID is still there. `podman images --digests` commonly shows `<none>` for the registry digest (`RepoDigest`). Content identity survived; the registry reference did not.
 - Multiple images can be saved in one tar: `podman save -o multi.tar image1 image2`.
 
 
@@ -2169,7 +2214,7 @@ The secret value never appears in:
 - The image layer
 - `podman inspect` env output
 - `ps auxeww`
-- Shell history (if you used `printf` or a file)
+- Shell history (if the value was never typed as a literal argument — see the `read -rs` pattern below)
 
 
 [^ Go to TOC](#table-of-contents)
@@ -2248,6 +2293,7 @@ Summary of what to avoid:
 - `export DB_PASSWORD=...` in your shell
 - putting passwords in `.env` and committing it
 - `podman run -e DB_PASSWORD=...` for anything beyond a throwaway lab
+- `--secret name,type=env` — that option copies the value into the container environment and undoes the file-mount default (`type=mount`)
 - `ARG`/`ENV` in a `Containerfile` for secret material
 - logging connection strings that contain credentials
 
@@ -2256,13 +2302,20 @@ Summary of what to avoid:
 
 ## Commands Reference
 
-**Create a secret from stdin** (avoids shell history):
+**Create a secret without putting the value in shell history.** `printf '%s' 'literal' | podman secret create` avoids a trailing newline, but Bash still records the whole command line, password included. `printf` keeps the value out of `podman`'s argv. It does not keep it out of history.
 
 ```bash
-printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -  # create secret from stdin, no trailing newline
+umask 077
+read -rs PASSWORD  # type the value; it is not echoed and not stored as a command argument
+printf '%s' "$PASSWORD" > ./db_password.txt  # no trailing newline
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
-**Create a secret from a file** (file must have tight permissions):
+`printf '%s'` is still the right way to avoid the newline that `echo` adds. Use it on a variable or a file, not on a quoted password in the command you type.
+
+**Create a secret from a file** you already wrote with an editor (`umask 077` first):
 
 ```bash
 chmod 600 ./db_password.txt                          # restrict read to owner only
@@ -2312,19 +2365,24 @@ podman run --rm --secret db_password,uid=1000,gid=1000,mode=0400 \
 
 Notes:
 
-- Keep the secret value out of your shell history. Prefer `printf '%s' value | ...` or read from a file.
+- Keep the secret value out of your shell history. Use `read -rs` into a variable, or a mode `0600` file. `printf '%s'` only fixes the trailing newline.
 - Never print secret contents in logs.
-- Use `read -s VALUE` in shell scripts when value must come from stdin interactively.
+- Do not pass `--secret name,type=env`. The default is `type=mount`. `type=env` puts the value in the container environment.
 
 
 [^ Go to TOC](#table-of-contents)
 
 ## Lab A: Create and Mount a Secret
 
-1) Create a secret from stdin (example password — do not use in production):
+1) Create a secret (example password — do not use in production). When prompted, type `correct-horse-battery-staple` so the inspect check in step 4 can search for that value. The password is not part of the command line:
 
 ```bash
-printf '%s' 'correct-horse-battery-staple' | podman secret create db_password -  # print text without trailing newline
+umask 077
+read -rs PASSWORD
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
 2) Confirm the secret appears in the list:
@@ -2344,7 +2402,8 @@ podman run --rm --secret db_password docker.io/library/busybox:latest \
 
 ```bash
 podman run -d --name secret-demo --secret db_password docker.io/library/busybox:latest sleep 600  # run container
-podman inspect secret-demo | grep -i password || echo "not in inspect output"  # should print 'not in inspect output'
+podman inspect secret-demo --format '{{.Config.Env}}'  # environment only; the value is not here
+podman inspect secret-demo | grep -F 'correct-horse-battery-staple' || echo "value not in inspect output"  # expected: value not in inspect output
 podman rm -f secret-demo  # cleanup
 ```
 
@@ -2393,6 +2452,7 @@ podman exec secret-demo sh -lc 'wc -c /run/secrets/db_password'  # count bytes, 
 
 ```bash
 podman rm -f secret-demo  # stop and remove the demo container
+podman secret rm db_password  # Lab C creates this name again
 ```
 
 
@@ -2405,8 +2465,15 @@ Use versioned names so you can run old and new versions in parallel during a dep
 1) Create two versions of the secret:
 
 ```bash
-printf '%s' 'v1-value' | podman secret create db_password_v1 -  # create version 1
-printf '%s' 'v2-value' | podman secret create db_password_v2 -  # create version 2
+umask 077
+read -rs PASSWORD   # type v1-value
+printf '%s' "$PASSWORD" > ./v1.txt
+read -rs PASSWORD   # type v2-value
+printf '%s' "$PASSWORD" > ./v2.txt
+unset PASSWORD
+podman secret create db_password_v1 ./v1.txt
+podman secret create db_password_v2 ./v2.txt
+rm -f ./v1.txt ./v2.txt
 ```
 
 2) Start v1 service:
@@ -2486,7 +2553,13 @@ Some apps expect credentials at a specific path (e.g., `/etc/app/config/db.pass`
 1) Create the secret:
 
 ```bash
-printf '%s' 'mydbpass' | podman secret create db_password -  # create secret
+podman secret rm -f db_password  # Lab A may have left this name
+umask 077
+read -rs PASSWORD  # type mydbpass
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 ```
 
 2) Mount at a custom path:
@@ -2596,8 +2669,8 @@ This is a last resort. If you control the app, prefer native file reads.
 | Node.js | `fs.readFileSync('/run/secrets/db_password', 'utf8').trim()` |
 | Python | `open('/run/secrets/db_password').read().strip()` |
 | Go | `os.ReadFile("/run/secrets/db_password")` |
-| Shell script | `DB_PASS=$(cat /run/secrets/db_password)` |
-| Java / Spring | Use `spring.datasource.password=file:/run/secrets/db_password` |
+| Shell script | Read the file in the process that needs it. `DB_PASS=$(cat /run/secrets/db_password)` puts the value in that process's environment. |
+| Java / Spring | `spring.config.import=configtree:/run/secrets/` (or read the file in code). `spring.datasource.password=file:...` is not Spring syntax. |
 
 
 [^ Go to TOC](#table-of-contents)
@@ -2610,7 +2683,7 @@ Be honest about the limitations to avoid false confidence:
 |---|---|
 | Accidental env var exposure | [OK] Yes — keeps secret out of env |
 | Leaking to image layers | [OK] Yes — secrets are runtime-only |
-| Shell history exposure | [OK] Yes — if you use printf/file input |
+| Shell history exposure | [OK] Yes — if the value is read with `read -rs` or from a file, not typed as a command argument |
 | Encryption at rest on disk | [X] No — default driver stores base64 on disk |
 | Multi-host secret distribution | [X] No — secrets are per-machine |
 | Automatic rotation | [X] No — you must manually rotate |
@@ -2634,7 +2707,7 @@ For the [X] rows, see Module 90 (External Secrets Survey) for HashiCorp Vault, A
 **Trailing newline in the secret value breaks passwords.**
 - Symptom: authentication fails with correct-looking password.
 - Cause: `echo 'value' | podman secret create ...` adds a newline.
-- Fix: always use `printf '%s' 'value' | ...` (no newline).
+- Fix: `printf '%s' "$VALUE"` (no newline). `echo` adds one. Do not put `$VALUE` in the command as a quoted literal if you care about shell history.
 
 **Secret not available because name was misspelled.**
 - Symptom: container fails to start with "secret not found".
@@ -2841,6 +2914,8 @@ podman run --rm -v ./mnt-demo:/mnt:Z,ro \
 | `:z` | Relabel for shared use (multiple containers) | Multiple containers sharing the same path |
 | (none) | No relabelling | Volume mounts (handled automatically) |
 
+`:Z` and `:z` relabel the host directory and everything under it. Never use them on `$HOME`, `/`, or a path other confined services need. `podman-run(1)` warns that relabeling system content can break those services.
+
 **When NOT to use bind mounts:**
 
 - Long-running services in production (use volumes instead).
@@ -2938,10 +3013,11 @@ flowchart TD
 podman run --rm docker.io/library/alpine:latest id  # show UID inside container
 ```
 
-**Check what that UID maps to on the host:**
+**See the container-side identity, then the host mapping:**
 
 ```bash
-podman unshare id  # show UID as the user namespace sees it on the host
+podman unshare id  # prints uid=0(root) — the container-side view, not your host UID
+podman unshare cat /proc/self/uid_map  # host mapping: container UID 0 is your UID
 ```
 
 
@@ -2979,7 +3055,7 @@ Warning: `chown -R` on a large directory takes time. And the numbers `1000:1000`
 
 ## SELinux Drill (Fedora/RHEL)
 
-SELinux enforces label-based access control independent of Unix permissions. A container process has label `container_t` and can only access files labelled `container_file_t` or `svirt_sandbox_file_t`.
+SELinux enforces label-based access control independent of Unix permissions. A container process has label `container_t`. Podman labels content it is allowed to read as `container_file_t` (the current default). The older type `svirt_sandbox_file_t` is also allowed by policy. A private `:Z` label is `container_file_t` plus an MCS category pair such as `s0:c123,c456`.
 
 Named volumes are automatically labelled correctly. Bind mounts are not — you must tell Podman to relabel them.
 
@@ -2988,8 +3064,9 @@ Named volumes are automatically labelled correctly. Bind mounts are not — you 
 ```bash
 mkdir -p ./selinux-test
 echo "test" > ./selinux-test/data.txt
+getenforce  # Enforcing: the next command is denied. Permissive or Disabled: it succeeds.
 podman run --rm -v ./selinux-test:/mnt \
-  docker.io/library/alpine:latest cat /mnt/data.txt  # may get permission denied
+  docker.io/library/alpine:latest cat /mnt/data.txt
 ```
 
 **Step 2: Fix it with `:Z`:**
@@ -3005,12 +3082,12 @@ podman run --rm -v ./selinux-test:/mnt:Z \
 ls -laZ ./selinux-test/  # show SELinux context (requires `ls` with -Z flag)
 ```
 
-The label should now be `svirt_sandbox_file_t` — the type that containers are allowed to access.
+The type should now be `container_file_t`, with an MCS category pair (`s0:c…,c…`). That category is what makes `:Z` private to this container. If you still see `svirt_sandbox_file_t`, the policy allows it, but current Podman writes `container_file_t`.
 
 **Step 4: Check for SELinux denial messages:**
 
 ```bash
-ausearch -m avc -ts recent 2>/dev/null | head -20  # show recent SELinux denials
+sudo ausearch -m avc -ts recent 2>/dev/null | head -20  # audit log needs root
 ```
 
 **Cleanup:**
@@ -3034,8 +3111,15 @@ podman volume create mariadb-lab  # create persistent volume
 
 **Step 2: Start MariaDB with the volume:**
 
+`mariadb:11` is a moving tag. For a lab that is fine. After Module 3, production units pin the digest.
+
 ```bash
-printf '%s' 'labpass123' | podman secret create lab_db_pass -  # create secret for password
+umask 077
+read -rs PASSWORD  # type labpass123 for this lab
+printf '%s' "$PASSWORD" > ./lab_db_pass.txt
+unset PASSWORD
+podman secret create lab_db_pass ./lab_db_pass.txt
+rm -f ./lab_db_pass.txt
 podman run -d \
   --name mariadb-lab \
   -v mariadb-lab:/var/lib/mysql \
@@ -3054,9 +3138,10 @@ Press Ctrl+C when ready.
 
 **Step 4: Create a test record:**
 
+The server reads the password from the secret file. Do not pass `-p"labpass123"`: that lands in shell history and in the process list. Build a client defaults file inside the container from the mounted secret:
+
 ```bash
-podman exec mariadb-lab mariadb -uroot -p"labpass123" \
-  -e "CREATE DATABASE lab; USE lab; CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50)); INSERT INTO test VALUES (1, 'persistent');"  # create DB and insert data
+podman exec mariadb-lab sh -lc 'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/lab_db_pass)" > /tmp/client.cnf; mariadb --defaults-extra-file=/tmp/client.cnf -e "CREATE DATABASE lab; USE lab; CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50)); INSERT INTO test VALUES (1, '\''persistent'\'');"'
 ```
 
 **Step 5: Remove the container:**
@@ -3081,8 +3166,7 @@ podman logs -f mariadb-lab2  # wait for ready
 **Step 7: Verify the data is still there:**
 
 ```bash
-podman exec mariadb-lab2 mariadb -uroot -p"labpass123" \
-  -e "SELECT * FROM lab.test;"  # should return: 1 | persistent
+podman exec mariadb-lab2 sh -lc 'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/lab_db_pass)" > /tmp/client.cnf; mariadb --defaults-extra-file=/tmp/client.cnf -e "SELECT * FROM lab.test;"'  # expected: 1 | persistent
 ```
 
 **Cleanup:**
@@ -3100,25 +3184,36 @@ podman secret rm lab_db_pass
 
 Named volumes can be backed up by running a helper container that reads from the volume and writes a tar file.
 
+The previous lab's cleanup already removed `mariadb-lab`. This pattern uses its own volume so you can run it immediately after that lab.
+
 **Backup:**
 
 ```bash
+podman volume create backup-demo
+mkdir -p ./backups
+STAMP=$(date +%Y%m%d)
 podman run --rm \
-  -v mariadb-lab:/data:ro \
-  -v ./backups:/backup \
+  -v backup-demo:/data \
   docker.io/library/alpine:latest \
-  tar czf /backup/mariadb-lab-$(date +%Y%m%d).tar.gz -C /data .  # backup volume to tar
+  sh -lc 'echo course-backup > /data/marker.txt'
+podman run --rm \
+  -v backup-demo:/data:ro \
+  -v ./backups:/backup:Z \
+  docker.io/library/alpine:latest \
+  tar czf /backup/backup-demo-${STAMP}.tar.gz -C /data .  # :Z so enforcing SELinux allows the write
 ```
 
-**Restore** (to a fresh volume):
+**Restore** (to a fresh volume), using the same date stamp:
 
 ```bash
-podman volume create mariadb-lab-restore  # create destination volume
+podman volume create backup-demo-restore
 podman run --rm \
-  -v mariadb-lab-restore:/data \
-  -v ./backups:/backup:ro \
+  -v backup-demo-restore:/data \
+  -v ./backups:/backup:Z,ro \
   docker.io/library/alpine:latest \
-  tar xzf /backup/mariadb-lab-20260326.tar.gz -C /data  # restore from tar
+  tar xzf /backup/backup-demo-${STAMP}.tar.gz -C /data
+podman run --rm -v backup-demo-restore:/data:ro docker.io/library/alpine:latest cat /data/marker.txt  # expected: course-backup
+podman volume rm backup-demo backup-demo-restore
 ```
 
 This is a **logical backup** at the filesystem level. For database-consistent backups, prefer `mysqldump` / `mariadb-dump` over raw volume backups — they handle transactions correctly.
@@ -3233,7 +3328,7 @@ If you only do a small slice of this module, do these:
 
 [^ Go to TOC](#table-of-contents)
 
-## 1  How Container Networking Works (Mental Model)
+## 1 How Container Networking Works (Mental Model)
 
 Before running commands, build the mental model. Every container gets:
 
@@ -3247,15 +3342,15 @@ When a container is only on the **default network** (Podman's built-in `podman` 
 
 ```mermaid
 flowchart TD
-    subgraph "Host OS"
+    subgraph "Rootless network namespace"
         subgraph "User-Defined Network (appnet)"
             A["Container A<br/>10.89.1.2"] <-->|"bridge + DNS"| B["Container B<br/>10.89.1.3"]
         end
         subgraph "Default Network (podman)"
-            C["Container C<br/>10.88.0.2"] ---|"IP only — no DNS"| D["Container D<br/>10.88.0.3"]
+            C["Container C<br/>10.89.0.2"] ---|"IP only — no DNS"| D["Container D<br/>10.89.0.3"]
         end
-        BR1["Linux Bridge<br/>(cni-podman0 / netavark)"]
-        BR2["Linux Bridge<br/>(podman0)"]
+        BR1["netavark bridge<br/>podman1"]
+        BR2["netavark bridge<br/>podman0"]
     end
     A --> BR1
     B --> BR1
@@ -3265,61 +3360,59 @@ flowchart TD
     BR2 -->|"NAT / pasta"| I
 ```
 
-### 1.1  The Four Network Drivers
+### 1.1 The Four Network Drivers
 
 | Driver | What it does | When to use it |
 |--------|-------------|----------------|
 | `bridge` | Virtual L2 bridge; default for user-defined networks | Almost everything |
-| `host` | Container shares the host network namespace | Low-level tools, benchmarking, rootful only (rootless has caveats) |
+| `host` | Container joins the host network namespace | Low-level tools. Rootless can use it; ports below 1024 still fail without extra config |
 | `none` | No network interface except loopback | Batch jobs, maximum isolation |
 | `macvlan` | Container appears as a separate MAC on your LAN | IoT, legacy apps that need a real LAN address |
 
-> **Rootless note:** `host` network mode has limited usefulness in rootless Podman because the container still cannot bind privileged ports without extra capability. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
+> **Rootless note:** `--network=host` does join the host network namespace, including for a rootless user. The container process still cannot bind ports below 1024 unless you lower `net.ipv4.ip_unprivileged_port_start` or grant `CAP_NET_BIND_SERVICE`. `macvlan` requires root on most kernels. Stick to `bridge` unless you have a specific reason.
+
+The bridges in the diagram live in the **rootless network namespace**, not in the host's network namespace. `ip link` on the host does not show them. Section 7.6 has the command that does.
 
 ---
 
 
 [^ Go to TOC](#table-of-contents)
 
-## 2  Rootless Networking In Depth
+## 2 Rootless Networking In Depth
 
-### 2.1  User-Mode Networking Helpers
+### 2.1 User-Mode Networking Helpers
 
-In rootless mode Podman cannot create kernel-level bridges as a normal user. Instead it delegates packet forwarding to a user-space helper:
+Rootless Podman uses two different pictures. Do not mix them.
 
-| Helper | Notes |
-|--------|-------|
-| **pasta** | Newer, faster, preferred on modern distros; fewer quirks with UDP/ICMP |
-| **slirp4netns** | Older, still common; slower but very portable |
+**Picture 1 — normal and user-defined networks (what the labs use).** Podman creates a rootless network namespace. Inside it, netavark builds bridges (`podman0` for the default network, another bridge per user-defined network) and aardvark-dns answers names. pasta (the Podman 5 default) connects that namespace to the host. Container addresses look like `10.89.0.0/24`, not `10.0.2.0/24`.
+
+**Picture 2 — slirp4netns, or an explicit `--network=pasta`.** That is a per-container stack. `podman-run(1)` documents `10.0.2.0/24` for that mode. It is not the address plan of a rootless bridge network.
+
+| Helper | When you see it |
+|--------|-----------------|
+| **pasta** | Podman 5 / RHEL 10 default (`default_rootless_network_cmd`) |
+| **slirp4netns** | Previous default, or when `containers.conf` still sets it |
 
 ```mermaid
 flowchart LR
-    subgraph "Container Namespace"
-        C["App Process<br/>eth0: 10.0.2.100"]
+    subgraph "Rootless network namespace"
+        C["Container eth0<br/>10.89.0.x"]
+        BR["netavark bridge podman0<br/>aardvark-dns"]
     end
-    subgraph "User Process (rootless)"
-        P["pasta / slirp4netns<br/>(user-space forwarder)"]
+    subgraph "Host network namespace"
+        P["pasta"]
+        H["Host interface"]
     end
-    subgraph "Host Network Namespace"
-        H["Host Interface<br/>eth0 / wlan0"]
-        I["Internet"]
-    end
-    C -->|"packets via veth"| P
-    P -->|"forwarded as host user traffic"| H
-    H --> I
+    C --> BR
+    BR --> P
+    P --> H
 ```
 
-Check which backend your installation uses:
+`{{.Host.NetworkBackend}}` is `netavark` or `cni`. It is not pasta vs slirp4netns. The helper is `RootlessNetworkCmd`. `Slirp4NetnsOptions` and `PastaOptions` are both filled in even when only one helper is active.
 
 ```bash
-podman info --format '{{.Host.NetworkBackend}}'  # show Podman host configuration
-```
-
-Check which per-network helper is active:
-
-```bash
-podman info --format '{{.Host.Slirp4NetnsOptions}}'  # show Podman host configuration
-podman info --format '{{.Host.PastaOptions}}'  # show Podman host configuration
+podman info --format '{{.Host.NetworkBackend}}'       # netavark or cni
+podman info --format '{{.Host.RootlessNetworkCmd}}'   # pasta on Podman 5
 ```
 
 You can switch the rootless backend in `~/.config/containers/containers.conf`:
@@ -3329,13 +3422,13 @@ You can switch the rootless backend in `~/.config/containers/containers.conf`:
 default_rootless_network_cmd = "pasta"
 ```
 
-### 2.2  What Rootless Networking Cannot Do (by default)
+### 2.2 What Rootless Networking Cannot Do (by default)
 
-- Bind ports < 1024 without extra OS configuration.
+- Bind ports < 1024 without extra OS configuration. On this platform `net.ipv4.ip_unprivileged_port_start` is typically 1024, and `/usr/bin/pasta` has no file capabilities, so those binds fail until you lower the sysctl or add `CAP_NET_BIND_SERVICE`.
 - Create `macvlan` / `ipvlan` adapters (kernel requires `CAP_NET_ADMIN`).
-- Use `host` network mode and see the real host interfaces in the traditional sense.
+- Skip the rootless network namespace. `--network=host` joins the host network namespace. The limit that remains is privileged ports, not "the interfaces are invisible."
 
-### 2.3  Allowing Privileged Ports for Rootless (When Needed)
+### 2.3 Allowing Privileged Ports for Rootless (When Needed)
 
 Option A — lower the unprivileged port minimum (system-wide, only if you own the machine):
 
@@ -3348,16 +3441,16 @@ sudo sysctl -p /etc/sysctl.d/99-lowport.conf  # apply the persistent config
 
 Option B — use a high port and put a reverse proxy (nginx, Caddy) in front. Strongly preferred in production.
 
-Option C — use `systemd` socket activation (covered in Module 11).
+Prefer a high port. This course does not use systemd socket activation for published ports.
 
 ---
 
 
 [^ Go to TOC](#table-of-contents)
 
-## 3  Port Publishing
+## 3 Port Publishing
 
-### 3.1  Basic Port Mapping
+### 3.1 Basic Port Mapping
 
 Syntax: `-p <host-port>:<container-port>`
 
@@ -3366,7 +3459,7 @@ podman run -d --name web1 -p 8080:80 docker.io/library/nginx:stable  # run a con
 curl -sS http://127.0.0.1:8080/ | head  # verify HTTP endpoint
 ```
 
-### 3.2  Bind to a Specific Host Address
+### 3.2 Bind to a Specific Host Address
 
 By default `-p 8080:80` listens on all host interfaces (`0.0.0.0`).
 To restrict to loopback only:
@@ -3383,26 +3476,26 @@ podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:
 
 This is important for security: a backend service should never be published to `0.0.0.0` when it only needs to be reachable by a local proxy.
 
-### 3.3  Multiple Port Mappings
+### 3.3 Multiple Port Mappings
 
 ```bash
 podman run -d --name multi -p 8080:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
 ```
 
-### 3.4  UDP Port Mapping
+### 3.4 UDP Port Mapping
 
 ```bash
 podman run -d --name dns-demo -p 5053:53/udp -p 5053:53/tcp docker.io/library/alpine:latest sleep 600  # run a container
 ```
 
-### 3.5  Random Host Port (Ephemeral)
+### 3.5 Random Host Port (Ephemeral)
 
 ```bash
 podman run -d --name rand-port -p 80 docker.io/library/nginx:stable  # run a container
 podman port rand-port          # see what port was assigned
 ```
 
-### 3.6  Inspect Published Ports
+### 3.6 Inspect Published Ports
 
 ```bash
 # Quick view
@@ -3426,9 +3519,9 @@ podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
 
 [^ Go to TOC](#table-of-contents)
 
-## 4  The Default Network vs User-Defined Networks
+## 4 The Default Network vs User-Defined Networks
 
-### 4.1  Why the Default Network Is Not Enough
+### 4.1 Why the Default Network Is Not Enough
 
 When you run `podman run` without `--network`, the container joins the default `podman` bridge.
 
@@ -3438,7 +3531,7 @@ Problems with the default network:
 2. **Shared blast radius.** All containers on the default network can reach each other at the IP level.
 3. **No isolation.** A compromised container can attempt connections to any other container on the same bridge.
 
-### 4.2  Creating a User-Defined Network
+### 4.2 Creating a User-Defined Network
 
 ```bash
 podman network create appnet  # create a network
@@ -3468,7 +3561,7 @@ Key fields to understand:
 
 Notice `dns_enabled: true` — this is the key difference from the default network.
 
-### 4.3  Custom Subnet and Gateway
+### 4.3 Custom Subnet and Gateway
 
 ```bash
 podman network create --subnet 172.28.0.0/24 --gateway 172.28.0.1 myapp-net  # create a network
@@ -3478,7 +3571,7 @@ Use custom subnets when:
 - You need deterministic IPs (rare; prefer DNS names instead).
 - You need to avoid subnet collisions with your VPN or office network.
 
-### 4.4  Internal Networks (No External Access)
+### 4.4 Internal Networks (No External Access)
 
 An internal network has no route to the outside world. Containers on it cannot reach the internet.
 
@@ -3496,7 +3589,7 @@ podman run --rm --network db-internal docker.io/library/alpine:latest sh -lc 'wg
 
 Expected: connection times out or is refused. That is the intended behavior.
 
-### 4.5  Remove a Network
+### 4.5 Remove a Network
 
 ```bash
 podman network rm appnet  # remove the network
@@ -3516,9 +3609,9 @@ podman network rm appnet  # remove a network
 
 [^ Go to TOC](#table-of-contents)
 
-## 5  Container DNS and Service Discovery
+## 5 Container DNS and Service Discovery
 
-### 5.1  How It Works
+### 5.1 How It Works
 
 Podman runs an embedded DNS resolver (backed by **aardvark-dns** on modern versions). When `dns_enabled: true` on a network:
 
@@ -3526,7 +3619,7 @@ Podman runs an embedded DNS resolver (backed by **aardvark-dns** on modern versi
 - DNS queries inside containers are answered by the Podman DNS resolver.
 - The resolver is reachable at the network gateway address (usually the first usable IP on the subnet).
 
-### 5.2  Basic DNS Lab
+### 5.2 Basic DNS Lab
 
 ```bash
 podman network create testdns  # create a network
@@ -3546,7 +3639,7 @@ Test TCP connectivity:
 podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'  # run a container
 ```
 
-### 5.3  Network Aliases
+### 5.3 Network Aliases
 
 An alias lets you give a container an **additional DNS name** on a specific network. This is useful for:
 
@@ -3564,7 +3657,7 @@ podman run --rm --network alias-demo docker.io/library/alpine:latest sh -lc 'get
 
 Both the container name (`primary-db`) and the alias (`db`) resolve to the same IP.
 
-### 5.4  Multiple Containers Sharing an Alias (Load-Balancing Pattern)
+### 5.4 Multiple Containers Sharing an Alias (Load-Balancing Pattern)
 
 When multiple containers share the same alias on a network, DNS returns **all IPs** (round-robin).
 
@@ -3584,7 +3677,7 @@ podman network rm lb-demo # remove the network
 
 > This is primitive load balancing. For production you want a real load balancer in front. But the DNS pattern is real.
 
-### 5.5  Custom DNS Servers
+### 5.5 Custom DNS Servers
 
 Override the DNS server used inside a container (useful on corporate networks or when using a split-horizon DNS):
 
@@ -3609,7 +3702,7 @@ podman run --rm --add-host myservice:10.0.1.50 docker.io/library/alpine:latest s
 
 [^ Go to TOC](#table-of-contents)
 
-## 6  Connecting Containers to Multiple Networks
+## 6 Connecting Containers to Multiple Networks
 
 A container can be a member of more than one network simultaneously. This is the correct way to build a tiered architecture:
 
@@ -3637,7 +3730,7 @@ flowchart LR
     DB -. "NO outbound" .-> I
 ```
 
-### 6.1  Multi-Network Example
+### 6.1 Multi-Network Example
 
 ```bash
 podman network create frontend-net  # create a network
@@ -3669,7 +3762,7 @@ podman rm -f db app frontend               # stop and remove containers
 podman network rm frontend-net backend-net # remove networks
 ```
 
-### 6.2  Disconnect from a Network Without Stopping
+### 6.2 Disconnect from a Network Without Stopping
 
 ```bash
 podman network disconnect backend-net app  # detach a container from a network
@@ -3678,7 +3771,7 @@ podman network disconnect backend-net app  # detach a container from a network
 Verify the container no longer has the interface:
 
 ```bash
-podman exec app ip addr  # run a command in a running container
+podman exec app cat /proc/net/dev  # alpine has no ip; this lists interfaces
 ```
 
 Reconnect:
@@ -3692,15 +3785,15 @@ podman network connect backend-net app  # attach a container to a network
 
 [^ Go to TOC](#table-of-contents)
 
-## 7  Inspecting Network State
+## 7 Inspecting Network State
 
-### 7.1  List All Networks
+### 7.1 List All Networks
 
 ```bash
 podman network ls  # list networks
 ```
 
-### 7.2  Detailed Network Info
+### 7.2 Detailed Network Info
 
 ```bash
 podman network inspect appnet  # inspect a network
@@ -3708,7 +3801,7 @@ podman network inspect appnet  # inspect a network
 
 Shows: driver, subnets, gateways, connected containers, DNS state.
 
-### 7.3  Which Network Is a Container On?
+### 7.3 Which Network Is a Container On?
 
 ```bash
 podman inspect <name> --format '{{json .NetworkSettings.Networks}}'  # inspect container/image metadata
@@ -3720,7 +3813,7 @@ Or see all networks and their connected containers:
 podman network inspect appnet --format '{{json .Containers}}'  # inspect a network
 ```
 
-### 7.4  Show Container IP Address
+### 7.4 Show Container IP Address
 
 ```bash
 podman inspect <name> --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'  # inspect container/image metadata
@@ -3732,21 +3825,22 @@ For multi-network containers:
 podman inspect app --format '{{range $name, $net := .NetworkSettings.Networks}}{{$name}}: {{$net.IPAddress}}{{"\n"}}{{end}}'  # inspect container/image metadata
 ```
 
-### 7.5  View Interfaces Inside a Running Container
+### 7.5 View Interfaces Inside a Running Container
+
+`ip` is not in Alpine or the official nginx image. Use an image that has iproute2, or read `/proc/net/dev`.
 
 ```bash
-podman exec <name> ip addr  # run a command in a running container
-podman exec <name> ip route  # run a command in a running container
+podman exec <name> cat /proc/net/dev  # interfaces without the ip command
+podman exec <name> cat /proc/net/route  # routes without the ip command
 podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 ```
 
-### 7.6  Host-Side View
+### 7.6 Host-Side View
 
-On the host, Podman bridge networks appear as `podman` prefixed virtual bridges:
+Rootless bridges are not in the host network namespace. `ip link` on the host shows nothing for them. Look inside the rootless netns:
 
 ```bash
-ip link show type bridge  # show network links
-ip addr show  # show interfaces
+podman unshare --rootless-netns ip link show type bridge  # podman0 and user-defined bridges
 ```
 
 ---
@@ -3754,39 +3848,38 @@ ip addr show  # show interfaces
 
 [^ Go to TOC](#table-of-contents)
 
-## 8  Network Drivers — Deeper Look
+## 8 Network Drivers — Deeper Look
 
-### 8.1  Bridge (Default)
+### 8.1 Bridge (Default)
 
 ```bash
 podman network create --driver bridge mybridge  # create a network
 ```
 
 Characteristics:
-- Creates a Linux bridge on the host.
-- Uses NAT (masquerade) for outbound traffic.
-- Containers get private IPs; host reaches them via the bridge.
+- Creates a Linux bridge in the rootless network namespace (netavark's default bridge is `podman0`). It is not visible to `ip link` in the host netns.
+- Uses NAT (masquerade) for outbound traffic, with pasta carrying packets to the host.
+- Containers get private IPs (often `10.89.0.0/24`). The host reaches published ports through pasta, not by routing onto that bridge.
 
-### 8.2  None (No Networking)
+### 8.2 None (No Networking)
 
 ```bash
-podman run --rm --network none docker.io/library/alpine:latest ip addr  # run a container
+podman run --rm --network none registry.fedoraproject.org/fedora:latest ip addr  # alpine has no ip
 ```
 
 Only `lo` (loopback) is present. Useful for:
 - Batch jobs that need complete network isolation.
 - Security-sensitive workloads that must never dial out.
 
-### 8.3  Host (Rootful Only — with Caveats)
+### 8.3 Host
 
 ```bash
-# Note: limited usefulness in rootless mode
-podman run --rm --network host docker.io/library/alpine:latest ip addr  # run a container
+podman run --rm --network host registry.fedoraproject.org/fedora:latest ip addr  # joins the host netns
 ```
 
-The container sees the host's network interfaces directly. There is no NAT, no port mapping needed. Avoid this in production rootless workloads.
+The container sees the host's network interfaces. There is no NAT and no port mapping. Rootless processes still cannot bind ports below 1024. Avoid `--network=host` for production services in this course.
 
-### 8.4  macvlan (Requires Root or Capabilities)
+### 8.4 macvlan (Requires Root or Capabilities)
 
 ```bash
 # rootful or with NET_ADMIN capability only
@@ -3800,9 +3893,9 @@ The container appears as a distinct host on your physical LAN. Useful for legacy
 
 [^ Go to TOC](#table-of-contents)
 
-## 9  Network Security Patterns
+## 9 Network Security Patterns
 
-### 9.1  The Principle: Expose Nothing You Don't Need To
+### 9.1 The Principle: Expose Nothing You Don't Need To
 
 Every port you publish is an attack surface. Every network link you create is a potential pivot point.
 
@@ -3833,7 +3926,7 @@ flowchart TD
     CACHE -. "blocked" .-> INET
 ```
 
-### 9.2  Segment Networks by Trust Zone
+### 9.2 Segment Networks by Trust Zone
 
 ```
 [public-net]   web / proxy containers only
@@ -3843,16 +3936,25 @@ flowchart TD
 
 The DB is never on `public-net`. The proxy is never on `db-net`.
 
-### 9.3  Combine with `--internal` Flag
+### 9.3 Combine with `--internal` Flag
 
 ```bash
 podman network create --internal private-db  # create a network
-podman run -d --name postgres --network private-db -e POSTGRES_PASSWORD=secret docker.io/library/postgres:16-alpine  # run a container
+umask 077
+read -rs PASSWORD
+printf '%s' "$PASSWORD" > ./pgpass.txt
+unset PASSWORD
+podman secret create pg_password ./pgpass.txt
+rm -f ./pgpass.txt
+podman run -d --name postgres --network private-db \
+  --secret pg_password \
+  -e POSTGRES_PASSWORD_FILE=/run/secrets/pg_password \
+  docker.io/library/postgres:16-alpine  # password from a file, not -e POSTGRES_PASSWORD
 ```
 
 This DB can never initiate outbound connections. It cannot call home, exfiltrate data to an external server, or participate in an outbound botnet.
 
-### 9.4  Use `--network-alias` for Service Contracts
+### 9.4 Use `--network-alias` for Service Contracts
 
 Name your services after their role, not their implementation:
 
@@ -3864,7 +3966,7 @@ Name your services after their role, not their implementation:
 
 When you upgrade a service, you swap the container and preserve the alias. Nothing else needs to change.
 
-### 9.9  Avoid Publishing to 0.0.0.0 Unnecessarily
+### 9.5 Avoid Publishing to 0.0.0.0 Unnecessarily
 
 ```bash
 # Bad for an internal API
@@ -3879,7 +3981,7 @@ When you upgrade a service, you swap the container and preserve the alias. Nothi
 
 [^ Go to TOC](#table-of-contents)
 
-## 10  Full Lab: Three-Tier Isolated Stack
+## 10 Full Lab: Three-Tier Isolated Stack
 
 Build a realistic, isolated three-tier stack:
 
@@ -3962,7 +4064,7 @@ podman network rm frontend-net app-net # remove networks
 
 [^ Go to TOC](#table-of-contents)
 
-## 11  Connecting Containers to Pods on a Network
+## 11 Connecting Containers to Pods on a Network
 
 Pods (covered in Module 7) and user-defined networks interact naturally. You can place an entire pod on a named network:
 
@@ -3986,11 +4088,11 @@ podman network rm podnet  # remove the network
 
 [^ Go to TOC](#table-of-contents)
 
-## 12  Networking in Quadlet (systemd) Deployments
+## 12 Networking in Quadlet (systemd) Deployments
 
 Quadlet `.network` unit files let you declare Podman networks as systemd-managed resources. This ensures networks exist before containers start.
 
-### 12.1  Declare a Network Unit
+### 12.1 Declare a Network Unit
 
 Create `~/.config/containers/systemd/appnet.network`:
 
@@ -4003,7 +4105,7 @@ Driver=bridge
 Internal=true
 ```
 
-### 12.2  Reference the Network in a Container Unit
+### 12.2 Reference the Network in a Container Unit
 
 In your `.container` unit file:
 
@@ -4022,9 +4124,9 @@ Full Quadlet networking is covered in Module 11.
 
 [^ Go to TOC](#table-of-contents)
 
-## 13  Troubleshooting Networking
+## 13 Troubleshooting Networking
 
-### 13.1  Symptom: Container Cannot Reach Another Container by Name
+### 13.1 Symptom: Container Cannot Reach Another Container by Name
 
 Checklist:
 
@@ -4057,7 +4159,7 @@ podman network inspect <net> --format '{{.DNSEnabled}}'  # inspect a network
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent hosts <target-name>'  # run a container
 ```
 
-### 13.2  Symptom: Cannot Connect Even Though DNS Resolves
+### 13.2 Symptom: Cannot Connect Even Though DNS Resolves
 
 DNS working but TCP failing means the service is not listening, is on the wrong port, or there is a firewall rule.
 
@@ -4071,25 +4173,25 @@ podman exec <target> ss -tlnp  # run a command in a running container
 podman exec <target> netstat -tlnp  # run a command in a running container
 ```
 
-### 13.3  Symptom: Port Published But Cannot Reach from Host
+### 13.3 Symptom: Port Published But Cannot Reach from Host
 
 ```bash
 # Confirm the port mapping
 podman port <name>  # show published ports
 
-# Confirm the process is listening inside the container
-podman exec <name> ss -tlnp  # run a command in a running container
+# Confirm the process is listening inside the container.
+# ss is not in Alpine or the official nginx image; /proc/net/tcp is.
+podman exec <name> cat /proc/net/tcp
 
-# Check host firewall
-sudo firewall-cmd --list-all   # firewalld
-sudo iptables -L -n            # iptables / nftables
+# Check host firewall (firewalld is the RHEL/Fedora tool)
+sudo firewall-cmd --list-all
 
 # Check the container's host binding
 podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # inspect container/image metadata
 # Look for "HostIp" - if it's 127.0.0.1, you can only reach from localhost
 ```
 
-### 13.4  Symptom: `nc` or `wget` Not Available in Container
+### 13.4 Symptom: `nc` or `wget` Not Available in Container
 
 Use a debug sidecar with networking tools:
 
@@ -4103,7 +4205,7 @@ Or use a minimal alpine with a one-liner install:
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'apk add -q curl && curl -v http://<target>:<port>/'  # run a container
 ```
 
-### 13.5  Symptom: Container Cannot Reach the Internet
+### 13.5 Symptom: Container Cannot Reach the Internet
 
 ```bash
 # Verify DNS
@@ -4123,17 +4225,19 @@ If the network is `internal: true`, outbound traffic is intentionally blocked.
 
 If DNS fails but the IP works, the problem is your DNS resolver configuration.
 
-### 13.6  Symptom: Sporadic Connection Failures (Rootless)
+### 13.6 Symptom: Sporadic Connection Failures (Rootless)
 
 This is often a pasta/slirp4netns quirk with UDP under high load, or a port exhaustion issue.
 
 ```bash
-# Check for errors in the rootless network helper
-journalctl --user -u podman.socket  # view user-service logs
-podman events --filter type=network  # show Podman lifecycle events
+# pasta errors show up on the container, not on the Podman API socket
+podman logs <name>
+journalctl --user -u <name>.service -n 50 --no-pager   # when the container is a Quadlet unit
 ```
 
-### 13.7  Useful Debugging One-Liners
+`podman.socket` is the API socket. It does not log pasta failures.
+
+### 13.7 Useful Debugging One-Liners
 
 ```bash
 # All running container IPs
@@ -4154,31 +4258,33 @@ podman exec <name> cat /etc/resolv.conf  # run a command in a running container
 
 [^ Go to TOC](#table-of-contents)
 
-## 14  Common Patterns Reference
+## 14 Common Patterns Reference
+
+These are **sketches**, not labs. `myapp:latest` is not an image in this course. The ports and image names below follow the course rules (high ports, fully qualified names, no password in the environment) so you can adapt them. Do not publish host port 80 from a rootless user.
 
 ### Pattern A — Single Shared App Network (Simple Stack)
 
 ```bash
-podman network create app  # create a network
-podman run -d --name db    --network app docker.io/library/postgres:16-alpine  # run a container
-podman run -d --name cache --network app docker.io/library/redis:7-alpine  # run a container
-podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest  # run a container
-podman run -d --name proxy --network app -p 0.0.0.0:80:80     nginx:stable  # run a container
+podman network create app
+podman run -d --name db    --network app docker.io/library/alpine:latest sleep infinity  # stand-in; a real Postgres needs a secret file
+podman run -d --name cache --network app docker.io/library/redis:7-alpine
+podman run -d --name api   --network app -p 127.0.0.1:8000:8000 myapp:latest
+podman run -d --name proxy --network app -p 127.0.0.1:8080:80 docker.io/library/nginx:stable
 ```
 
 ### Pattern B — Segmented Networks (Recommended for Production)
 
 ```bash
-podman network create --internal data-tier  # create a network
-podman network create app-tier  # create a network
-podman network create public-tier  # create a network
+podman network create --internal data-tier
+podman network create app-tier
+podman network create public-tier
 
-podman run -d --name db     --network data-tier   postgres:16-alpine  # run a container
-podman run -d --name cache  --network data-tier   redis:7-alpine  # run a container
-podman run -d --name api    --network app-tier    myapp:latest  # run a container
+podman run -d --name db     --network data-tier   docker.io/library/alpine:latest sleep infinity
+podman run -d --name cache  --network data-tier   docker.io/library/redis:7-alpine
+podman run -d --name api    --network app-tier    myapp:latest
 podman network connect data-tier api              # api reaches db and cache
 
-podman run -d --name proxy  --network public-tier -p 80:80 nginx:stable  # run a container
+podman run -d --name proxy  --network public-tier -p 127.0.0.1:8080:80 docker.io/library/nginx:stable
 podman network connect app-tier proxy             # proxy reaches api
 ```
 
@@ -4192,7 +4298,7 @@ podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # r
 ### Pattern D — One-Time Migration Container
 
 ```bash
-podman run --rm --network app-tier --env-file .env myapp:latest ./migrate.sh  # run a container
+podman run --rm --network app-tier myapp:latest ./migrate.sh  # do not pass secrets with --env-file
 ```
 
 ---
@@ -4479,7 +4585,7 @@ podman run -d --pod webpod --name nginx docker.io/library/nginx:stable  # run ng
 Verify it is reachable from the host:
 
 ```bash
-podman port webpod  # show published ports for the pod
+podman port webpod-infra  # podman port takes a container; the infra container owns the publish
 ```
 
 From the host (or inside a debug shell):
@@ -4769,7 +4875,7 @@ By the end of this module you will be able to:
 
 [^ Go to TOC](#table-of-contents)
 
-## 1  Images, Layers, and the Build Mental Model
+## 1 Images, Layers, and the Build Mental Model
 
 An image build is a series of filesystem snapshots.
 
@@ -4812,9 +4918,9 @@ Terminology:
 
 [^ Go to TOC](#table-of-contents)
 
-## 2  `podman build` Fundamentals
+## 2 `podman build` Fundamentals
 
-### 2.1  Basic Build
+### 2.1 Basic Build
 
 ```bash
 podman build -t localhost/myapp:1 .  # build an image
@@ -4836,7 +4942,7 @@ Notes:
 - `--no-cache` is useful when debugging, but do not make it your default.
 - `--target` builds only a named stage from a multi-stage Containerfile.
 
-### 2.2  Naming: Why `localhost/` Is Used in Labs
+### 2.2 Naming: Why `localhost/` Is Used in Labs
 
 Using `localhost/<name>` makes it explicit that the tag is local and not in a remote registry namespace.
 
@@ -4846,7 +4952,7 @@ podman images | head  # list images
 
 You will see `localhost/myapp:1` locally even if you are not logged into a registry.
 
-### 2.3  What Builds What
+### 2.3 What Builds What
 
 Podman builds are typically executed by Buildah under the hood.
 
@@ -4857,7 +4963,7 @@ You do not need to become a Buildah expert, but this matters when you search for
 
 [^ Go to TOC](#table-of-contents)
 
-## 3  Containerfile Instructions: The Practical Subset
+## 3 Containerfile Instructions: The Practical Subset
 
 You can build most real images with these instructions:
 
@@ -4873,7 +4979,7 @@ You can build most real images with these instructions:
 - `LABEL` attach metadata
 - `HEALTHCHECK` basic liveness signal (optional)
 
-### 3.1  `COPY` vs `ADD`
+### 3.1 `COPY` vs `ADD`
 
 Rule of thumb:
 
@@ -4882,7 +4988,7 @@ Rule of thumb:
 
 Do not use `ADD` to fetch URLs.
 
-### 3.2  Shell Form vs Exec Form
+### 3.2 Shell Form vs Exec Form
 
 Exec form (recommended for servers):
 
@@ -4902,7 +5008,7 @@ Why exec form is better:
 - Your process becomes PID 1 (no intermediate shell).
 - Arguments are not re-parsed by a shell.
 
-### 3.3  `ENTRYPOINT` vs `CMD`
+### 3.3 `ENTRYPOINT` vs `CMD`
 
 - `CMD` is the default that users commonly override.
 - `ENTRYPOINT` is for the command you almost never want overridden.
@@ -4914,7 +5020,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["/app/server"]
 ```
 
-### 3.4  `EXPOSE` Does Not Publish Ports
+### 3.4 `EXPOSE` Does Not Publish Ports
 
 `EXPOSE 8080` is documentation inside the image.
 
@@ -4929,7 +5035,7 @@ podman run -p 8080:8080 localhost/myapp:1  # run a container
 
 [^ Go to TOC](#table-of-contents)
 
-## 4  Lab A: Build a Tiny HTTP Image (Warm-Up)
+## 4 Lab A: Build a Tiny HTTP Image (Warm-Up)
 
 Create a new directory:
 
@@ -4984,7 +5090,7 @@ rm -rf ./image-lab                 # delete the lab directory
 
 [^ Go to TOC](#table-of-contents)
 
-## 5  Build Context Hygiene (The Most Common Image Leak)
+## 5 Build Context Hygiene (The Most Common Image Leak)
 
 Your build context is everything in the directory you pass to `podman build`.
 
@@ -5012,7 +5118,7 @@ flowchart LR
     SRC -->|"COPY src/ /app/src"| IMG["Final Image<br/>(clean + small)"]
 ```
 
-### 5.1  Use `.containerignore`
+### 5.1 Use `.containerignore`
 
 Create `.containerignore` next to your `Containerfile`:
 
@@ -5031,7 +5137,7 @@ tmp
 
 Podman commonly supports `.containerignore` and often also `.dockerignore`.
 
-### 5.2  Prefer Explicit Copies
+### 5.2 Prefer Explicit Copies
 
 Instead of:
 
@@ -5053,7 +5159,7 @@ This prevents accidental inclusion and improves caching.
 
 [^ Go to TOC](#table-of-contents)
 
-## 6  Running as Non-Root (Image-Level Least Privilege)
+## 6 Running as Non-Root (Image-Level Least Privilege)
 
 Rootless Podman protects the host.
 
@@ -5063,7 +5169,7 @@ Running as non-root inside the container protects you from:
 - accidental writes to system locations in the image
 - overly-permissive defaults (root can write almost anywhere)
 
-### 6.1  The Three Places You Usually Need Write Access
+### 6.1 The Three Places You Usually Need Write Access
 
 - `/tmp`
 - an app state directory (like `/var/lib/myapp`)
@@ -5074,12 +5180,13 @@ Best practice:
 - treat the root filesystem as read-only when possible (Module 12)
 - use a dedicated volume or tmpfs for the few paths that must be writable
 
-### 6.2  Pattern: Create a User and Own the App Directory
+### 6.2 Pattern: Create a User and Own the App Directory
 
 ```Dockerfile
 FROM docker.io/library/alpine:3.20
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app app \
+ && mkdir -p /app && chown app:app /app
 WORKDIR /app
 COPY --chown=app:app . /app
 USER app
@@ -5091,7 +5198,7 @@ Notes:
 - `COPY --chown=...` is often cleaner than `RUN chown -R ...`.
 - Some minimal images do not include `adduser`/`addgroup` (use their native tools).
 
-### 6.3  Lab B: Verify Non-Root Actually Works
+### 6.3 Lab B: Verify Non-Root Actually Works
 
 ```bash
 mkdir -p ./nonroot-lab  # create directory
@@ -5100,7 +5207,8 @@ cd ./nonroot-lab  # change directory
 cat > Containerfile <<'EOF'
 FROM docker.io/library/alpine:3.20
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app app \
+ && mkdir -p /app && chown app:app /app
 WORKDIR /app
 COPY --chown=app:app . /app
 USER app
@@ -5114,14 +5222,14 @@ cd ..  # change directory
 rm -rf ./nonroot-lab            # delete the lab directory
 ```
 
-If `touch /app/ok` fails, you did not set ownership correctly.
+`COPY --chown` changes the copied files, not the `WORKDIR` directory. `WORKDIR` creates `/app` as root mode 755, so `touch /app/ok` fails unless `mkdir` and `chown` run before `USER`.
 
 ---
 
 
 [^ Go to TOC](#table-of-contents)
 
-## 7  Multi-Stage Builds (Small Images, Fast Builds)
+## 7 Multi-Stage Builds (Small Images, Fast Builds)
 
 Multi-stage builds let you:
 
@@ -5156,7 +5264,7 @@ flowchart LR
     SIZE2 -.-> R1
 ```
 
-### 7.1  Lab C (Optional): Provided Go Multi-Stage Example
+### 7.1 Lab C (Optional): Provided Go Multi-Stage Example
 
 This repository includes:
 
@@ -5178,7 +5286,7 @@ podman images | head  # list images
 podman image history localhost/hello-go:1  # show image layer history
 ```
 
-### 7.2  Pattern: Build Dependencies First, Copy Source Later
+### 7.2 Pattern: Build Dependencies First, Copy Source Later
 
 This pattern maximizes cache reuse:
 
@@ -5189,14 +5297,17 @@ This pattern maximizes cache reuse:
 
 Even if you do not use multi-stage, the order still matters.
 
-### 7.3  Example Pattern: Bun App (Build + Runtime)
+### 7.3 Example Pattern: Bun App (Build + Runtime)
 
-This is an example Containerfile shape for Bun-based services. Adapt it to your project.
+The snippet below is a **sketch** (it expects `package.json` and `bun.lockb`). The files in this repo are different: `examples/build/hello-bun/` only copies `server.ts` and `healthcheck.ts`. Build that example with `--format docker`, because OCI images drop `HEALTHCHECK`:
 
-Try the repo-backed example:
+```bash
+podman build --format docker -t localhost/hello-bun:1 examples/build/hello-bun
+```
 
-- `examples/build/hello-bun/Containerfile`
-- `examples/build/hello-bun/server.ts`
+The `oven/bun` image sets `USER bun`. A `RUN` in the build stage that writes to a root-owned `/app` fails unless that stage switches back to `USER root`. The runtime stage is where `USER bun` belongs. See the Containerfile in the example directory.
+
+Sketch (not the repo file):
 
 ```Dockerfile
 FROM docker.io/oven/bun:1.2.0 AS build
@@ -5227,7 +5338,7 @@ Notes:
 - If your build outputs different paths, adjust `COPY --from=build`.
 - If you need native modules, your runtime base must be compatible.
 
-### 7.4  Example Pattern: Static Web Build (Build Stage + nginx)
+### 7.4 Example Pattern: Static Web Build (Build Stage + nginx)
 
 ```Dockerfile
 FROM docker.io/library/node:22-alpine AS build
@@ -5248,18 +5359,18 @@ This keeps Node and build tools out of the runtime image.
 
 [^ Go to TOC](#table-of-contents)
 
-## 8  Caching: Make Rebuilds Fast
+## 8 Caching: Make Rebuilds Fast
 
 Most slow builds are slow because caching is accidentally disabled.
 
-### 8.1  Common Cache-Busters
+### 8.1 Common Cache-Busters
 
 - `COPY . .` early in the file
 - including `node_modules/` or `target/` in the context
 - running `apt-get update` in a separate layer from `apt-get install`
 - using floating package versions
 
-### 8.2  Linux Packages: One Layer, Clean Up
+### 8.2 Linux Packages: One Layer, Clean Up
 
 For Debian/Ubuntu bases:
 
@@ -5275,7 +5386,7 @@ For Alpine:
 RUN apk add --no-cache ca-certificates curl
 ```
 
-### 8.3  Use Stage Targets for Faster Debugging
+### 8.3 Use Stage Targets for Faster Debugging
 
 If a multi-stage build fails late, rebuild only to the stage you care about:
 
@@ -5294,9 +5405,9 @@ podman run --rm -it localhost/myapp:build sh  # run a container
 
 [^ Go to TOC](#table-of-contents)
 
-## 9  `ARG`, `ENV`, and Configuration
+## 9 `ARG`, `ENV`, and Configuration
 
-### 9.1  `ARG` Is Build-Time
+### 9.1 `ARG` Is Build-Time
 
 `ARG` values exist during build, and can influence caching.
 
@@ -5311,7 +5422,7 @@ Build:
 podman build --build-arg APP_VERSION=1.2.3 -t localhost/myapp:1 .  # build an image
 ```
 
-### 9.2  `ENV` Is Runtime Default
+### 9.2 `ENV` Is Runtime Default
 
 ```Dockerfile
 ENV PORT=3000
@@ -5325,7 +5436,7 @@ Override at runtime:
 podman run --rm -e PORT=8080 localhost/myapp:1  # run a container
 ```
 
-### 9.3  Do Not Put Secrets in `ARG` or `ENV`
+### 9.3 Do Not Put Secrets in `ARG` or `ENV`
 
 If you do this:
 
@@ -5347,7 +5458,7 @@ Use runtime secrets (Module 4) or build-time secret mechanisms (next section).
 
 [^ Go to TOC](#table-of-contents)
 
-## 10  Secrets and Private Dependencies (Build-Time)
+## 10 Secrets and Private Dependencies (Build-Time)
 
 Rules you can rely on:
 
@@ -5355,7 +5466,7 @@ Rules you can rely on:
 - never commit secrets into the build context
 - prefer fetching private dependencies outside the build and copying only artifacts
 
-### 10.1  If Your Podman Supports Build Secrets
+### 10.1 If Your Podman Supports Build Secrets
 
 Some Podman/Buildah versions support `podman build --secret ...`.
 
@@ -5369,7 +5480,7 @@ In a Containerfile, the secret is mounted at build time (not copied into layers)
 
 If your version does not support it, use the safe fallback below.
 
-### 10.2  Safe Fallback: Fetch in CI, Copy Artifacts
+### 10.2 Safe Fallback: Fetch in CI, Copy Artifacts
 
 Instead of cloning or downloading private content during image build:
 
@@ -5385,7 +5496,7 @@ This keeps secrets entirely out of the image build process.
 
 [^ Go to TOC](#table-of-contents)
 
-## 11  Labels, Metadata, and Image Introspection
+## 11 Labels, Metadata, and Image Introspection
 
 Labels help you operate images later.
 
@@ -5417,15 +5528,15 @@ podman image inspect localhost/myapp:1 --format '{{json .Labels}}'  # inspect im
 
 [^ Go to TOC](#table-of-contents)
 
-## 12  Tagging, Digests, and Promotion
+## 12 Tagging, Digests, and Promotion
 
-### 12.1  Tags Are Mutable
+### 12.1 Tags Are Mutable
 
 `myapp:latest` can point to different content over time.
 
 This is convenient, but it is not auditable.
 
-### 12.2  Digests Are Immutable
+### 12.2 Digests Are Immutable
 
 Pull and run by digest:
 
@@ -5439,7 +5550,7 @@ For production:
 - build from pinned bases when you need repeatability
 - promote images by digest (not by tag) when you need audit trails
 
-### 12.3  A Simple Promotion Flow
+### 12.3 A Simple Promotion Flow
 
 1. build locally or in CI as `myapp:git-<sha>`
 2. run tests
@@ -5458,27 +5569,27 @@ podman tag localhost/myapp:git-abc123 localhost/myapp:prod  # add another tag/na
 
 [^ Go to TOC](#table-of-contents)
 
-## 13  Pushing Images to a Registry
+## 13 Pushing Images to a Registry
 
-### 13.1  Login
+### 13.1 Login
 
 ```bash
 podman login <registry>  # log into a container registry
 ```
 
-### 13.2  Tag for the Registry Namespace
+### 13.2 Tag for the Registry Namespace
 
 ```bash
 podman tag localhost/myapp:1 registry.example.com/team/myapp:1  # add another tag/name
 ```
 
-### 13.3  Push
+### 13.3 Push
 
 ```bash
 podman push registry.example.com/team/myapp:1  # push an image to a registry
 ```
 
-### 13.4  Pull and Verify
+### 13.4 Pull and Verify
 
 ```bash
 podman pull registry.example.com/team/myapp:1  # pull an image
@@ -5495,7 +5606,7 @@ Production habit:
 
 [^ Go to TOC](#table-of-contents)
 
-## 14  Testing the Image You Built
+## 14 Testing the Image You Built
 
 Your build is not done when `podman build` finishes.
 
@@ -5507,19 +5618,19 @@ Minimum checks:
 4. container runs as non-root (if intended)
 5. container writes only to intended paths
 
-### 14.1  Smoke Test
+### 14.1 Smoke Test
 
 ```bash
 podman run --rm -p 8080:8080 localhost/myapp:1  # run a container
 ```
 
-### 14.2  Confirm Effective User
+### 14.2 Confirm Effective User
 
 ```bash
 podman run --rm localhost/myapp:1 id  # run a container
 ```
 
-### 14.3  Healthcheck (If You Define One)
+### 14.3 Healthcheck (If You Define One)
 
 If your Containerfile includes `HEALTHCHECK`:
 
@@ -5544,9 +5655,9 @@ podman rm -f hc  # stop and remove the container
 
 [^ Go to TOC](#table-of-contents)
 
-## 15  Troubleshooting Builds (Common Failures)
+## 15 Troubleshooting Builds (Common Failures)
 
-### 15.1  `COPY failed: file not found in build context`
+### 15.1 `COPY failed: file not found in build context`
 
 Causes:
 
@@ -5574,7 +5685,7 @@ flowchart TD
     Q5 -->|"No"| F6["Check podman logs<br/>Run interactively: -it --entrypoint sh"]
 ```
 
-### 15.2  Permission Errors in `RUN` Steps
+### 15.2 Permission Errors in `RUN` Steps
 
 Typical in rootless builds when scripts assume root-only locations.
 
@@ -5584,7 +5695,7 @@ Fix patterns:
 - ensure `WORKDIR` exists
 - if you switch to `USER app`, do it after you finish root-only install steps
 
-### 15.3  Container Starts Then Exits Immediately
+### 15.3 Container Starts Then Exits Immediately
 
 Causes:
 
@@ -5598,7 +5709,7 @@ Debug:
 podman run --rm -it --entrypoint sh localhost/myapp:1  # run a container
 ```
 
-### 15.4  `exec format error`
+### 15.4 `exec format error`
 
 Cause:
 
@@ -5614,7 +5725,7 @@ podman build --platform linux/amd64 -t localhost/myapp:amd64 .  # build an image
 
 Cross-building often requires extra host setup (emulation). Treat it as an advanced topic.
 
-### 15.5  Huge Images
+### 15.5 Huge Images
 
 Causes:
 
@@ -5639,7 +5750,7 @@ podman image history localhost/myapp:1  # show image layer history
 
 [^ Go to TOC](#table-of-contents)
 
-## 16  Cleanup: Keep Your Machine Healthy
+## 16 Cleanup: Keep Your Machine Healthy
 
 Image builds create intermediate images and caches.
 
@@ -5666,7 +5777,7 @@ Be careful:
 
 [^ Go to TOC](#table-of-contents)
 
-## 17  Extended Lab: A Small "Real" Service Image
+## 17 Extended Lab: A Small "Real" Service Image
 
 This lab builds a service image with:
 
@@ -5677,7 +5788,7 @@ This lab builds a service image with:
 
 It uses only shell + Python standard library so you do not need extra tooling.
 
-### 17.1  Create a Small App
+### 17.1 Create a Small App
 
 ```bash
 mkdir -p ./svc-lab  # create directory
@@ -5956,7 +6067,7 @@ See Module 7 (Pods) for a deep-dive on the infra container and sidecar patterns.
 
 ```bash
 podman play kube stack.yaml   # create resources from Kubernetes YAML
-podman play kube --down stack.yaml  # tear down resources
+podman kube down stack.yaml  # tear down resources; same idea as Module 10
 ```
 
 See Module 10 (play kube) for the full lab.
@@ -6321,7 +6432,8 @@ Podman's `play kube` supports a practical subset of the Kubernetes API, not the 
 | `Service` | No | No load balancer or ClusterIP |
 | `Ingress` | No | No ingress controller |
 | `StatefulSet` | No | Use Quadlet for stateful services |
-| `DaemonSet` | No | |
+| `Job` | Created once | No Job controller; the container runs and exits |
+| `DaemonSet` | Created once | No per-node controller; one pod, not one per node |
 
 > **Rule of thumb:** Use `play kube` for `Pod` specs. Anything more complex — use Quadlet (Module 11) or your CI/CD tooling.
 
@@ -6393,7 +6505,7 @@ Notice that the resources are named based on the YAML `metadata.name` field.
 
 ```bash
 # Get the published port from the pod
-podman port webpod  # show published ports
+podman port webpod-infra  # published ports are on the infra container
 ```
 
 Then test it:
@@ -6510,7 +6622,7 @@ systemctl --user status webpod.service  # show status
 Verify:
 
 ```bash
-podman port webpod 2>/dev/null || podman pod ps  # confirm pod is running
+podman port webpod-infra 2>/dev/null || podman pod ps  # confirm pod is running
 ```
 
 Stop and clean up:
@@ -6574,7 +6686,8 @@ flowchart TD
 **Not supported or limited:**
 - `Service` resources (no ClusterIP, no load balancer, no service discovery across pods).
 - `Ingress` resources (no ingress controller).
-- `StatefulSet`, `DaemonSet`, `Job`, `CronJob` controllers.
+- `StatefulSet` and `CronJob` (not created).
+- `Job` and `DaemonSet` are created once. There is no Job controller and no per-node DaemonSet controller.
 - Rolling updates (no Deployment controller tracking replica state).
 - Namespace isolation (Kubernetes namespaces, not Linux namespaces).
 - Resource quotas and admission controllers.
@@ -6810,7 +6923,7 @@ Each generates a `<name>-<type>.service` or `<name>.service` unit that systemd c
 
 ## Anatomy of a .container Unit
 
-A `.container` file has INI-style sections. Here is a fully annotated example:
+A `.container` file has INI-style sections. The block below is a **key catalog**. Do not run it as the official nginx image: that image starts as root, binds port 80, and writes a pid file. `User=1001:1001`, `ReadOnly=true`, and `DropCapability=ALL` together will not serve. The lab unit in `examples/quadlet/hello-nginx.container` is the one you start.
 
 ```ini
 [Unit]
@@ -6831,9 +6944,10 @@ Network=labnet.network
 Volume=labdata.volume:/data
 # Secret defined via `podman secret create`:
 Secret=db_password
-# Drop all capabilities (security hardening):
-CapDrop=ALL
-# Prevent setuid escalation:
+# Drop all capabilities (security hardening). The key is DropCapability=, not CapDrop=.
+DropCapability=ALL
+# SecurityLabelDisable=false keeps SELinux on. It does not block setuid.
+# NoNewPrivileges=true is the setuid control:
 SecurityLabelDisable=false
 NoNewPrivileges=true
 # Read-only root filesystem:
@@ -6870,8 +6984,8 @@ Key `[Container]` fields map to `podman run` flags:
 | `Network=` | `--network` |
 | `Volume=` | `-v` |
 | `Secret=` | `--secret` |
-| `CapDrop=` | `--cap-drop` |
-| `CapAdd=` | `--cap-add` |
+| `DropCapability=` | `--cap-drop` |
+| `AddCapability=` | `--cap-add` |
 | `ReadOnly=true` | `--read-only` |
 | `Tmpfs=` | `--tmpfs` |
 | `User=` | `--user` |
@@ -7170,9 +7284,10 @@ Quadlet `[Service]` section accepts all standard systemd restart directives:
 | `on-failure` | Only on non-zero exit codes |
 | `on-abnormal` | On signal/timeout/watchdog failure |
 | `always` | Always, including clean exits |
-| `unless-stopped` | Always, unless explicitly stopped |
 
-For long-running services, `on-failure` is the safest default — it won't loop-restart if your container exits cleanly during shutdown.
+`unless-stopped` is a `podman run --restart` value. systemd rejects it, and Quadlet copies `[Service] Restart=` through unchanged. A unit with `Restart=unless-stopped` fails to load.
+
+`on-failure` is the safest default — it will not loop-restart if the container exits cleanly during shutdown. Lab units in this course (`hello-nginx.container`, the capstone units, `autoupdate-nginx.container`) use `Restart=always` so a clean exit still brings the service back. That is a choice for a service you want up, not a second name for `unless-stopped`.
 
 Pair with `RestartSec=` to add a backoff delay:
 
@@ -7191,7 +7306,7 @@ Do not store secret material in unit files — not in `Environment=` lines, not 
 
 The correct pattern:
 
-1. Create a Podman secret: `printf '%s' 'value' | podman secret create myapp_db_password -`
+1. Create a Podman secret with `read -rs` (Module 4). A literal `printf '%s' 'value' | podman secret create` is still shell history.
 2. Reference it by name in the unit: `Secret=myapp_db_password`
 3. The container reads from `/run/secrets/myapp_db_password`.
 
@@ -7329,12 +7444,12 @@ Secret=db_password
 
 ```mermaid
 flowchart TD
-    A["Admin creates secret<br/>printf '%s' value | podman secret create db_password -"] --> B["Secret stored in<br/>~/.local/share/containers/storage/secrets/"]
+    A["Admin creates secret<br/>read -rs, then printf '%s' of the variable"] --> B["Secret stored in<br/>~/.local/share/containers/storage/secrets/"]
     B --> C["Quadlet unit references<br/>Secret=db_password"]
     C --> D["systemctl --user daemon-reload<br/>systemctl --user start myapp.service"]
     D --> E["Podman mounts secret<br/>as /run/secrets/db_password (tmpfs)"]
-    E --> F["App reads file<br/>DB_PASSWORD=$(cat /run/secrets/db_password)"]
-    F --> G["Secret in process memory only<br/>Not in env, not in inspect, not in logs"]
+    E --> F["App reads the file<br/>into process memory"]
+    F --> G["Not in the unit, not in inspect,<br/>not in logs"]
 ```
 
 Guidelines:
@@ -7401,9 +7516,16 @@ loginctl show-user "$USER" | grep Linger  # verify Linger=yes
 **Step 2: Create the secret** (example only — do not use this value):
 
 ```bash
-printf '%s' 'example-password' | podman secret create db_password -  # create secret from stdin, no trailing newline
+umask 077
+read -rs PASSWORD  # type example-password; the literal is not in shell history
+printf '%s' "$PASSWORD" > ./db_password.txt
+unset PASSWORD
+podman secret create db_password ./db_password.txt
+rm -f ./db_password.txt
 podman secret ls  # confirm secret exists
 ```
+
+`printf '%s'` avoids the trailing newline that `echo` adds. Typing the password as an argument still records it in shell history. `read -rs` does not.
 
 **Step 3: Write the Quadlet unit:**
 
@@ -7497,16 +7619,19 @@ dbPassword := strings.TrimSpace(string(data))
 ```
 
 ```bash
-# Shell
+# Shell — this exports the value into that process's environment.
+# Prefer the app reading the file itself. Use this only as a last resort.
 DB_PASSWORD=$(cat /run/secrets/db_password)
 ```
 
-```java
-// Spring Boot — application.properties
-spring.datasource.password=#{T(java.nio.file.Files).readString(T(java.nio.file.Path).of("/run/secrets/db_password")).trim()}
+```properties
+# Spring Boot — application.properties
+spring.config.import=configtree:/run/secrets/
 ```
 
-**Important**: trim the value. Depending on how the secret was created, there may or may not be a trailing newline. Always use `printf '%s' value | ...` when creating secrets to avoid trailing newlines.
+`#{T(java.nio.file.Files)...}` is not evaluated in `application.properties`.
+
+**Important**: trim the value. `echo 'value' | podman secret create` adds a newline. `printf '%s' "$VALUE"` does not. Do not put the literal value on the `printf` command line.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -7538,7 +7663,12 @@ sequenceDiagram
 **Step 1: Create the new secret version:**
 
 ```bash
-printf '%s' 'new-value' | podman secret create db_password_v2 -  # create version 2
+umask 077
+read -rs PASSWORD  # type the new value
+printf '%s' "$PASSWORD" > ./db_password_v2.txt
+unset PASSWORD
+podman secret create db_password_v2 ./db_password_v2.txt
+rm -f ./db_password_v2.txt
 ```
 
 **Step 2: Update the Quadlet file** — change `Secret=db_password_v1` to `Secret=db_password_v2`.
@@ -7593,7 +7723,7 @@ Secret=db_password,target=/etc/myapp/db.pass,mode=0400,uid=1001
 Secret=api_key,target=/etc/myapp/api.key,mode=0400,uid=1001
 ```
 
-Rotate each independently — you do not need to restart for unrelated secret changes.
+You can change one `Secret=` name without touching the others. A new name or a new value is visible only after that container restarts. The mount is created when the container starts.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -7605,10 +7735,11 @@ systemd 250+ supports **credentials** — a way to pass secret material to a ser
 ```ini
 [Service]
 LoadCredential=db_password:/etc/myapp/secrets/db_password
-# Secret available inside the service at $CREDENTIALS_DIRECTORY/db_password
+# Lands in the systemd service environment: $CREDENTIALS_DIRECTORY/db_password
+# That directory is on the host side of the Podman service, not inside the container.
 ```
 
-For containers specifically, you can combine systemd credentials with a bind mount (with caution — always ask before using bind mounts) or use it to pre-populate the Podman secrets store via an `ExecStartPre=` script.
+`LoadCredential=` does not mount the file into the container. To get it there, bind-mount that path (with `:Z` on enforcing SELinux) or copy it into a Podman secret from an `ExecStartPre=` script before the container starts. The container still reads a file.
 
 The systemd credentials approach is more appropriate for:
 - Secrets provisioned by configuration management (Ansible, Puppet).
@@ -7737,7 +7868,7 @@ graph TD
         L5["Mandatory access control<br/>Labels restrict what files<br/>containers can access"]
     end
     subgraph "Layer 4: Seccomp"
-        L4["Syscall filtering<br/>Block kernel attack surface<br/>Default profile: ~300 syscalls blocked"]
+        L4["Syscall filtering<br/>Default action is deny<br/>Allow list of common syscalls"]
     end
     subgraph "Layer 3: Capabilities"
         L3["Drop ALL, add-back only needed<br/>--cap-drop=ALL --cap-add=NET_BIND_SERVICE"]
@@ -7763,7 +7894,7 @@ Apply these for every long-running service container:
 | Control | Flag / setting | Why |
 |---|---|---|
 | Rootless Podman | (run as non-root user on host) | Limits kernel attack surface |
-| Non-root inside container | `User=1001` in Containerfile or `--user 1001` | Process cannot affect host even if namespace leaks |
+| Non-root inside container | `User=1001` in Containerfile or `--user 1001` | The process is not UID 0 inside the container. A namespace escape still lands on a subordinate UID, not host root |
 | No new privileges | `--security-opt no-new-privileges` | Prevents `setuid` escalation inside container |
 | Drop all capabilities | `--cap-drop=ALL` | Removes almost all kernel privileges from PID 1 |
 | Add back only what's needed | `--cap-add=NET_BIND_SERVICE` etc. | Least privilege |
@@ -7917,8 +8048,10 @@ podman run --rm docker.io/library/alpine:latest id  # show current uid/gid
 2) Apply no-new-privileges:
 
 ```bash
-podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # same, but setuid disabled
+podman run --rm --security-opt no-new-privileges docker.io/library/alpine:latest id  # id does not change
 ```
+
+`id` does not show the flag working. The flag changes `execve` of setuid binaries and file capabilities. Alpine's `id` is not setuid, so this step only confirms the container still starts.
 
 3) Combine with drop-all and non-root:
 
@@ -7974,13 +8107,14 @@ If it fails, read the error message — it is a map of which paths nginx needs t
 podman run --rm -p 8080:80 \
   --read-only \
   --cap-drop=ALL \
+  --cap-add=NET_BIND_SERVICE \
   --security-opt no-new-privileges \
   --memory 128m \
   --pids-limit 50 \
   --tmpfs /var/cache/nginx \
   --tmpfs /var/run \
   --tmpfs /tmp \
-  docker.io/library/nginx:stable  # fully hardened nginx
+  docker.io/library/nginx:stable  # nginx still binds container port 80, so NET_BIND_SERVICE stays
 ```
 
 ```mermaid
@@ -8016,7 +8150,7 @@ Both are desirable. They are independent:
 ```mermaid
 graph TD
     A["Host: non-root user (uid 1000)<br/>Rootless Podman"] --> B["Container: uid 0 (root inside)<br/>mapped to uid 1000 on host via userns"]
-    A --> C["Container: uid 1001 (non-root inside)<br/>mapped to uid 100001 on host via userns"]
+    A --> C["Container: uid 1001 (non-root inside)<br/>host uid = subuid_start + 1000"]
     B -->|"better"| D["User namespace isolates from host"]
     C -->|"best"| E["Non-root inside + userns isolation"]
 ```
@@ -8072,7 +8206,7 @@ getenforce  # show SELinux mode: Enforcing / Permissive / Disabled
 Check SELinux denials:
 
 ```bash
-ausearch -m avc -ts recent  # show recent SELinux denial audit messages
+sudo ausearch -m avc -ts recent  # audit log is not readable rootless
 ```
 
 
@@ -8080,7 +8214,7 @@ ausearch -m avc -ts recent  # show recent SELinux denial audit messages
 
 ## Seccomp Profiles
 
-Seccomp (Secure Computing Mode) filters which Linux **syscalls** a container process can make. Podman applies a default seccomp profile that blocks ~300 dangerous syscalls (`reboot`, `kexec_load`, `create_module`, etc.).
+Seccomp (Secure Computing Mode) filters which Linux **syscalls** a container process can make. The default profile's default action is **deny**. An allow list of a few hundred common syscalls is what gets through. `reboot`, `kexec_load`, and `create_module` stay denied. The allow list is not a list of 300 blocked calls.
 
 You rarely need to change the default. But knowing it exists matters:
 
@@ -8187,7 +8321,8 @@ Description=Hardened application service
 [Container]
 Image=docker.io/library/myapp@sha256:<digest>
 ReadOnly=true
-CapDrop=ALL
+DropCapability=ALL
+# AddCapability=NET_BIND_SERVICE only if this process binds a port below 1024
 SecurityLabelDisable=false
 NoNewPrivileges=true
 User=1001:1001
@@ -8313,7 +8448,7 @@ By the end of this module you will be able to:
 
 [^ Go to TOC](#table-of-contents)
 
-## 1  The Debug Loop (Mental Model)
+## 1 The Debug Loop (Mental Model)
 
 Before reaching for a restart, follow this loop exactly once:
 
@@ -8332,7 +8467,7 @@ flowchart TD
 
 The goal is always to **understand before acting**. Random restarts hide real problems.
 
-### 1.1  The Four Steps
+### 1.1 The Four Steps
 
 **Step 1 — State check:**
 
@@ -8373,9 +8508,9 @@ podman run --rm -it --entrypoint sh <image>  # bypass the app entrypoint
 
 [^ Go to TOC](#table-of-contents)
 
-## 2  Container State and Lifecycle Commands
+## 2 Container State and Lifecycle Commands
 
-### 2.1  Exit Codes Matter
+### 2.1 Exit Codes Matter
 
 | Exit code | Common meaning |
 |-----------|---------------|
@@ -8392,7 +8527,7 @@ podman inspect <name> --format '{{.State.ExitCode}}'  # get exit code
 podman inspect <name> --format '{{.State.Error}}'     # get runtime error string
 ```
 
-### 2.2  Container State Transitions
+### 2.2 Container State Transitions
 
 ```mermaid
 flowchart LR
@@ -8407,7 +8542,7 @@ flowchart LR
     F -->|"podman unpause"| C
 ```
 
-### 2.3  Useful State Commands
+### 2.3 Useful State Commands
 
 ```bash
 podman ps -a                                  # all containers with status
@@ -8421,9 +8556,9 @@ podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"  # custom table
 
 [^ Go to TOC](#table-of-contents)
 
-## 3  Reading Logs
+## 3 Reading Logs
 
-### 3.1  Basic Log Commands
+### 3.1 Basic Log Commands
 
 ```bash
 podman logs <name>              # full output since container start
@@ -8433,7 +8568,7 @@ podman logs -f <name>           # follow live (Ctrl+C to stop)
 podman logs --timestamps <name> # include timestamps
 ```
 
-### 3.2  Multiple Containers (Quick Scan)
+### 3.2 Multiple Containers (Quick Scan)
 
 ```bash
 for name in app db proxy; do
@@ -8441,7 +8576,7 @@ for name in app db proxy; do
 done  # scan logs for multiple containers
 ```
 
-### 3.3  When the Container Is Gone
+### 3.3 When the Container Is Gone
 
 If the container was removed with `--rm`, its logs are gone. This is why ephemeral containers are not suitable for debugging production services.
 
@@ -8451,7 +8586,7 @@ For Quadlet/systemd services, logs survive in journald even after the container 
 journalctl --user -u cap-mariadb.service -n 200 --no-pager  # retrieve logs from journald
 ```
 
-### 3.4  Log Verbosity Tricks
+### 3.4 Log Verbosity Tricks
 
 Some images respect `DEBUG=1` or `LOG_LEVEL=debug`:
 
@@ -8464,15 +8599,15 @@ podman run --rm -e DEBUG=1 <image>  # enable debug logging if app supports it
 
 [^ Go to TOC](#table-of-contents)
 
-## 4  Deep Inspection with `podman inspect`
+## 4 Deep Inspection with `podman inspect`
 
-### 4.1  Full Dump
+### 4.1 Full Dump
 
 ```bash
 podman inspect <name> | less  # full JSON
 ```
 
-### 4.2  Targeted Extractions
+### 4.2 Targeted Extractions
 
 ```bash
 # What ports are published?
@@ -8497,7 +8632,7 @@ podman inspect <name> --format '{{.State.ExitCode}} {{.State.Error}}'  # inspect
 podman inspect <name> --format '{{range .Config.Env}}{{println .}}{{end}}'  # inspect env
 ```
 
-### 4.3  Image Inspection
+### 4.3 Image Inspection
 
 ```bash
 podman image inspect <image>:<tag> | less  # full image metadata
@@ -8510,19 +8645,19 @@ podman image inspect <image>:<tag> --format '{{.Os}}/{{.Architecture}}'  # check
 
 [^ Go to TOC](#table-of-contents)
 
-## 5  Interactive Debugging
+## 5 Interactive Debugging
 
-### 5.1  Exec Into a Running Container
+### 5.1 Exec Into a Running Container
 
 ```bash
 podman exec -it <name> sh          # open a shell
 podman exec -it <name> bash        # if bash is available
 podman exec -it <name> env         # print environment
-podman exec -it <name> ss -tlnp    # check listening ports
+podman exec <name> cat /proc/net/tcp  # ss is not in Alpine or official nginx
 podman exec -it <name> cat /etc/resolv.conf  # check DNS config
 ```
 
-### 5.2  Debug a Failing Container (Override Entrypoint)
+### 5.2 Debug a Failing Container (Override Entrypoint)
 
 ```bash
 podman run --rm -it --entrypoint sh <image>:<tag>  # bypass CMD/ENTRYPOINT
@@ -8533,7 +8668,7 @@ Now you have a shell inside the image and can:
 - check permissions
 - run the app command manually to see the real error
 
-### 5.3  Debug with a Sidecar on the Same Network
+### 5.3 Debug with a Sidecar on the Same Network
 
 ```bash
 podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # network debug sidecar
@@ -8541,7 +8676,7 @@ podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # n
 
 From here you can `getent hosts <name>`, `nc -zv <name> <port>`, etc.
 
-### 5.4  netshoot — When You Need More Tools
+### 5.4 netshoot — When You Need More Tools
 
 ```bash
 podman run --rm -it --network <net> docker.io/nicolaka/netshoot:latest  # network diagnostics image
@@ -8554,7 +8689,7 @@ podman run --rm -it --network <net> docker.io/nicolaka/netshoot:latest  # networ
 
 [^ Go to TOC](#table-of-contents)
 
-## 6  Events and Timeline
+## 6 Events and Timeline
 
 `podman events` gives you a chronological record of Podman operations — starts, stops, network connects, volume mounts, errors.
 
@@ -8578,9 +8713,9 @@ podman events --filter container=<name> --filter event=die --since 24h  # find c
 
 [^ Go to TOC](#table-of-contents)
 
-## 7  Resource Monitoring
+## 7 Resource Monitoring
 
-### 7.1  Live Stats
+### 7.1 Live Stats
 
 ```bash
 podman stats           # live CPU/mem/net/io for all running containers
@@ -8588,27 +8723,27 @@ podman stats <name>    # single container
 podman stats --no-stream <name>  # one snapshot, then exit
 ```
 
-### 7.2  Process Table
+### 7.2 Process Table
 
 ```bash
 podman top <name>           # show processes (like `ps aux` inside)
 podman top <name> pid,user,comm,args  # custom columns
 ```
 
-### 7.3  Disk Usage Summary
+### 7.3 Disk Usage Summary
 
 ```bash
 podman system df         # disk usage: images, containers, volumes
 podman system df -v      # verbose (per-item)
 ```
 
-### 7.4  OOM Kills
+### 7.4 OOM Kills
 
 If a container exits with code 137, it was OOM killed. Check:
 
 ```bash
 journalctl --user -u <service> --since "1 hour ago" | grep -i oom  # find OOM kills in journald
-podman events --filter event=oom                                    # OOM events
+podman inspect <name> --format '{{.State.ExitCode}}'                 # 137 means SIGKILL, often OOM
 ```
 
 Remedy: add `--memory` limit or fix a memory leak.
@@ -8618,11 +8753,11 @@ Remedy: add `--memory` limit or fix a memory leak.
 
 [^ Go to TOC](#table-of-contents)
 
-## 8  Networking Troubleshooting
+## 8 Networking Troubleshooting
 
 This section summarizes the networking debug flows. See Module 6 (Section 13) for the full flowchart.
 
-### 8.1  Checklist: Container Cannot Reach Another by Name
+### 8.1 Checklist: Container Cannot Reach Another by Name
 
 ```mermaid
 flowchart TD
@@ -8648,14 +8783,14 @@ podman network inspect <net> --format '{{.DNSEnabled}}'  # check DNS flag
 podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent hosts <target>'  # test DNS
 ```
 
-### 8.2  Checklist: Port Reachable from Host
+### 8.2 Checklist: Port Reachable from Host
 
 ```bash
 # Is the port mapped?
 podman port <name>  # list port mappings
 
 # Is the container actually listening?
-podman exec <name> ss -tlnp  # inspect listening ports
+podman exec <name> cat /proc/net/tcp  # portable; ss is often missing
 
 # Is the host binding correct (0.0.0.0 vs 127.0.0.1)?
 podman inspect <name> --format '{{json .NetworkSettings.Ports}}'  # check HostIp field
@@ -8665,7 +8800,7 @@ sudo firewall-cmd --list-all   # firewalld rules
 sudo nft list ruleset          # nftables rules
 ```
 
-### 8.3  Checklist: Container Cannot Reach the Internet
+### 8.3 Checklist: Container Cannot Reach the Internet
 
 ```bash
 # Is the network marked internal?
@@ -8686,9 +8821,9 @@ podman exec <name> cat /etc/resolv.conf  # view DNS config
 
 [^ Go to TOC](#table-of-contents)
 
-## 9  Storage Troubleshooting
+## 9 Storage Troubleshooting
 
-### 9.1  Checklist: Permission Denied on a Volume
+### 9.1 Checklist: Permission Denied on a Volume
 
 Common causes:
 1. Container runs as a non-root UID that does not own the volume data.
@@ -8712,7 +8847,7 @@ Fix: set volume data ownership before starting the service, or use `podman unsha
 podman unshare chown 1000:1000 ~/.local/share/containers/storage/volumes/<volname>/_data  # fix ownership in user namespace
 ```
 
-### 9.2  Checklist: Volume Data Missing After Restart
+### 9.2 Checklist: Volume Data Missing After Restart
 
 Verify you named the volume correctly and the unit references it:
 
@@ -8722,9 +8857,9 @@ podman volume inspect <volname>       # check mount point and driver
 podman inspect <name> --format '{{json .Mounts}}'  # confirm mount
 ```
 
-Named volumes are persistent; anonymous volumes (created without a name) are deleted with `podman rm` unless you use `-v` during removal explicitly to keep them.
+Named volumes survive `podman rm` and `podman rm -v`. Anonymous volumes (no name) also survive `podman rm`. `podman rm -v` removes anonymous volumes and leaves named volumes in place.
 
-### 9.3  Volume Disk Usage
+### 9.3 Volume Disk Usage
 
 ```bash
 podman system df -v  # per-volume disk usage
@@ -8736,9 +8871,9 @@ podman volume inspect <volname> --format '{{.Mountpoint}}'  # find physical path
 
 [^ Go to TOC](#table-of-contents)
 
-## 10  systemd and Quadlet Troubleshooting
+## 10 systemd and Quadlet Troubleshooting
 
-### 10.1  The Three Commands You Always Need
+### 10.1 The Three Commands You Always Need
 
 ```bash
 # 1. Is the service running?
@@ -8751,13 +8886,15 @@ journalctl --user -u <service> -n 200 --no-pager  # last 200 log lines
 systemctl --user daemon-reload && systemctl --user restart <service>  # apply unit changes
 ```
 
-### 10.2  Quadlet Unit Errors
+### 10.2 Quadlet Unit Errors
 
 Quadlet translates `.container`, `.network`, `.volume`, `.kube` files into systemd units. If it fails silently, run:
 
 ```bash
-/usr/lib/systemd/user-generators/podman-user-generator "$HOME/.config/containers/systemd" /tmp/quadlet-test 2>&1 | head -40  # test Quadlet generator output
+/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun  # same dry-run as Module 11
 ```
+
+Do not pass `~/.config/containers/systemd` as the generator's output directory. That path is the source of your unit files. The command above prints the generated units and does not write them there.
 
 Or check the systemd generator log:
 
@@ -8765,33 +8902,30 @@ Or check the systemd generator log:
 journalctl --user -b --grep quadlet  # search boot log for Quadlet errors
 ```
 
-### 10.3  Dependency Failures
+### 10.3 Dependency Failures
 
 If a container service fails because a network or volume unit failed first:
 
 ```bash
-systemctl --user status capnet.service  # check network unit
-systemctl --user status mariadb-data-volume.service  # check volume unit
-journalctl --user -u capnet.service  # read network unit logs
+systemctl --user status capnet-network.service  # generated name is <name>-network.service
+systemctl --user status mariadb-data-volume.service  # generated name is <name>-volume.service
+journalctl --user -u capnet-network.service  # read network unit logs
 ```
 
 Quadlet auto-generates `After=` and `Requires=` dependencies when you use `Network=` and `Volume=` in `.container` units. If those dependencies are misconfigured, fix the unit name references.
 
-### 10.4  Service Does Not Start at Boot
+### 10.4 Service Does Not Start at Boot
+
+Quadlet units are transient. `systemctl --user enable` does not persist them. The generator applies `[Install] WantedBy=default.target` at `daemon-reload`. Boot start is linger plus that `[Install]` section.
 
 ```bash
-# Is linger enabled?
-loginctl show-user "$USER" | grep Linger  # check linger status
-
-# Is the service enabled?
-systemctl --user is-enabled <service>  # check enable status
-
-# Enable if needed
-systemctl --user enable <service>  # enable at boot
-sudo loginctl enable-linger "$USER"  # allow boot start without login
+loginctl show-user "$USER" | grep Linger  # expected: Linger=yes
+sudo loginctl enable-linger "$USER"
+grep -n WantedBy ~/.config/containers/systemd/<name>.container
+systemctl --user daemon-reload
 ```
 
-### 10.5  Common Quadlet Troubleshooting Flow
+### 10.5 Common Quadlet Troubleshooting Flow
 
 ```mermaid
 flowchart TD
@@ -8812,22 +8946,22 @@ flowchart TD
 
 [^ Go to TOC](#table-of-contents)
 
-## 11  SELinux Troubleshooting
+## 11 SELinux Troubleshooting
 
 On RHEL 10 and Fedora, SELinux adds a second layer of access control on top of Unix permissions. Container workloads interact with SELinux primarily through **file labels**.
 
-### 11.1  Most Common Symptom
+### 11.1 Most Common Symptom
 
 A container exits with `permission denied` even though Unix permissions look correct.
 
-### 11.2  Check the Denial
+### 11.2 Check the Denial
 
 ```bash
 sudo ausearch -m avc -ts recent | tail -30  # show recent SELinux denials
 sudo journalctl -k --grep avc | tail -30    # kernel AVC denials
 ```
 
-### 11.3  The `:Z` Fix for Bind Mounts
+### 11.3 The `:Z` Fix for Bind Mounts
 
 For bind mounts (host paths mounted into containers), SELinux requires the correct label:
 
@@ -8841,14 +8975,14 @@ podman run -v /host/path:/container/path:z <image>  # relabel for shared use
 
 > `:Z` relabels the **entire host directory** — use with caution on important paths. Named volumes (not bind mounts) are automatically labeled correctly by Podman.
 
-### 11.4  Check Current Labels
+### 11.4 Check Current Labels
 
 ```bash
 ls -laZ /host/path  # show SELinux context
 podman exec <name> ls -laZ /container/path  # show label inside container
 ```
 
-### 11.5  When in Doubt: Prefer Named Volumes
+### 11.5 When in Doubt: Prefer Named Volumes
 
 Named volumes (`podman volume create`) are managed by Podman and automatically receive correct SELinux labels. Bind mounts require manual label management.
 
@@ -8857,7 +8991,7 @@ Named volumes (`podman volume create`) are managed by Podman and automatically r
 
 [^ Go to TOC](#table-of-contents)
 
-## 12  Failure Drills (Do These in Practice)
+## 12 Failure Drills (Do These in Practice)
 
 Do these deliberately. Running scenarios on purpose makes you significantly faster during real incidents.
 
@@ -8867,12 +9001,10 @@ Do these deliberately. Running scenarios on purpose makes you significantly fast
 # Start a service on 8080
 podman run -d --name svc1 -p 8080:80 docker.io/library/nginx:stable  # start first service
 
-# Try to start a second on the same port
-podman run -d --name svc2 -p 8080:80 docker.io/library/nginx:stable  # this should fail
+# Try to start a second on the same port. The client fails before a container named svc2 exists.
+podman run -d --name svc2 -p 8080:80 docker.io/library/nginx:stable
 
-# Observe: error message, exit code
-podman ps -a  # check state
-podman logs svc2  # read the error
+# Read the podman run error above. podman logs svc2 has nothing to show.
 
 # Fix: change port
 podman run -d --name svc2 -p 8081:80 docker.io/library/nginx:stable  # use different port
@@ -8942,7 +9074,7 @@ podman volume rm drill-vol  # cleanup
 
 [^ Go to TOC](#table-of-contents)
 
-## 13  Recovery Playbooks
+## 13 Recovery Playbooks
 
 Keep short, tested playbooks for common incidents. Copy these and adapt to your services.
 
@@ -9215,6 +9347,8 @@ systemctl --user status autoupdate-nginx.service                               #
 
 **Step 2: Inspect the label on the running container:**
 
+The example unit does not set `ContainerName=`, so Podman names the container `systemd-autoupdate-nginx`. It also sets `Notify=healthy` and a `HealthCmd` the nginx image can run. That is the rollback bridge, not a label by itself.
+
 ```bash
 podman inspect systemd-autoupdate-nginx --format='{{index .Config.Labels "io.containers.autoupdate"}}'  # should print: registry
 ```
@@ -9260,31 +9394,31 @@ systemctl --user daemon-reload                                                  
 
 ## Healthchecks and Auto-Rollback
 
-Auto-update's rollback feature only works if:
+`podman auto-update` rolls back when the **systemd start fails**. `--rollback` defaults to true. A `HealthCmd=` alone does not fail the start: with the default notify mode, systemd marks the service started when the container process starts, and a later healthcheck failure does not roll the image back.
 
-1. The container has a healthcheck (`HEALTHCHECK` instruction in `Containerfile`, or `HealthCmd=` in the Quadlet unit).
-2. The `podman auto-update` command is run with `--rollback` (or rollback is configured in the unit).
+The bridge is Quadlet `Notify=healthy`. The dry-run turns that into `--sdnotify=healthy`, so the unit stays `starting` until the healthcheck passes. If it never passes, the start fails and auto-update restores the previous image.
 
-**Adding a healthcheck in a Quadlet unit:**
+`HealthCmd` is passed to `/bin/sh -c`. Do not prefix `CMD-SHELL`. The official nginx image has no `curl`. It does have bash, and bash can open `/dev/tcp`.
 
 ```ini
 [Container]
 Image=docker.io/library/nginx:stable
 AutoUpdate=registry
-HealthCmd=CMD-SHELL curl -f http://localhost/ || exit 1
+HealthCmd=bash -c 'echo > /dev/tcp/127.0.0.1/80'
 HealthInterval=10s
 HealthTimeout=3s
 HealthRetries=3
 HealthStartPeriod=5s
+Notify=healthy
 ```
 
-**Running auto-update with rollback:**
+**Running auto-update with rollback** (already the default; the flag makes it explicit):
 
 ```bash
-podman auto-update --rollback  # update and rollback automatically if healthcheck fails
+podman auto-update --rollback
 ```
 
-If the new image starts but the healthcheck fails within the startup period, Podman reverts to the previous image and restarts the unit.
+If the new image's healthcheck never succeeds, the service start fails and Podman reverts to the previous image.
 
 **Check rollback events:**
 
@@ -9298,51 +9432,15 @@ journalctl --user -b -n 100 --no-pager | grep -i autoupdate  # look for auto-upd
 
 ## Automating Auto-Update with a systemd Timer
 
-Rather than a cron job, use a systemd user timer. Create two files:
-
-`~/.config/systemd/user/podman-auto-update.service`:
-
-```ini
-[Unit]
-Description=Podman auto-update containers
-Documentation=man:podman-auto-update(1)
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/podman auto-update --rollback
-```
-
-`~/.config/systemd/user/podman-auto-update.timer`:
-
-```ini
-[Unit]
-Description=Podman auto-update timer
-
-[Timer]
-# Run at 3:00 AM daily:
-OnCalendar=*-*-* 03:00:00
-RandomizedDelaySec=600
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable and start:
+Fedora and RHEL ship a user timer at `/usr/lib/systemd/user/podman-auto-update.timer` and a matching service. The packaged service runs `podman auto-update` (rollback already defaults on). Enable that timer. Do not write `~/.config/systemd/user/podman-auto-update.service`: a file with the same name masks the packaged unit.
 
 ```bash
-mkdir -p ~/.config/systemd/user                              # ensure directory exists
-# (write the files above)
-systemctl --user daemon-reload                               # pick up new units
-systemctl --user enable --now podman-auto-update.timer       # enable timer to start at boot
-systemctl --user list-timers podman-auto-update.timer        # verify timer is scheduled
+systemctl --user list-unit-files 'podman-auto-update.*'
+systemctl --user enable --now podman-auto-update.timer
+systemctl --user list-timers podman-auto-update.timer
 ```
 
-Note: on some distributions (Fedora, RHEL), Podman ships a pre-built `podman-auto-update.timer` you can simply enable. Check first:
-
-```bash
-systemctl --user list-unit-files | grep podman-auto-update  # check if pre-built timer exists
-```
+Rollback still depends on `Notify=healthy` on each container unit you want rolled back. The timer does not add that for you.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -9359,7 +9457,7 @@ Minimum rollback plan:
 
 ```mermaid
 flowchart TD
-    A["Auto-update triggers"] --> B{"Healthcheck passes?"}
+    A["Auto-update triggers"] --> B{"systemd start reaches ready?<br/>Notify=healthy"}
     B -->|"Yes"| C["Update complete<br/>Record new digest as known-good"]
     B -->|"No"| D["Rollback: set Image= to old digest"]
     D --> E["systemctl --user daemon-reload"]
@@ -9374,12 +9472,14 @@ If you rely on tags (mutable), your rollback procedure needs to:
 - Or maintain a local image cache/registry with the previous version.
 
 ```bash
-# Record the current digest BEFORE auto-update runs:
-PREV=$(podman inspect --format='{{.Image}}' systemd-myapp)
-echo "Rollback image: $PREV"   # save this somewhere
+# Record the registry digest BEFORE auto-update runs.
+# podman inspect on the container returns an image ID, not this digest.
+PREV=$(podman image inspect docker.io/library/nginx:stable --format '{{.Digest}}')
+echo "Rollback digest: $PREV"
 
 # To rollback manually:
-# Edit unit: Image=docker.io/library/nginx@sha256:<PREV_DIGEST>
+# Edit unit: Image=docker.io/library/nginx@${PREV}
+# PREV already starts with sha256:. Do not add a second prefix.
 # Then:
 systemctl --user daemon-reload && systemctl --user restart myapp.service
 ```
@@ -9390,7 +9490,7 @@ systemctl --user daemon-reload && systemctl --user restart myapp.service
 ## Safe Rollout Rules
 
 1. **Prefer digest-pinned images for production** unless you explicitly accept the risk of tag-based updates.
-2. **Always have healthchecks** before enabling auto-update. Without them, a broken image will restart successfully and you won't know until users report errors.
+2. **Set `Notify=healthy` and a `HealthCmd` the image can run** before enabling auto-update. A healthcheck that runs after systemd already marked the unit started does not roll the image back.
 3. **Test in staging first**: auto-update staging, verify, then allow production.
 4. **Alert on restart loops**: a container restarting 5 times in 2 minutes is a signal.
 5. **Coordinate with DB migrations**: if your update includes a DB schema migration, auto-update is not the right tool — use a controlled deploy.
@@ -9427,8 +9527,9 @@ podman volume prune -f  # remove volumes not used by any container
 **Prune everything unused at once:**
 
 ```bash
-podman system prune -f  # remove stopped containers, unused images, unused networks
-podman system prune -a -f  # also removes unused volumes (destructive!)
+podman system prune -f  # stopped containers, unused networks, dangling images; volumes stay
+podman system prune -a -f  # also unused images; volumes stay
+podman system prune --volumes -f  # also unused volumes (destructive)
 ```
 
 **Check disk usage:**
@@ -9594,14 +9695,13 @@ flowchart TD
             UI["Adminer<br/>port 127.0.0.1:8082:8080"]
         end
         SEC["Podman Secret<br/>mariadb_root_password"]
-        VOL["Volume: mariadb-data"]
-        BVOL["Volume: cap-backups"]
+        VOL["Volume: mariadb_data"]
+        BVOL["Volume: cap_backups"]
     end
     BROWSER["Browser<br/>http://127.0.0.1:8082/"] -->|"port 8082"| UI
     UI -->|"SQL via DNS alias 'db'"| DB
     DB --- VOL
     SEC -->|"mounted as file<br/>/run/secrets/..."| DB
-    SEC -->|"mounted as file<br/>/run/secrets/..."| UI
     QN --> DB
     QN --> UI
     QV --> VOL
@@ -9614,7 +9714,8 @@ Key design decisions:
 - The `capnet` network is `--internal`: DB cannot make outbound connections.
 - The DB secret is a **Podman secret** mounted as a file — never passed as an env var.
 - Both containers are managed by systemd with `WantedBy=default.target` for boot start.
-- Images are pinned to SHA256 digests for reproducible deploys and clean rollbacks.
+- Adminer does not mount the secret. You type the password in the browser.
+- The shipped units start on tags. The upgrade section records digests with `podman image inspect` and pins `Image=` before you change anything.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -9628,7 +9729,7 @@ Use the provided example units:
 - `examples/quadlet/cap-backups.volume`
 - `examples/quadlet/cap-mariadb.container`
 - `examples/quadlet/cap-adminer.container`
-- `examples/quadlet/cap-backup.container` (optional)
+- `examples/quadlet/cap-backup.container`
 
 ### Step 1 — Create the DB Root Password Secret
 
@@ -9656,6 +9757,7 @@ cp examples/quadlet/mariadb-data.volume ~/.config/containers/systemd/  # copy DB
 cp examples/quadlet/cap-backups.volume ~/.config/containers/systemd/  # copy backup volume unit
 cp examples/quadlet/cap-mariadb.container ~/.config/containers/systemd/  # copy DB container unit
 cp examples/quadlet/cap-adminer.container ~/.config/containers/systemd/  # copy UI container unit
+cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/  # required backup job
 ```
 
 ### Step 3 — Enable Linger (Boot Start Without Login)
@@ -9700,7 +9802,7 @@ Test connectivity inside the stack:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; mysql -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
 ```
 
 Expected: list of databases including `information_schema`.
@@ -9715,8 +9817,8 @@ Create test data so you have something meaningful to back up and restore.
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root -e "
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "
      CREATE DATABASE IF NOT EXISTS cap;
      CREATE TABLE IF NOT EXISTS cap.t1 (id INT PRIMARY KEY, label VARCHAR(80));
      INSERT IGNORE INTO cap.t1 VALUES (1, '"'"'first row'"'"');
@@ -9732,32 +9834,16 @@ Expected: a two-row result set.
 
 ## Optional: Scheduled Backups
 
-### Install Backup Units and Timer
+The backup **container** unit is installed in Build It. Only the timer is optional. A hand-written timer under `~/.config/systemd/user/` is a normal unit, so `systemctl enable` is correct for it. Quadlet container units are not enabled that way.
 
 ```bash
-cp examples/quadlet/cap-backup.container ~/.config/containers/systemd/  # copy backup container unit
-mkdir -p ~/.config/systemd/user  # create user systemd directory
-cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/  # copy timer unit
-systemctl --user daemon-reload                  # reload new units
-systemctl --user enable --now cap-backup.timer  # enable and start timer
+mkdir -p ~/.config/systemd/user
+cp examples/systemd-user/cap-backup.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now cap-backup.timer
 ```
 
-### Trigger a Backup Immediately
-
-```bash
-systemctl --user start cap-backup.service  # run a one-shot backup now
-```
-
-### Verify Backup Files Exist
-
-```bash
-podman run --rm -v cap_backups:/backups docker.io/library/alpine:latest ls -lah /backups  # list backup files in volume
-```
-
-Notes:
-- Backups are stored in the `cap_backups` volume as timestamped `.sql` files.
-- The backup unit runs `mysqldump` inside a MariaDB container — no client tools needed on the host.
-- The timer runs daily by default; edit the `.timer` file to adjust.
+Run the required backup section once before you trust the timer. The timer runs daily; edit `OnCalendar=` to change that.
 
 
 [^ Go to TOC](#table-of-contents)
@@ -9780,7 +9866,10 @@ Trigger a backup immediately:
 
 ```bash
 systemctl --user start cap-backup.service  # run backup job
+systemctl --user status cap-backup.service  # oneshot success is "inactive (dead)" with exit status 0
 ```
+
+`inactive (dead)` after a successful oneshot is success. `RemainAfterExit` is unset so the timer can start the job again. A failed dump shows a non-zero exit in that status.
 
 Find the newest backup file:
 
@@ -9806,8 +9895,8 @@ BACKUP_FILE=all-<timestamp>.sql  # replace with actual filename
 
 podman run --rm --network capnet -v cap_backups:/backups --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore from backup file
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore from backup file
 ```
 
 Verify the data is present after restore:
@@ -9815,8 +9904,8 @@ Verify the data is present after restore:
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h db -u root -e "SELECT * FROM cap.t1;"'  # verify restored data
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SELECT * FROM cap.t1;"'  # verify restored data
 ```
 
 ### Testing Restore on a Clean Volume (Advanced)
@@ -9833,20 +9922,30 @@ podman run -d --name test-db --network capnet \
   -e MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password \
   docker.io/library/mariadb:11  # start temporary test DB
 
-sleep 10  # wait for MariaDB init
+podman run --rm --network capnet --secret mariadb_root_password \
+  docker.io/library/mariadb:11 sh -lc '
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
+    for i in $(seq 1 60); do
+      mysqladmin --defaults-extra-file=/tmp/client.cnf ping -h test-db --silent && exit 0
+      sleep 2
+    done
+    echo "test-db did not accept connections" >&2
+    exit 1
+  '
 
 # Restore the backup into test-db
 BACKUP_FILE=all-<timestamp>.sql
 podman run --rm --network capnet -v cap_backups:/backups --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h test-db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore into test DB
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h test-db -u root < "/backups/'"$BACKUP_FILE"'"'  # restore into test DB
 
 # Verify
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password)"; \
-   mysql -h test-db -u root -e "SELECT * FROM cap.t1;"'  # verify test DB data
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h test-db -u root -e "SELECT * FROM cap.t1;"'  # verify test DB data
 
 # Cleanup test resources
 podman rm -f test-db  # remove test container
@@ -9864,7 +9963,7 @@ This pattern is called **restore-to-alternate** and proves your backup is actual
 
 ```mermaid
 flowchart TD
-    A(["Current: digest v1"]) --> B["Record current digest<br/>podman inspect --format ImageName"]
+    A(["Current: digest v1"]) --> B["Record current digest<br/>podman image inspect Digest"]
     B --> C["Pull new image<br/>podman pull mariadb:11"]
     C --> D["Get new digest<br/>podman images --digests"]
     D --> E["Edit .container unit<br/>Image=...@sha256:newdigest"]
@@ -9878,19 +9977,15 @@ flowchart TD
 
 ### Record Current Image Digests (Before Any Upgrade)
 
-```bash
-podman inspect cap-mariadb --format '{{.ImageName}}'  # current DB image with digest
-podman inspect cap-adminer --format '{{.ImageName}}'  # current UI image with digest
-podman images --digests | grep -E 'mariadb|adminer'   # all local digests
-```
-
-Save these to a file before upgrading:
+`podman inspect` on the container prints the tag you started (`docker.io/library/mariadb:11`), not a manifest digest. Inspect the image:
 
 ```bash
-podman inspect cap-mariadb --format '{{.ImageName}}' > /tmp/current-digests.txt  # save DB digest
-podman inspect cap-adminer --format '{{.ImageName}}' >> /tmp/current-digests.txt  # save UI digest
-cat /tmp/current-digests.txt  # verify saved digests
+DB_DIGEST=$(podman image inspect docker.io/library/mariadb:11 --format '{{.Digest}}')
+UI_DIGEST=$(podman image inspect docker.io/library/adminer:4 --format '{{.Digest}}')
+printf 'mariadb %s\nadminer %s\n' "$DB_DIGEST" "$UI_DIGEST" | tee /tmp/current-digests.txt
 ```
+
+`{{.Digest}}` already includes the `sha256:` prefix. Do this before you change the tag.
 
 ### Pin by Digest in Quadlet Units
 
@@ -9900,9 +9995,11 @@ In your `.container` files, replace tag-based references with digest-pinned ones
 # Before (mutable tag — can change without warning)
 Image=docker.io/library/mariadb:11
 
-# After (immutable — this exact SHA will always be the same)
-Image=docker.io/library/mariadb@sha256:<digest>
+# After. Paste {{.Digest}} once. It already starts with sha256:.
+Image=docker.io/library/mariadb@sha256:<hex>
 ```
+
+Same change in `cap-adminer.container` for `docker.io/library/adminer`.
 
 Then apply:
 
@@ -9926,7 +10023,7 @@ systemctl --user restart cap-adminer.service
 Verify the rollback:
 
 ```bash
-podman inspect cap-mariadb --format '{{.ImageName}}'  # confirm old digest is back
+podman image inspect docker.io/library/mariadb:11 --format '{{.Digest}}'  # tag digest; the unit line is the pin that rolled back
 ```
 
 
@@ -9945,7 +10042,7 @@ flowchart TD
     C --> D["Update .container unit<br/>Secret=mariadb_root_password_v2"]
     D --> E["daemon-reload + restart MariaDB"]
     E --> F{"Login with new secret<br/>works?"}
-    F -->|"Yes"| G["podman secret rm mariadb_root_password_v1"]
+    F -->|"Yes"| G["Update backup unit Secret=<br/>then secret rm mariadb_root_password"]
     F -->|"No"| H["Restore old secret reference<br/>daemon-reload + restart"]
     G --> I(["Rotation complete"])
     H --> J(["Rollback to old password"])
@@ -9967,23 +10064,23 @@ podman run --rm --network capnet \
   --secret mariadb_root_password \
   --secret mariadb_root_password_v2 \
   docker.io/library/mariadb:11 sh -lc '
-    old=$(cat /run/secrets/mariadb_root_password)
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
     new=$(cat /run/secrets/mariadb_root_password_v2)
-    export MYSQL_PWD="$old"
-    mysql -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"
+    mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "ALTER USER \"root\"@\"%\" IDENTIFIED BY \"${new}\"; FLUSH PRIVILEGES;"
   '  # change password in DB using both old and new secrets
 ```
 
-### Step 3 — Update Quadlet Unit to Reference New Secret
+### Step 3 — Update Both Quadlet Units to Reference the New Secret
 
-Edit `~/.config/containers/systemd/cap-mariadb.container` — change:
+Edit `Secret=` in `cap-mariadb.container` and in `cap-backup.container` before you delete the old secret. The backup job still mounts `mariadb_root_password` until you change it.
 
 ```ini
 # Old
-Secret=mariadb_root_password,type=mount
+Secret=mariadb_root_password
 
 # New
-Secret=mariadb_root_password_v2,type=mount
+Secret=mariadb_root_password_v2
 ```
 
 ### Step 4 — Reload and Restart
@@ -9993,13 +10090,15 @@ systemctl --user daemon-reload                # reload unit changes
 systemctl --user restart cap-mariadb.service  # restart with new secret
 ```
 
+The backup unit picks up `Secret=` on its next start. It is a oneshot, so you do not restart it now.
+
 ### Step 5 — Verify Login with New Secret
 
 ```bash
 podman run --rm --network capnet --secret mariadb_root_password_v2 \
   docker.io/library/mariadb:11 sh -lc \
-  'export MYSQL_PWD="$(cat /run/secrets/mariadb_root_password_v2)"; \
-   mysql -h db -u root -e "SELECT 1;"'  # verify new password works
+  'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password_v2)" > /tmp/client.cnf; \
+   mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SELECT 1;"'  # verify new password works
 ```
 
 ### Step 6 — Remove Old Secret Only After Verification
@@ -10022,8 +10121,8 @@ Keep this as a living document for your stack. A runbook that is never tested is
 | **Tail logs** | `journalctl --user -fu cap-mariadb.service` | — |
 | **Manual backup** | `systemctl --user start cap-backup.service` | `ls` in `cap_backups` volume |
 | **Restore backup** | See "Restore" section | `SELECT *` to confirm row count |
-| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman inspect --format ImageName` |
-| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | `podman inspect --format ImageName` |
+| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman image inspect --format '{{.Digest}}'` |
+| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | unit `Image=` matches the saved digest |
 | **Rotate password** | 6-step rotation procedure above | `mysql -u root` with new secret |
 | **Full teardown** | `systemctl --user stop` + `podman volume rm` | — |
 
@@ -10201,7 +10300,7 @@ systemd can provision credentials to services as files at runtime. Credentials c
 
 The production baseline already uses systemd user services (Quadlet-first). systemd credentials are a natural next step:
 
-- Delivery model: a file at a path like `/run/credentials/<unit>/dbpassword`
+- Delivery model: a file under `$CREDENTIALS_DIRECTORY`. For a user service that is typically `/run/user/$UID/credentials/<unit>/dbpassword`. `/run/credentials/<unit>/` is the system-service path.
 - Container consumes: a volume mount or `--secret` pointing to that path
 - Application code: unchanged — it still reads a file
 
@@ -10216,7 +10315,7 @@ sequenceDiagram
     H->>H: Store encrypted credential<br/>(systemd-creds encrypt)
     H->>S: Deploy unit file with<br/>LoadCredentialEncrypted=
     S->>S: Decrypt on service start<br/>(uses host TPM or key)
-    S->>C: Mount credential as file<br/>at /run/credentials/...
+    S->>C: Credential file under<br/>$CREDENTIALS_DIRECTORY
     C->>C: Read file at startup
 ```
 
@@ -10252,7 +10351,7 @@ flowchart LR
     subgraph "CI / Host"
         KEY["age private key<br/>(never in git)"]
         SOPS["sops --decrypt<br/>secrets.env.enc"]
-        FILE["secrets.env<br/>(decrypted, 0600, root-owned)"]
+        FILE["secrets.env<br/>(decrypted, mode 0600,<br/>owned by the host user)"]
     end
     subgraph "Container"
         C["App reads<br/>/run/secrets/dbpassword"]
@@ -10278,13 +10377,18 @@ flowchart LR
 ### Best-Fit Pattern with Containers
 
 ```bash
-# In CI or host provisioning:
-sops --decrypt secrets/db.yaml | \
-  install -m 600 /dev/stdin /run/secrets/dbpassword  # decrypt and write with restricted permissions
+# Decrypt to a user-owned file. A rootless user cannot create /run/secrets.
+umask 077
+sops --decrypt secrets/db.yaml > ./dbpassword.txt
+podman secret create dbpassword ./dbpassword.txt
+rm -f ./dbpassword.txt
 
-# Container reads as usual:
-podman run --secret dbpassword,type=mount ...  # mount as file
+# --secret looks up a Podman secret by name. It does not mount that host path.
+podman run --rm --secret dbpassword docker.io/library/busybox:latest \
+  sh -lc 'test -f /run/secrets/dbpassword && echo mounted'
 ```
+
+The alternative is a read-only bind of the mode `0600` file, with `:Z` when SELinux is enforcing. This survey does not turn that into a SOPS lab. Podman secret mounts default to mode `0444` and container UID 0, which is your host user under rootless.
 
 Never persist decrypted files into images or build contexts.
 
@@ -10315,7 +10419,7 @@ flowchart TD
     subgraph "Host (Deployment)"
         AUTH["Auth method<br/>(AppRole, OIDC, etc.)"]
         AGENT["Vault Agent / sidecar<br/>OR systemd fetch unit"]
-        FILE["Secret file<br/>0600, root-owned"]
+        FILE["Secret file<br/>mode 0600, user-owned"]
     end
     subgraph "Container"
         APP["App reads<br/>/run/secrets/..."]
@@ -10363,9 +10467,9 @@ Both approaches keep the delivery model consistent: **the container reads a file
 
 | Dimension | Podman Secrets | systemd Credentials | SOPS | Vault-class |
 |-----------|---------------|---------------------|------|-------------|
-| **Encryption at rest** | No (plain on disk) | Yes (TPM/host key) | Yes (age/GPG/KMS) | Yes (transit engine) |
+| **Encryption at rest** | No (base64 on disk) | Yes (TPM/host key) | Yes (age/GPG/KMS) | Yes (seal and storage backend) |
 | **Multi-host** | No | Needs config management | Yes (git) | Yes (native) |
-| **Audit logs** | No | No | Git history | Yes (full) |
+| **Audit logs** | No | No | Git history of changes, not of reads | Yes (full) |
 | **Auto rotation** | No | No | Manual | Yes |
 | **Dynamic creds** | No | No | No | Yes |
 | **Operational cost** | Minimal | Low | Low-medium | High |
@@ -10381,7 +10485,7 @@ Both approaches keep the delivery model consistent: **the container reads a file
 
 **Regardless of which external system you choose**, the container interface stays the same:
 
-1. The secret arrives on the host as a **file** (decrypted, 0600, root-owned).
+1. The secret arrives on the host as a **file** (decrypted, mode `0600`, owned by the user who runs rootless Podman).
 2. The container reads it via a **mount** or Podman `--secret` (which is itself a file mount).
 3. The application code reads a file path — it does not know or care which backend provided it.
 
@@ -10534,8 +10638,9 @@ podman inspect <image-or-container>                 # show JSON metadata
 podman rmi <image>                                   # remove an image from local storage
 
 # Cleanup
-podman image prune          # remove unused images (frees disk)
-podman system prune         # remove unused objects (be careful)
+podman image prune          # dangling images only; -a removes unused images
+podman system prune         # stopped containers, unused networks, dangling images; not volumes
+podman system prune --volumes  # also unused volumes (data loss)
 podman builder prune        # remove build cache (if supported)
 ```
 
@@ -10637,33 +10742,82 @@ podman run --secret <name> <image>  # run a container
 ## Table of Contents
 
 - [Files](#files)
+- [Generated unit names](#generated-unit-names)
 - [Workflow](#workflow)
 - [Boot Start](#boot-start)
+- [Keys you will type](#keys-you-will-type)
 
 ## Files
 
-- put Quadlet files in: `~/.config/containers/systemd/`
-- common extensions: `.container`, `.pod`, `.network`, `.volume`
+Put Quadlet files in `~/.config/containers/systemd/`.
+
+| Extension | Becomes |
+|---|---|
+| `name.container` | `name.service` |
+| `name.pod` | `name-pod.service` |
+| `name.kube` | `name.service` |
+| `name.image` | `name.service` (pull) |
+| `name.network` | `name-network.service` |
+| `name.volume` | `name-volume.service` |
+
+[^ Go to TOC](#table-of-contents)
+
+## Generated unit names
+
+`systemctl --user status` uses the generated name, not the filename stem for networks and volumes:
+
+```bash
+systemctl --user status hello-nginx.service
+systemctl --user status capnet-network.service
+systemctl --user status mariadb-data-volume.service
+```
 
 [^ Go to TOC](#table-of-contents)
 
 ## Workflow
 
 ```bash
-systemctl --user daemon-reload  # regenerate units from files
-systemctl --user start <name>.service  # start a user service
-systemctl --user status <name>.service  # show service status
-journalctl --user -u <name>.service -n 100 --no-pager  # view user-service logs
+systemctl --user daemon-reload
+systemctl --user start <name>.service
+systemctl --user status <name>.service
+journalctl --user -u <name>.service -n 100 --no-pager
+/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun
 ```
 
 [^ Go to TOC](#table-of-contents)
 
 ## Boot Start
 
-```bash
-sudo loginctl enable-linger "$USER"        # allow user services to start at boot
-systemctl --user enable <name>.service     # enable the service for your user
+Generated Quadlet units are transient. `systemctl --user enable` does not persist them. The generator applies `[Install]` at `daemon-reload`.
+
+```ini
+[Install]
+WantedBy=default.target
 ```
+
+```bash
+sudo loginctl enable-linger "$USER"
+systemctl --user daemon-reload
+```
+
+`Restart=unless-stopped` is not a systemd value. Use `Restart=on-failure` or `Restart=always`.
+
+[^ Go to TOC](#table-of-contents)
+
+## Keys you will type
+
+| Key | Meaning |
+|---|---|
+| `Image=` | image reference; pin with `@sha256:<hex>` |
+| `PublishPort=` | `-p`; use `127.0.0.1:8080:80` for loopback |
+| `Network=` | join a `.network` unit |
+| `Volume=` | mount a `.volume` unit or a named volume |
+| `Secret=` | file mount at `/run/secrets/<name>` (not an env var) |
+| `DropCapability=ALL` | `--cap-drop=ALL` (`CapDrop=` is rejected) |
+| `AddCapability=` | `--cap-add` |
+| `NoNewPrivileges=true` | block setuid escalation |
+| `Notify=healthy` | systemd stays `starting` until the healthcheck passes |
+| `AutoUpdate=registry` | label for `podman auto-update` |
 
 [^ Go to TOC](#table-of-contents)
 
@@ -10735,28 +10889,56 @@ sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 
 - [Baseline](#baseline)
 - [Hardening Flags (Examples)](#hardening-flags-examples)
+- [Quadlet keys](#quadlet-keys)
 - [SELinux (Fedora/RHEL)](#selinux-fedorarhel)
 
 ## Baseline
 
 - rootless when possible
-- non-root user inside container
-- do not pass secrets in env vars
+- non-root user inside the container
+- secrets as files (`--secret` / `Secret=`), not environment variables
 - pin images by digest in production
+- do not use `--privileged`
 
 [^ Go to TOC](#table-of-contents)
 
 ## Hardening Flags (Examples)
 
 ```bash
-podman run --read-only --tmpfs /tmp <image>  # read-only root FS + writable temp
+podman run \
+  --read-only --tmpfs /tmp \
+  --cap-drop=ALL \
+  --security-opt no-new-privileges \
+  --memory 256m --memory-swap 256m \
+  --pids-limit 200 \
+  <image>
 ```
+
+Add `--cap-add=NET_BIND_SERVICE` only when the process binds a port below 1024. Publishing `-p 8080:80` still means the process inside binds port 80.
+
+[^ Go to TOC](#table-of-contents)
+
+## Quadlet keys
+
+```ini
+[Container]
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+Notify=healthy
+SecurityLabelDisable=false
+```
+
+`CapDrop=` is not a Quadlet key. `SecurityLabelDisable=false` keeps SELinux on. `NoNewPrivileges=true` is the setuid control. `Notify=healthy` is what lets auto-update roll back a failed start.
 
 [^ Go to TOC](#table-of-contents)
 
 ## SELinux (Fedora/RHEL)
 
-- bind mount with `:Z` (private) or `:z` (shared)
+- `:Z` relabels the host directory for one container (`container_file_t` plus an MCS category).
+- `:z` shares that label across containers.
+- `:Z` relabels the whole tree. Never use it on `$HOME` or `/`.
+- Audit denials: `sudo ausearch -m avc -ts recent` (the audit log is not readable rootless).
 
 [^ Go to TOC](#table-of-contents)
 
@@ -10775,42 +10957,65 @@ podman run --read-only --tmpfs /tmp <image>  # read-only root FS + writable temp
 
 ## Table of Contents
 
-- [Fast Triage](#fast-triage)
-- [systemd/Quadlet](#systemdquadlet)
-- [Network Checks](#network-checks)
-- [Storage Checks](#storage-checks)
+- [Debug loop](#debug-loop)
+- [Exit codes](#exit-codes)
+- [Symptom to fix](#symptom-to-fix)
+- [Quadlet](#quadlet)
 
-## Fast Triage
+## Debug loop
+
+1. What state is it in? `podman ps -a`
+2. What did it print? `podman logs <name>` (journald still has logs after `--rm`)
+3. What was it told to do? `podman inspect <name>`
+4. Change one thing and repeat.
 
 ```bash
-podman ps -a                 # is it running? exit code?
-podman logs <name>           # app output / crash reason
-podman inspect <name> | less # config: mounts, ports, command, env
+podman ps -a
+podman logs <name>
+podman inspect <name> --format '{{.State.Status}} {{.State.ExitCode}}'
+journalctl --user -u <service>.service -n 100 --no-pager
 ```
 
 [^ Go to TOC](#table-of-contents)
 
-## systemd/Quadlet
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | clean exit |
+| 125 | Podman itself failed (the container may not exist) |
+| 126 | command found, not executable |
+| 127 | command not found |
+| 137 | SIGKILL, often OOM |
+| 143 | SIGTERM (`podman stop`) |
+
+A port conflict fails in the `podman run` client. There is no container to `podman logs`.
+
+[^ Go to TOC](#table-of-contents)
+
+## Symptom to fix
+
+| Symptom | Look at | Fix |
+|---|---|---|
+| name does not resolve | default `podman` network | user-defined network (DNS is off on the default network) |
+| published port, curl fails | `HostIp` in inspect | `127.0.0.1` binds are local-only; firewalld: `firewall-cmd --list-all` |
+| permission denied on a bind mount | `sudo ausearch -m avc -ts recent` | `:Z` or `:z`. `:Z` relabels the whole tree |
+| data gone after `podman rm` | writable layer | named volume. Anonymous volumes survive `rm` and go away with `rm -v` |
+| Quadlet unit missing | generator dry-run | file under `~/.config/containers/systemd/`, then `daemon-reload` |
+| service not up at boot | `Linger=` | `loginctl enable-linger` and `WantedBy=default.target`. Do not `systemctl enable` a Quadlet unit |
+
+[^ Go to TOC](#table-of-contents)
+
+## Quadlet
 
 ```bash
-systemctl --user status <service>                    # systemd view: active/failed
-journalctl --user -u <service> -n 200 --no-pager     # service logs from journald
+/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun
+systemctl --user daemon-reload
+systemctl --user status <name>.service
+journalctl --user -u <name>.service -n 200 --no-pager
 ```
 
-[^ Go to TOC](#table-of-contents)
-
-## Network Checks
-
-- verify ports: `-p host:container`
-- verify container name DNS on the network
-
-[^ Go to TOC](#table-of-contents)
-
-## Storage Checks
-
-- volume mounted where the app expects
-- permissions for the container user
-- on Fedora/RHEL: use `:Z` for private bind mounts
+Network and volume units are `<name>-network.service` and `<name>-volume.service`.
 
 [^ Go to TOC](#table-of-contents)
 
@@ -10831,21 +11036,32 @@ journalctl --user -u <service> -n 200 --no-pager     # service logs from journal
 
 These assessments focus on practical skills.
 
+Module checkpoints are ungraded self-checks. Sit **Exam A** after Module 10. Sit **Exam B** after the capstone (Module 80). Module 90 is not examined.
+
 <a id="table-of-contents"></a>
 
 ## Table of Contents
 
+- [How grading works](#how-grading-works)
 - [Module Checkpoints](#module-checkpoints)
 - [Practical Exam A (Mid-Course)](#practical-exam-a-mid-course)
 - [Practical Exam B (Final)](#practical-exam-b-final)
 
+## How grading works
+
+Each exam is 20 points. A pass is 14. An A+ is 18 or higher, with every item that says "required" present. Partial credit is allowed on a required item only when the runbook shows the command and the observed result.
+
+[^ Go to TOC](#table-of-contents)
+
 ## Module Checkpoints
 
-Each module ends with a checkpoint. Treat it as "must be able to do without notes".
+Each module ends with a checkpoint. Treat it as "must be able to do without notes". Checkpoints are not graded and are not copied into this file.
 
 [^ Go to TOC](#table-of-contents)
 
 ## Practical Exam A (Mid-Course)
+
+Sit this after Module 10. It covers the debug loop from Modules 02 and 13, plus the rule that a fix does not require a new image.
 
 Scenario:
 
@@ -10857,15 +11073,19 @@ Requirements:
 - Fix it without rebuilding the image.
 - Provide a short runbook: commands used, what you observed, final fix.
 
-Rubric:
-
-- Uses `podman ps -a`, `podman logs`, `podman inspect` effectively.
-- Fix is minimal and reproducible.
-- No secrets printed.
+| Points | What an A+ runbook shows |
+|---|---|
+| 4 | State first: `podman ps -a` and the exit code, named (0, 125, 126, 127, 137, or 143) |
+| 4 | Logs next: `podman logs`, including the case where the error was the `podman run` client and no container exists |
+| 4 | Inspect next: the field that explains the failure (command, mounts, or ports) |
+| 4 | One change that makes the container stay up, without `podman build` |
+| 4 | No secret value printed in the runbook or the terminal transcript |
 
 [^ Go to TOC](#table-of-contents)
 
 ## Practical Exam B (Final)
+
+Sit this after Module 80. It is the capstone checklist, graded. Module 90 is out of scope.
 
 Scenario:
 
@@ -10877,15 +11097,18 @@ Requirements:
 - Use Quadlet (systemd user service) to run both services.
 - Use a named volume for state.
 - Use a secret mounted as a file (not env vars).
-- DB is private; only web is published.
-- Provide backup + restore steps.
+- DB is private; only web is published, and only on loopback.
+- Provide backup + restore steps, including a restore onto a clean volume.
+- Record image digests and roll one service back.
 
-Rubric:
-
-- Rootless and reboot-safe (linger configured if required).
-- Correct storage and networking.
-- Secrets handled safely.
-- Clear, testable runbook.
+| Points | What an A+ stack shows |
+|---|---|
+| 3 | Rootless units, `Linger=yes`, and `WantedBy=default.target`. No `systemctl --user enable` on a Quadlet unit |
+| 3 | Named volume for database state. Data survives container replacement |
+| 3 | Secret is a file mount. The value is not in `Environment=`, shell history, or logs |
+| 3 | Database has no `PublishPort`. The web port is `127.0.0.1:...` |
+| 4 | A logical backup restores onto a clean volume, and a query shows the restored rows |
+| 4 | `podman image inspect --format '{{.Digest}}'` is recorded before the change, the unit is pinned with `@sha256:<hex>` once, and rollback returns to that digest |
 
 [^ Go to TOC](#table-of-contents)
 
@@ -10910,11 +11133,14 @@ Rubric:
 
 - container: a running (or stopped) instance of an image with its own writable layer and runtime config
 - image: an OCI artifact composed of layers + config; used as a template for containers
+- OCI: Open Container Initiative. The image, runtime, and distribution specs that let Podman images run on other OCI tools
 - registry: a service that stores and distributes images
 - tag: a movable name that points to an image (example: `:latest`)
 - digest: a content-addressed identifier for an image (example: `@sha256:...`)
 - rootless: running Podman as a normal user using user namespaces
-- Quadlet: systemd integration that generates service units from `.container`/`.pod`/`.volume`/`.network` files
+- Quadlet: systemd integration that generates service units from `.container`, `.pod`, `.kube`, `.image`, `.volume`, and `.network` files
+- pod: a group of containers that share a network namespace (and usually localhost). Quadlet `.pod` files describe one
+- Secret=: Quadlet key that mounts a Podman secret as a file (default `/run/secrets/<name>`), not as an environment variable
 - SELinux: a Linux MAC system; on Fedora/RHEL it can affect mounts and container permissions
 - namespace: a Linux kernel isolation feature; containers commonly use PID, mount, and network namespaces
 - cgroups v2: the kernel resource-control mechanism used for CPU/memory limits and systemd integration
@@ -10922,13 +11148,16 @@ Rubric:
 - subuid/subgid: per-user UID/GID ranges used for user namespace mappings (rootless)
 - writable layer: the per-container filesystem layer on top of the image; it is not durable persistence
 - volume: Podman-managed persistent storage intended for stateful data
+- tmpfs: an in-memory filesystem. Used for scratch paths and for secret files that must not hit the writable layer
 - bind mount: a host path mounted into a container; often used for config and source code
 - network (user-defined): a named bridge network with DNS enabled for container name resolution
 - aardvark-dns: Podman’s embedded DNS service for user-defined networks
 - netavark: Podman’s networking stack used to configure networks and DNS (modern Podman)
-- slirp4netns: a user-mode networking helper commonly used for rootless containers
-- pasta: a newer user-mode networking helper often used for rootless containers
-- healthcheck: an image or runtime-defined command that reports container health (used by tooling/systemd policies)
+- slirp4netns: the previous default rootless network helper. Still used when `default_rootless_network_cmd` is set to it
+- pasta: the Podman 5 / RHEL 10 default rootless network helper. It connects the rootless network namespace to the host. Check with `podman info --format '{{.Host.RootlessNetworkCmd}}'`
+- healthcheck: an image or runtime-defined command that reports container health. With Quadlet `Notify=healthy`, a failed healthcheck fails the systemd start so auto-update can roll back
+- AutoUpdate: Quadlet key (`AutoUpdate=registry` or `local`) that labels a container for `podman auto-update`. A digest-pinned `Image=` has nothing to move
+- seccomp: syscall filter. Podman's default profile denies by default and allows a few hundred common syscalls
 - linger: systemd feature that allows user services to run at boot without an interactive login
 
 [^ Go to TOC](#table-of-contents)

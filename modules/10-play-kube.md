@@ -97,7 +97,8 @@ Podman's `play kube` supports a practical subset of the Kubernetes API, not the 
 | `Service` | No | No load balancer or ClusterIP |
 | `Ingress` | No | No ingress controller |
 | `StatefulSet` | No | Use Quadlet for stateful services |
-| `DaemonSet` | No | |
+| `Job` | Created once | No Job controller; the container runs and exits |
+| `DaemonSet` | Created once | No per-node controller; one pod, not one per node |
 
 > **Rule of thumb:** Use `play kube` for `Pod` specs. Anything more complex — use Quadlet (Module 11) or your CI/CD tooling.
 
@@ -169,7 +170,7 @@ Notice that the resources are named based on the YAML `metadata.name` field.
 
 ```bash
 # Get the published port from the pod
-podman port webpod  # show published ports
+podman port webpod-infra  # published ports are on the infra container
 ```
 
 Then test it:
@@ -286,7 +287,7 @@ systemctl --user status webpod.service  # show status
 Verify:
 
 ```bash
-podman port webpod 2>/dev/null || podman pod ps  # confirm pod is running
+podman port webpod-infra 2>/dev/null || podman pod ps  # confirm pod is running
 ```
 
 Stop and clean up:
@@ -350,7 +351,8 @@ flowchart TD
 **Not supported or limited:**
 - `Service` resources (no ClusterIP, no load balancer, no service discovery across pods).
 - `Ingress` resources (no ingress controller).
-- `StatefulSet`, `DaemonSet`, `Job`, `CronJob` controllers.
+- `StatefulSet` and `CronJob` (not created).
+- `Job` and `DaemonSet` are created once. There is no Job controller and no per-node DaemonSet controller.
 - Rolling updates (no Deployment controller tracking replica state).
 - Namespace isolation (Kubernetes namespaces, not Linux namespaces).
 - Resource quotas and admission controllers.
