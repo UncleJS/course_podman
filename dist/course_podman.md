@@ -1330,7 +1330,7 @@ podman inspect sleep1 --format '{{.State.ExitCode}}'  # get last exit code
 | `--name <name>` | Stable name for scripts and `exec` | `--name mydb` |
 | `-d` | Detached (background) | `podman run -d ...` |
 | `--rm` | Auto-remove on exit | For experiments only |
-| `-it` | Interactive + TTY | `podman run -it alpine sh` |
+| `-it` | Interactive + TTY | `podman run -it docker.io/library/alpine:latest sh` |
 | `-e KEY=VALUE` | Environment variable | Avoid for secrets |
 | `-v name:/path` | Mount named volume | `-v dbdata:/var/lib/mysql` |
 | `-p host:container` | Publish port | `-p 8080:80` |
@@ -3579,6 +3579,11 @@ podman run --rm --network db-internal docker.io/library/alpine:latest sh -lc 'wg
 
 Expected: connection times out or is refused. That is the intended behavior.
 
+```bash
+podman network rm db-internal  # remove the internal demo network
+podman network rm myapp-net    # remove the custom-subnet demo network
+```
+
 ### 4.5 Remove a Network {#m06-45-remove-a-network}
 
 ```bash
@@ -4171,13 +4176,11 @@ podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent h
 DNS working but TCP failing means the service is not listening, is on the wrong port, or there is a firewall rule.
 
 ```bash
-# Check if the port is open
-podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'nc -zv <target> <port>'  # run a container
+# Check if the port is open. BusyBox nc has no -z.
+podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'nc -w 1 <target> <port> && echo open'  # run a container
 
-# Check what the container is actually listening on
-podman exec <target> ss -tlnp  # run a command in a running container
-# or
-podman exec <target> netstat -tlnp  # run a command in a running container
+# Alpine and the official nginx image have no ss or netstat. /proc/net/tcp lists listeners.
+podman exec <target> cat /proc/net/tcp
 ```
 
 ### 13.3 Symptom: Port Published But Cannot Reach from Host {#m06-133-symptom-port-published-but-cannot-reach-from-host}
@@ -6155,10 +6158,12 @@ podman port stack-db  # should print nothing — no published ports
 podman port stack-web  # should print: 8080/tcp -> 0.0.0.0:8086
 ```
 
-**Step 8: Verify service discovery (web can reach DB by name):**
+**Step 8: Verify service discovery (the DB name resolves on stacknet):**
+
+Adminer is a PHP image. It has no `nc` or `wget`. Check from Alpine instead. If this fails immediately, MariaDB is still starting; run it again.
 
 ```bash
-podman exec stack-web sh -lc 'nc -z stack-db 3306 && echo "DB reachable"'  # test name resolution
+podman run --rm --network stacknet docker.io/library/alpine:latest sh -lc 'nc -w 1 stack-db 3306 && echo "DB reachable"'  # BusyBox nc has no -z
 ```
 
 **Step 9: Access the web UI:**
@@ -6166,7 +6171,7 @@ podman exec stack-web sh -lc 'nc -z stack-db 3306 && echo "DB reachable"'  # tes
 Open `http://127.0.0.1:8086` in a browser, or:
 
 ```bash
-podman exec stack-web sh -lc 'wget -qO- http://127.0.0.1:8080 | head -5'  # test locally inside container
+curl -fsS http://127.0.0.1:8086/ | head  # Adminer from the host
 ```
 
 **Cleanup:**
@@ -8676,7 +8681,7 @@ Now you have a shell inside the image and can:
 podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # network debug sidecar
 ```
 
-From here you can `getent hosts <name>`, `nc -zv <name> <port>`, etc.
+From here you can `getent hosts <name>`, `nc -w 1 <name> <port>`, etc. BusyBox `nc` has no `-z`.
 
 ### 5.4 netshoot — When You Need More Tools {#m13-54-netshoot--when-you-need-more-tools}
 

@@ -303,8 +303,8 @@ SLIDES = [
         "type": "content",
         "title": "Core Lifecycle Commands",
         "bullets": [
-            "podman run --rm alpine echo hello             # run and auto-remove",
-            "podman run -d --name web nginx:stable         # detached, named",
+            "podman run --rm docker.io/library/alpine:latest echo hello  # run and auto-remove",
+            "podman run -d --name web docker.io/library/nginx:stable  # detached, named",
             "podman ps / podman ps -a                      # list running / all",
             "podman logs web                               # app stdout/stderr",
             "podman exec -it web sh                        # shell inside container",
@@ -408,7 +408,7 @@ SLIDES = [
             "Avoid: alpine:latest             (ambiguous — which registry?)",
             "Prefer: docker.io/library/alpine:latest",
             "Short-name resolution rules vary by /etc/containers/registries.conf",
-            "ENTRYPOINT vs CMD: podman image inspect nginx:stable --format '{{.Config.Entrypoint}}'",
+            "ENTRYPOINT vs CMD: podman image inspect docker.io/library/nginx:stable --format '{{.Config.Entrypoint}}'",
             "In scripts and unit files: always use fully qualified names",
         ],
         "notes": (
@@ -507,8 +507,8 @@ SLIDES = [
         "title": "Lab 04: Create, Mount, and Rotate a Secret",
         "bullets": [
             "1.  read -rs p; printf '%s' \"$p\" | podman secret create db_password -; unset p",
-            "2.  podman run --rm --secret db_password busybox sh -lc 'test -f /run/secrets/db_password && echo OK'",
-            "3.  Prove not env var: podman run ... busybox env | grep -i password   (nothing!)",
+            "2.  podman run --rm --secret db_password docker.io/library/busybox:latest sh -lc 'test -f /run/secrets/db_password && echo OK'",
+            "3.  Prove not env var: podman run ... docker.io/library/busybox:latest env | grep -i password   (nothing!)",
             "4.  Rotation: create db_password_v2, switch container, verify, remove v1",
         ],
         "notes": (
@@ -791,8 +791,8 @@ SLIDES = [
         "title": "Lab 07: Pod with Debug Sidecar",
         "bullets": [
             "podman pod create --name webpod -p 8080:80",
-            "podman run -d --pod webpod --name nginx nginx:stable",
-            "podman run -it --rm --pod webpod alpine sh",
+            "podman run -d --pod webpod --name nginx docker.io/library/nginx:stable",
+            "podman run -it --rm --pod webpod docker.io/library/alpine:latest sh",
             "  Inside sidecar: wget -qO- http://127.0.0.1:80/ | head",
             "podman pod rm -f webpod",
         ],

@@ -285,7 +285,7 @@ Now you have a shell inside the image and can:
 podman run --rm -it --network <same-net> docker.io/library/alpine:latest sh  # network debug sidecar
 ```
 
-From here you can `getent hosts <name>`, `nc -zv <name> <port>`, etc.
+From here you can `getent hosts <name>`, `nc -w 1 <name> <port>`, etc. BusyBox `nc` has no `-z`.
 
 ### 5.4 netshoot — When You Need More Tools
 

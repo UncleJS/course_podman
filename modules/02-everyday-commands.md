@@ -133,7 +133,7 @@ podman inspect sleep1 --format '{{.State.ExitCode}}'  # get last exit code
 | `--name <name>` | Stable name for scripts and `exec` | `--name mydb` |
 | `-d` | Detached (background) | `podman run -d ...` |
 | `--rm` | Auto-remove on exit | For experiments only |
-| `-it` | Interactive + TTY | `podman run -it alpine sh` |
+| `-it` | Interactive + TTY | `podman run -it docker.io/library/alpine:latest sh` |
 | `-e KEY=VALUE` | Environment variable | Avoid for secrets |
 | `-v name:/path` | Mount named volume | `-v dbdata:/var/lib/mysql` |
 | `-p host:container` | Publish port | `-p 8080:80` |

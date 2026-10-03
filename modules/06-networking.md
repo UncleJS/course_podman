@@ -323,6 +323,11 @@ podman run --rm --network db-internal docker.io/library/alpine:latest sh -lc 'wg
 
 Expected: connection times out or is refused. That is the intended behavior.
 
+```bash
+podman network rm db-internal  # remove the internal demo network
+podman network rm myapp-net    # remove the custom-subnet demo network
+```
+
 ### 4.5 Remove a Network
 
 ```bash
@@ -915,13 +920,11 @@ podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'getent h
 DNS working but TCP failing means the service is not listening, is on the wrong port, or there is a firewall rule.
 
 ```bash
-# Check if the port is open
-podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'nc -zv <target> <port>'  # run a container
+# Check if the port is open. BusyBox nc has no -z.
+podman run --rm --network <net> docker.io/library/alpine:latest sh -lc 'nc -w 1 <target> <port> && echo open'  # run a container
 
-# Check what the container is actually listening on
-podman exec <target> ss -tlnp  # run a command in a running container
-# or
-podman exec <target> netstat -tlnp  # run a command in a running container
+# Alpine and the official nginx image have no ss or netstat. /proc/net/tcp lists listeners.
+podman exec <target> cat /proc/net/tcp
 ```
 
 ### 13.3 Symptom: Port Published But Cannot Reach from Host

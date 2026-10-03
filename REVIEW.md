@@ -50,9 +50,21 @@ Labs that failed when followed in order, and slides that disagreed with those la
 
 `dist/` and `slides/` were regenerated after this pass.
 
+## Command mismatches (same day)
+
+A few verify commands still called tools the image does not ship, and a few slide bullets still used short names.
+
+| # | Severity | Area | Finding | Status |
+|---|----------|------|---------|--------|
+| 19 | Medium | Module 9 | Steps 8 and 9 ran `nc` and `wget` inside Adminer. That PHP image has neither, so the check never printed "DB reachable" | Resolved. Alpine on `stacknet` uses `nc -w 1`. The host uses `curl` on port 8086 |
+| 20 | Low | Modules 6, 13 | Section 13.2 and the Module 13 sidecar note still used `nc -zv`, and 13.2 still called `ss` inside images that do not have it. `myapp-net` and `db-internal` were never removed | Resolved |
+| 21 | Low | Slides, Module 02 | Lifecycle, Lab 04, Lab 07, and the fully-qualified-name slide still told learners to type short image names | Resolved |
+
+`dist/` and `slides/` were regenerated after this pass.
+
 ## Left as written
 
-The tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten. The rest of Module 9 was left as it was. `examples/stack/stack.sh` only changed its non-interactive hint, which now uses `read -rs`.
+The tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten. Module 9's secret create was left as it was; only the Adminer verify commands changed. `examples/stack/stack.sh` only changed its non-interactive hint, which now uses `read -rs`.
 
 ---
 

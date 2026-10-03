@@ -225,10 +225,12 @@ podman port stack-db  # should print nothing — no published ports
 podman port stack-web  # should print: 8080/tcp -> 0.0.0.0:8086
 ```
 
-**Step 8: Verify service discovery (web can reach DB by name):**
+**Step 8: Verify service discovery (the DB name resolves on stacknet):**
+
+Adminer is a PHP image. It has no `nc` or `wget`. Check from Alpine instead. If this fails immediately, MariaDB is still starting; run it again.
 
 ```bash
-podman exec stack-web sh -lc 'nc -z stack-db 3306 && echo "DB reachable"'  # test name resolution
+podman run --rm --network stacknet docker.io/library/alpine:latest sh -lc 'nc -w 1 stack-db 3306 && echo "DB reachable"'  # BusyBox nc has no -z
 ```
 
 **Step 9: Access the web UI:**
@@ -236,7 +238,7 @@ podman exec stack-web sh -lc 'nc -z stack-db 3306 && echo "DB reachable"'  # tes
 Open `http://127.0.0.1:8086` in a browser, or:
 
 ```bash
-podman exec stack-web sh -lc 'wget -qO- http://127.0.0.1:8080 | head -5'  # test locally inside container
+curl -fsS http://127.0.0.1:8086/ | head  # Adminer from the host
 ```
 
 **Cleanup:**
