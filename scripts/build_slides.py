@@ -268,21 +268,17 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 01: Compare Host vs Container",
         "bullets": [
-            "uname -a                                        (host kernel)",
-            "podman run --rm alpine:latest uname -a          (same kernel!)",
-            "podman run --rm alpine:latest ps -ef             (tiny process tree)",
-            "podman create --name c101 alpine:latest sleep 300",
-            "podman inspect c101 | less   (note: image, mounts, network, user)",
-            "podman rm c101",
+            "ps aux | head                          vs  podman run --rm docker.io/library/alpine:latest ps aux",
+            "ip addr show                           vs  podman run --rm registry.fedoraproject.org/fedora:latest ip addr show",
+            "hostname                               vs  podman run --rm docker.io/library/alpine:latest hostname",
+            "id                                      vs  podman run --rm docker.io/library/alpine:latest id",
+            "Host ps of 'sleep 60' shows your UID, not container root",
         ],
         "notes": (
-            "The key learning moment is the uname output being identical — same kernel "
-            "version on host and container. This makes the 'not a VM' point visceral. "
-            "The inspect exercise teaches students where to look when debugging: the JSON "
-            "blob from podman inspect contains everything Podman knows about a container. "
-            "Ask students: what user is the container running as? They should find it "
-            "in the Config.User field. If it is empty string, that means root inside "
-            "the container — a problem fixed in Module 08."
+            "The key learning moment is the process list: the host has hundreds of "
+            "processes, and the container shows one line, ps itself. Fedora is used for "
+            "ip addr because alpine has no ip. hostname and id show the UTS and user "
+            "namespaces. Inside, id is uid 0. On the host, that sleep process is your UID."
         ),
     },
 
@@ -330,12 +326,12 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 02: The Writable Layer Is Not Persistence",
         "bullets": [
-            "1.  podman run -it --name scratch alpine sh",
+            "1.  podman run -it --name scratch docker.io/library/alpine:latest sh",
             "    Inside: echo hi > /tmp/hello.txt && exit",
-            "2.  podman rm scratch",
-            "3.  podman run -it --name scratch alpine sh",
-            "    Inside: ls -la /tmp/hello.txt   ->  file is GONE",
-            "Key insight: use volumes for anything you need to keep",
+            "2.  podman start scratch && podman exec scratch cat /tmp/hello.txt",
+            "    The file is still there. Then podman stop scratch",
+            "3.  podman rm scratch, run it again: /tmp/hello.txt is gone",
+            "Key insight: stop keeps the writable layer; rm deletes it",
         ],
         "notes": (
             "This lab creates a memorable aha moment. Students who have used Docker "
@@ -489,7 +485,7 @@ SLIDES = [
         "type": "content",
         "title": "Podman Secret Commands",
         "bullets": [
-            "printf '%s' 'mypassword' | podman secret create db_password -",
+            "read -rs p; printf '%s' \"$p\" | podman secret create db_password -; unset p",
             "podman secret ls / podman secret inspect db_password",
             "podman run --rm --secret db_password alpine sh -lc 'ls /run/secrets'",
             "Custom path: --secret db_password,target=db.pass",
@@ -510,7 +506,7 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 04: Create, Mount, and Rotate a Secret",
         "bullets": [
-            "1.  printf '%s' 'correct-horse-battery' | podman secret create db_password -",
+            "1.  read -rs p; printf '%s' \"$p\" | podman secret create db_password -; unset p",
             "2.  podman run --rm --secret db_password busybox sh -lc 'test -f /run/secrets/db_password && echo OK'",
             "3.  Prove not env var: podman run ... busybox env | grep -i password   (nothing!)",
             "4.  Rotation: create db_password_v2, switch container, verify, remove v1",
@@ -1011,7 +1007,7 @@ SLIDES = [
             "Before running, walk through the structure: "
             "1. Creates network and volume if they do not exist (idempotent). "
             "2. Creates the Podman secret for the DB password if not present, "
-            "   prompting with read -s. "
+            "   prompting with read -rs. "
             "3. Starts containers with stable names so the script is safe to re-run. "
             "4. The down command stops containers but leaves the volume to avoid data loss. "
             "Idempotency is the key production habit: a deploy script should be safe "
@@ -1183,7 +1179,7 @@ SLIDES = [
         "type": "content",
         "title": "Recommended Pattern",
         "bullets": [
-            "printf '%s' 'value' | podman secret create db_password -",
+            "read -rs p; printf '%s' \"$p\" | podman secret create db_password -; unset p",
             "Stored at ~/.local/share/containers/storage/secrets/ (base64, NOT encrypted)",
             "Quadlet: [Container] Secret=db_password",
             "Mounted as tmpfs file: /run/secrets/db_password",
@@ -1224,11 +1220,11 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 11a: Quadlet Unit Consuming a Secret",
         "bullets": [
-            "printf '%s' 'example-password' | podman secret create db_password -",
+            "read -rs p; printf '%s' \"$p\" | podman secret create db_password -; unset p",
             "example-app.container: Secret=db_password + NoNewPrivileges + ReadOnly",
             "systemctl --user daemon-reload && systemctl --user start example-app.service",
             "podman exec systemd-example-app sh -lc 'ls -la /run/secrets'",
-            "env | grep -i password || echo 'not in env'   ->  not in env",
+            "podman exec systemd-example-app sh -lc 'env | grep -i password || echo not-in-env'",
         ],
         "notes": (
             "Full lab is in modules/11a-quadlet-secrets.md. Enable lingering first "
@@ -1253,11 +1249,11 @@ SLIDES = [
         ],
         "notes": (
             "Rotation procedure: "
-            "1. Create new secret: printf '%s' 'newval' | podman secret create db_password_v2 - "
-            "2. Edit the .container file: change Secret=db_password_v1 to Secret=db_password_v2 "
+            "1. Create new secret: read -rs p; printf '%s' \"$p\" | podman secret create db_password_v2 -; unset p "
+            "2. Edit the .container file: change Secret=db_password to Secret=db_password_v2 "
             "3. systemctl --user daemon-reload && systemctl --user restart example-app.service "
             "4. Verify the service is healthy "
-            "5. podman secret rm db_password_v1 "
+            "5. podman secret rm db_password "
             "Keeping the old version until the new one is verified gives a rollback window. "
             "The journald verification step: if grep -i password returns anything, the app "
             "is logging secrets — fix the app before production. "
@@ -1309,18 +1305,17 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 12: Read-Only + Dropped Caps",
         "bullets": [
-            "podman run --rm --cap-drop=ALL alpine id",
-            "podman run --rm --read-only --tmpfs /var/cache/nginx --tmpfs /var/run \\",
-            "         --cap-drop=ALL --security-opt no-new-privileges nginx:stable",
-            "If it fails: read error -> identify write path -> add targeted tmpfs",
-            "Goal: nginx runs successfully with all restrictions applied",
+            "podman run --rm --cap-drop=ALL docker.io/library/alpine:latest id",
+            "podman run --rm -p 8080:80 --read-only --cap-drop=ALL --cap-add=NET_BIND_SERVICE \\",
+            "  --security-opt no-new-privileges --tmpfs /var/cache/nginx --tmpfs /var/run --tmpfs /tmp \\",
+            "  docker.io/library/nginx:stable",
+            "Goal: nginx still binds container port 80 with those restrictions",
         ],
         "notes": (
-            "This lab deliberately fails first so students learn to read errors as a map "
-            "of required permissions. nginx needs to write to /var/cache/nginx (temp files) "
-            "and /var/run (PID file). Each time it fails, add the minimum required tmpfs "
-            "and retry. Goal: understand why each restriction fails and add back only the "
-            "minimum required exception. "
+            "The slide shows the combined command from the module. nginx still binds "
+            "container port 80, so NET_BIND_SERVICE stays. The tmpfs mounts cover "
+            "/var/cache/nginx, /var/run, and /tmp. The earlier read-only run in the "
+            "module, before those mounts, is the one that fails and maps the write paths. "
             "Image trust: pin by digest, use minimal base images (alpine variants), "
             "track upstream CVEs with tools like trivy or grype. "
             "Supply chain: prefer official images; avoid curl-piped-to-bash installer scripts."
@@ -1393,22 +1388,20 @@ SLIDES = [
         "type": "lab",
         "title": "Lab 13: Failure Drills",
         "bullets": [
-            "1.  Port conflict: two services on 8080 -> fix by changing host port",
-            "2.  Permission denied: mount root-owned dir -> fix with unshare or :Z",
-            "3.  Bad tag: deploy :latest that changes -> fix by pinning digest",
-            "4.  DNS failure: containers on default network -> fix: user-defined network",
-            "Run each: observe error, diagnose using debug loop, fix, verify",
+            "1.  Port conflict: two services on 8080 -> change the host port",
+            "2.  Bad command: /bin/nonexistent exits 127 -> inspect the command, no rebuild",
+            "3.  DNS failure: wrong network -> user-defined network",
+            "4.  Permission denied on a volume -> podman unshare or :Z",
+            "Run each: observe error, diagnose using the debug loop, fix, verify",
         ],
         "notes": (
             "These drills should be done by students, not just demonstrated. "
             "Tell them: I will cause these failures on purpose. Your job is to diagnose "
             "and fix them using only the debug loop. "
-            "Drill 1: 'address already in use' in podman logs. Fix: change host port. "
-            "Drill 2: 'permission denied' writing to bind mount. Fix: unshare chown or add :Z. "
-            "Drill 3: upstream changes tag -> service breaks on next restart. "
-            "Fix: record digest, pin it. "
-            "Drill 4: getent hosts fails. Check podman network inspect shows no dns_enabled. "
-            "Fix: create user-defined network."
+            "Drill 1: the podman run client says address already in use. No container to log. Fix: change the host port. "
+            "Drill 2: ps -a shows Exited (127). logs say not found. Fix the command. Do not rebuild. "
+            "Drill 3: getent hosts fails because the container is on the wrong network. "
+            "Drill 4: permission denied writing a volume. Fix with podman unshare or :Z."
         ),
     },
 

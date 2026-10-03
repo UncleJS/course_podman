@@ -1163,7 +1163,7 @@ Before moving on, confirm you can answer these without referring to notes:
 
 ## Quick Quiz (Answer Without Running Commands) {#m01-quick-quiz-answer-without-running-commands}
 
-1. You run `podman run --rm alpine ps aux` and see only two processes. Why does the container not see the hundreds of processes running on the host?
+1. You run `podman run --rm docker.io/library/alpine:latest ps aux` and see only one process line (`ps` itself). Why does the container not see the hundreds of processes running on the host?
 
 2. A coworker says "just run it as root, it's fine, it's in a container." What is the specific risk they are dismissing?
 
@@ -3455,13 +3455,13 @@ By default `-p 8080:80` listens on all host interfaces (`0.0.0.0`).
 To restrict to loopback only:
 
 ```bash
-podman run -d --name web-lo -p 127.0.0.1:8080:80 docker.io/library/nginx:stable  # run a container
+podman run -d --name web-lo -p 127.0.0.1:8081:80 docker.io/library/nginx:stable  # loopback, different host port from web1
 ```
 
-To listen on a specific network interface IP:
+To listen on a specific network interface IP, use an address this host actually has (`ip -4 -br addr`). Pasta refuses an address that is not on the host.
 
 ```bash
-podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:stable  # run a container
+podman run -d --name web-iface -p <host-address>:8082:80 docker.io/library/nginx:stable  # replace <host-address>
 ```
 
 This is important for security: a backend service should never be published to `0.0.0.0` when it only needs to be reachable by a local proxy.
@@ -3469,7 +3469,7 @@ This is important for security: a backend service should never be published to `
 ### 3.3 Multiple Port Mappings {#m06-33-multiple-port-mappings}
 
 ```bash
-podman run -d --name multi -p 8080:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
+podman run -d --name multi -p 8083:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
 ```
 
 ### 3.4 UDP Port Mapping {#m06-34-udp-port-mapping}
@@ -3501,7 +3501,7 @@ podman inspect web1 | python3 -m json.tool | grep -A10 '"Ports"'  # inspect cont
 Cleanup:
 
 ```bash
-podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
+podman rm -f web1 web-lo web-iface multi rand-port dns-demo  # cleanup containers
 ```
 
 ---
@@ -3626,7 +3626,10 @@ Expected output: an IP address followed by `server-a`.
 Test TCP connectivity:
 
 ```bash
-podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'  # run a container
+podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -w 1 server-a 80 || echo "port not open (expected)"'  # BusyBox nc has no -z
+
+podman rm -f server-a
+podman network rm testdns
 ```
 
 ### 5.3 Network Aliases {#m06-53-network-aliases}
@@ -3643,6 +3646,9 @@ podman run -d --name primary-db --network alias-demo --network-alias db docker.i
 
 # Resolve by alias
 podman run --rm --network alias-demo docker.io/library/alpine:latest sh -lc 'getent hosts db'  # run a container
+
+podman rm -f primary-db
+podman network rm alias-demo
 ```
 
 Both the container name (`primary-db`) and the alias (`db`) resolve to the same IP.
@@ -3746,13 +3752,11 @@ podman exec frontend sh -lc 'getent hosts db || echo "NOT REACHABLE"'  # run a c
 
 # Verify: app CAN reach db
 podman exec app sh -lc 'getent hosts db'  # run a command in a running container
-
-# Cleanup
-podman rm -f db app frontend               # stop and remove containers
-podman network rm frontend-net backend-net # remove networks
 ```
 
 ### 6.2 Disconnect from a Network Without Stopping {#m06-62-disconnect-from-a-network-without-stopping}
+
+Do this while `app` and `backend-net` from section 6.1 are still running.
 
 ```bash
 podman network disconnect backend-net app  # detach a container from a network
@@ -3768,6 +3772,13 @@ Reconnect:
 
 ```bash
 podman network connect backend-net app  # attach a container to a network
+```
+
+Cleanup from section 6.1:
+
+```bash
+podman rm -f db app frontend               # stop and remove containers
+podman network rm frontend-net backend-net # remove networks
 ```
 
 ---
@@ -3943,6 +3954,12 @@ podman run -d --name postgres --network private-db \
 ```
 
 This DB can never initiate outbound connections. It cannot call home, exfiltrate data to an external server, or participate in an outbound botnet.
+
+```bash
+podman rm -f postgres
+podman network rm private-db
+podman secret rm pg_password
+```
 
 ### 9.4 Use `--network-alias` for Service Contracts {#m06-94-use---network-alias-for-service-contracts}
 
@@ -4641,15 +4658,21 @@ podman pod create --name logpod -p 8081:80  # create the pod
 
 ```bash
 podman run -d --pod logpod --name app \
-  -v logvol:/var/log/nginx:Z \
-  docker.io/library/nginx:stable  # run nginx with log volume
+  -v logvol:/var/log/nginx \
+  docker.io/library/nginx:stable  # named volume; no :Z (that label is private)
+```
+
+The image turns an empty log directory into symlinks to stdout and stderr. Replace them with real files so the sidecar can see access lines:
+
+```bash
+podman exec app sh -lc 'rm -f /var/log/nginx/access.log /var/log/nginx/error.log && touch /var/log/nginx/access.log /var/log/nginx/error.log && nginx -s reopen'
 ```
 
 **Step 3 — Start the "log shipper" sidecar**
 
 ```bash
 podman run -d --pod logpod --name log-shipper \
-  -v logvol:/logs:Z \
+  -v logvol:/logs \
   docker.io/library/alpine:latest \
   sh -lc 'while true; do echo "--- log snapshot ---"; ls -la /logs/; sleep 5; done'  # run a log-reading sidecar
 ```
@@ -7053,16 +7076,11 @@ systemctl --user start hello-nginx.service                                     #
 systemctl --user status hello-nginx.service                                    # show status
 ```
 
-**Verify HTTP response:**
+**Verify HTTP response** from the host. The unit publishes `8081:80`. `nginx:stable` has no `wget`.
 
 ```bash
-podman exec -it systemd-hello-nginx sh -lc 'wget -qO- http://127.0.0.1:80 | head -5'  # verify nginx responds
-```
-
-Or from the host (if PublishPort=8081:80):
-
-```bash
-podman port systemd-hello-nginx  # show published ports
+curl -fsS http://127.0.0.1:8081/ | head  # verify nginx responds
+podman port systemd-hello-nginx          # show published ports
 ```
 
 **View logs:**
@@ -7633,15 +7651,15 @@ sequenceDiagram
     participant systemd
     participant App
 
-    Note over App: Running with db_password_v1
+    Note over App: Running with db_password
     Ops->>Podman: secret create db_password_v2 (new value)
-    Ops->>Ops: Edit unit: Secret=db_password_v1 -> Secret=db_password_v2
+    Ops->>Ops: Edit unit: Secret=db_password to Secret=db_password_v2
     Ops->>systemd: daemon-reload
     Ops->>systemd: restart example-app.service
     systemd->>App: New container starts<br/>mounts /run/secrets/db_password_v2
     Ops->>App: Verify healthy (check logs, test endpoint)
     Note over Ops: Rollback window open — keep v1 secret
-    Ops->>Podman: secret rm db_password_v1 (only after verification)
+    Ops->>Podman: secret rm db_password (only after verification)
 ```
 
 ### Rotation Procedure {#m11a-rotation-procedure}
@@ -7657,7 +7675,7 @@ podman secret create db_password_v2 ./db_password_v2.txt
 rm -f ./db_password_v2.txt
 ```
 
-**Step 2: Update the Quadlet file** — change `Secret=db_password_v1` to `Secret=db_password_v2`.
+**Step 2: Update the Quadlet file** — change `Secret=db_password` to `Secret=db_password_v2`.
 
 **Step 3: Reload and restart:**
 
@@ -7677,7 +7695,7 @@ podman exec systemd-example-app sh -lc 'wc -c /run/secrets/db_password_v2'  # co
 **Step 5: Remove old secret only after rollback window closes:**
 
 ```bash
-podman secret rm db_password_v1  # delete old secret — rollback no longer possible after this
+podman secret rm db_password  # delete old secret — rollback no longer possible after this
 ```
 
 **Rule**: never remove the old secret before the new deployment is verified and the rollback window has passed.
@@ -8896,7 +8914,7 @@ systemctl --user status mariadb-data-volume.service  # generated name is <name>-
 journalctl --user -u capnet-network.service  # read network unit logs
 ```
 
-Quadlet auto-generates `After=` and `Requires=` dependencies when you use `Network=` and `Volume=` in `.container` units. If those dependencies are misconfigured, fix the unit name references.
+Quadlet adds `After=` and `Requires=` only when `Network=` or `Volume=` names a Quadlet file (`something.network`, `something.volume`). A bare name such as `Network=capnet` is just `--network capnet`. The capstone units add `Requires=capnet.network` themselves so boot order still holds. If a dependency is misconfigured, fix that unit name.
 
 ### 10.4 Service Does Not Start at Boot {#m13-104-service-does-not-start-at-boot}
 
@@ -9199,9 +9217,9 @@ flowchart TD
     E -->|"Yes"| F["systemctl restart <unit>"]
     E -->|"No"| G["No-op — already up to date"]
     C -->|"local"| H["Check if local image changed<br/>(e.g., after manual build)"]
-    F --> I{"Healthcheck passes?"}
+    F --> I{"systemd start reaches ready?<br/>Notify=healthy"}
     I -->|"Yes"| J["Update complete"]
-    I -->|"No + --rollback"| K["Revert to previous image<br/>restart unit"]
+    I -->|"No, and --rollback"| K["Revert to previous image<br/>restart unit"]
 ```
 
 What it **cannot** do by itself:
@@ -9220,8 +9238,8 @@ When `podman auto-update` detects a new image and restarts a unit:
 
 1. It pulls the new image and records the old image digest.
 2. It calls `systemctl restart <unit>` — the unit stops the old container and starts a new one with the new image.
-3. If the container has a healthcheck and the `--rollback` flag was passed (or the unit has `AutoUpdatePolicy=registry` with rollback configured), Podman waits for the healthcheck to pass.
-4. If the healthcheck fails, it reverts to the old image and restarts.
+3. If the unit has `Notify=healthy` and you passed `--rollback`, systemd stays in `starting` until the healthcheck passes.
+4. If the healthcheck never passes, the start fails and auto-update reverts to the old image and restarts. Without `Notify=healthy`, systemd marks the unit started and nothing rolls back.
 
 The unit must be a Quadlet-generated service for this to work. Auto-update does not manage containers started with bare `podman run`.
 
@@ -9240,11 +9258,12 @@ sequenceDiagram
     AU->>systemd: systemctl restart myapp.service
     systemd->>Container: stop old container
     systemd->>Container: start new container (new image)
-    Container->>AU: healthcheck status
+    Note over systemd: Notify=healthy keeps the unit starting
     alt healthcheck passes
+        systemd->>AU: unit is ready
         AU->>AU: update complete
-    else healthcheck fails
-        AU->>systemd: systemctl restart (with old image)
+    else start fails
+        AU->>systemd: restart with the previous image
         AU->>AU: log rollback event
     end
 ```
@@ -9554,7 +9573,7 @@ podman system df  # show disk usage by images, containers, volumes
 
 3) You have `Image=docker.io/library/nginx@sha256:abc123` in your Quadlet unit. Will `podman auto-update` do anything? Why?
 
-4) Auto-update runs but the new container immediately fails its healthcheck. What happens if you passed `--rollback`?
+4) Auto-update restarts the unit. The new container's healthcheck never passes, and you passed `--rollback`. What happens if the unit has `Notify=healthy`? What happens if it does not?
 
 5) What is the difference between `podman image prune -f` and `podman image prune -a -f`?
 
@@ -9648,7 +9667,7 @@ At the end of this capstone you should have:
 - `cap-backups.volume` — backup output volume
 - `cap-mariadb.container` — DB service, digest-pinned
 - `cap-adminer.container` — UI service, digest-pinned
-- `cap-backup.container` *(optional)* — backup job container
+- `cap-backup.container` — backup job container (required; only the timer is optional)
 
 **Written runbook covering:**
 - First deploy procedure
@@ -9779,9 +9798,21 @@ Verify DB has **no published host ports**:
 podman port cap-mariadb || true  # expected: no output (no published ports)
 ```
 
-Test connectivity inside the stack:
+Wait until MariaDB accepts connections, then test connectivity inside the stack:
 
 ```bash
+podman run --rm --network capnet --secret mariadb_root_password \
+  docker.io/library/mariadb:11 sh -lc '
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
+    for i in $(seq 1 60); do
+      mysqladmin --defaults-extra-file=/tmp/client.cnf ping -h db --silent && exit 0
+      sleep 2
+    done
+    echo "db did not accept connections" >&2
+    exit 1
+  '
+
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
   'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
@@ -10098,13 +10129,13 @@ Keep this as a living document for your stack. A runbook that is never tested is
 
 | Operation | Commands | Validation |
 |-----------|----------|------------|
-| **First deploy** | Copy units, `daemon-reload`, `start` | `systemctl status`, `curl 127.0.0.1:8082` |
-| **After reboot** | Automatic (linger + `WantedBy=default.target`) | `systemctl status`, check data |
+| **First deploy** | Copy units, `systemctl --user daemon-reload`, `systemctl --user start` | `systemctl --user status`, `curl 127.0.0.1:8082` |
+| **After reboot** | Automatic (linger + `WantedBy=default.target`) | `systemctl --user status`, check data |
 | **Tail logs** | `journalctl --user -fu cap-mariadb.service` | — |
 | **Manual backup** | `systemctl --user start cap-backup.service` | `ls` in `cap_backups` volume |
 | **Restore backup** | See "Restore" section | `SELECT *` to confirm row count |
-| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman image inspect --format '{{.Digest}}'` |
-| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | unit `Image=` matches the saved digest |
+| **Upgrade image** | Edit digest in unit, `systemctl --user daemon-reload`, `systemctl --user restart` | `podman image inspect --format '{{.Digest}}'` |
+| **Rollback image** | Restore old digest, `systemctl --user daemon-reload`, `systemctl --user restart` | unit `Image=` matches the saved digest |
 | **Rotate password** | 6-step rotation procedure above | `mysql -u root` with new secret |
 | **Full teardown** | `systemctl --user stop` + `podman volume rm` | — |
 
@@ -10614,6 +10645,8 @@ podman tag localhost/<name>:<tag> <registry>/<ns>/<name>:<tag>  # add another na
 podman push <registry>/<ns>/<name>:<tag>             # upload to a registry
 podman image history <image>                         # show layer history
 podman images                                       # list local images
+podman images --digests                             # show the registry digest for each image
+podman pull <image>@sha256:<digest>                 # pull that exact image; do not add a second sha256:
 podman inspect <image-or-container>                 # show JSON metadata
 podman rmi <image>                                   # remove an image from local storage
 
@@ -10818,6 +10851,7 @@ systemctl --user daemon-reload
 - [Useful Checks](#cs-rootless-useful-checks)
 - [Common Paths](#cs-rootless-common-paths)
 - [Boot Start for systemd User Services](#cs-rootless-boot-start-for-systemd-user-services)
+- [Gotchas](#cs-rootless-gotchas)
 
 ## Key Idea {#cs-rootless-key-idea}
 
@@ -10851,6 +10885,13 @@ podman info --format '{{.Host.RootlessNetworkCmd}}'  # pasta on Podman 5
 ```bash
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
+
+[^ Go to TOC](#cs-rootless-table-of-contents)
+
+## Gotchas {#cs-rootless-gotchas}
+
+- Host ports below 1024 fail for a rootless user. Publish a high port.
+- `:Z` on a bind mount is private to one container. `podman unshare` shows ownership from the container's user namespace.
 
 [^ Go to TOC](#cs-rootless-table-of-contents)
 
@@ -10977,6 +11018,7 @@ A port conflict fails in the `podman run` client. There is no container to `podm
 
 | Symptom | Look at | Fix |
 |---|---|---|
+| container exits immediately, code 127 | `podman inspect` command / Args | override the command; do not rebuild the image |
 | name does not resolve | default `podman` network | user-defined network (DNS is off on the default network) |
 | published port, curl fails | `HostIp` in inspect | `127.0.0.1` binds are local-only; firewalld: `firewall-cmd --list-all` |
 | permission denied on a bind mount | `sudo ausearch -m avc -ts recent` | `:Z` or `:z`. `:Z` relabels the whole tree |
@@ -11040,12 +11082,12 @@ Each module ends with a checkpoint. Treat it as "must be able to do without note
 
 ## Practical Exam A (Mid-Course) {#assess-practical-exam-a-mid-course}
 
-Sit this after Module 10. It covers the debug loop from Modules 02 and 13, plus the rule that a fix does not require a new image.
+Sit this after Module 10. It uses `podman ps -a`, `podman logs`, and `podman inspect` from Module 02, plus the rule that a fix does not require a new image. Module 13 Drill 1 is the case where `podman run` fails before a container exists. This exam is not that case.
 
 Scenario:
 
 - Run `examples/exams/exam-a.sh`. It starts a named container that exits.
-- Apply the four-step loop from Modules 02 and 13.
+- Diagnose that container with `podman ps -a`, `podman logs`, and `podman inspect`.
 
 Requirements:
 
@@ -11056,7 +11098,7 @@ Requirements:
 | Points | What an A+ runbook shows |
 |---|---|
 | 4 | State first: `podman ps -a` and the exit code, named (0, 125, 126, 127, 137, or 143) |
-| 4 | Logs next: `podman logs`, including the case where the error was the `podman run` client and no container exists |
+| 4 | Logs next: `podman logs` on the container this fixture created |
 | 4 | Inspect next: the field that explains the failure (command, mounts, or ports) |
 | 4 | One change that makes the container stay up, without `podman build` |
 | 4 | No secret value printed in the runbook or the terminal transcript |
@@ -11069,7 +11111,7 @@ Sit this after Module 80. It is the capstone checklist, graded. Module 90 is out
 
 Scenario:
 
-- You are given a two-service stack: web + db.
+- Demonstrate the Module 80 stack: web + db, built from the capstone units.
 - The stack must survive reboot.
 
 Requirements:

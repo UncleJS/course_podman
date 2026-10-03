@@ -38,7 +38,9 @@ ensure_secret() {
 
   echo "secret '$SECRET_NAME' does not exist; create it first" >&2
   echo "example:" >&2
-  echo "  printf '%s' 'choose-a-password' | podman secret create $SECRET_NAME -" >&2
+  echo "  read -rs p" >&2
+  echo "  printf '%s' \"\$p\" | podman secret create $SECRET_NAME -" >&2
+  echo "  unset p" >&2
   exit 1
 }
 

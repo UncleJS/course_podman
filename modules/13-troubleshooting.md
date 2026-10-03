@@ -523,7 +523,7 @@ systemctl --user status mariadb-data-volume.service  # generated name is <name>-
 journalctl --user -u capnet-network.service  # read network unit logs
 ```
 
-Quadlet auto-generates `After=` and `Requires=` dependencies when you use `Network=` and `Volume=` in `.container` units. If those dependencies are misconfigured, fix the unit name references.
+Quadlet adds `After=` and `Requires=` only when `Network=` or `Volume=` names a Quadlet file (`something.network`, `something.volume`). A bare name such as `Network=capnet` is just `--network capnet`. The capstone units add `Requires=capnet.network` themselves so boot order still holds. If a dependency is misconfigured, fix that unit name.
 
 ### 10.4 Service Does Not Start at Boot
 

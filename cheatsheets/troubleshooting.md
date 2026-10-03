@@ -47,6 +47,7 @@ A port conflict fails in the `podman run` client. There is no container to `podm
 
 | Symptom | Look at | Fix |
 |---|---|---|
+| container exits immediately, code 127 | `podman inspect` command / Args | override the command; do not rebuild the image |
 | name does not resolve | default `podman` network | user-defined network (DNS is off on the default network) |
 | published port, curl fails | `HostIp` in inspect | `127.0.0.1` binds are local-only; firewalld: `firewall-cmd --list-all` |
 | permission denied on a bind mount | `sudo ausearch -m avc -ts recent` | `:Z` or `:z`. `:Z` relabels the whole tree |

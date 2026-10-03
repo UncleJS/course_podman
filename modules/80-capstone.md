@@ -70,7 +70,7 @@ At the end of this capstone you should have:
 - `cap-backups.volume` — backup output volume
 - `cap-mariadb.container` — DB service, digest-pinned
 - `cap-adminer.container` — UI service, digest-pinned
-- `cap-backup.container` *(optional)* — backup job container
+- `cap-backup.container` — backup job container (required; only the timer is optional)
 
 **Written runbook covering:**
 - First deploy procedure
@@ -201,9 +201,21 @@ Verify DB has **no published host ports**:
 podman port cap-mariadb || true  # expected: no output (no published ports)
 ```
 
-Test connectivity inside the stack:
+Wait until MariaDB accepts connections, then test connectivity inside the stack:
 
 ```bash
+podman run --rm --network capnet --secret mariadb_root_password \
+  docker.io/library/mariadb:11 sh -lc '
+    umask 077
+    printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf
+    for i in $(seq 1 60); do
+      mysqladmin --defaults-extra-file=/tmp/client.cnf ping -h db --silent && exit 0
+      sleep 2
+    done
+    echo "db did not accept connections" >&2
+    exit 1
+  '
+
 podman run --rm --network capnet --secret mariadb_root_password \
   docker.io/library/mariadb:11 sh -lc \
   'umask 077; printf "[client]\nuser=root\npassword=%s\n" "$(cat /run/secrets/mariadb_root_password)" > /tmp/client.cnf; mysql --defaults-extra-file=/tmp/client.cnf -h db -u root -e "SHOW DATABASES;"'  # verify DB is reachable by DNS alias
@@ -520,13 +532,13 @@ Keep this as a living document for your stack. A runbook that is never tested is
 
 | Operation | Commands | Validation |
 |-----------|----------|------------|
-| **First deploy** | Copy units, `daemon-reload`, `start` | `systemctl status`, `curl 127.0.0.1:8082` |
-| **After reboot** | Automatic (linger + `WantedBy=default.target`) | `systemctl status`, check data |
+| **First deploy** | Copy units, `systemctl --user daemon-reload`, `systemctl --user start` | `systemctl --user status`, `curl 127.0.0.1:8082` |
+| **After reboot** | Automatic (linger + `WantedBy=default.target`) | `systemctl --user status`, check data |
 | **Tail logs** | `journalctl --user -fu cap-mariadb.service` | — |
 | **Manual backup** | `systemctl --user start cap-backup.service` | `ls` in `cap_backups` volume |
 | **Restore backup** | See "Restore" section | `SELECT *` to confirm row count |
-| **Upgrade image** | Edit digest in unit, `daemon-reload`, `restart` | `podman image inspect --format '{{.Digest}}'` |
-| **Rollback image** | Restore old digest, `daemon-reload`, `restart` | unit `Image=` matches the saved digest |
+| **Upgrade image** | Edit digest in unit, `systemctl --user daemon-reload`, `systemctl --user restart` | `podman image inspect --format '{{.Digest}}'` |
+| **Rollback image** | Restore old digest, `systemctl --user daemon-reload`, `systemctl --user restart` | unit `Image=` matches the saved digest |
 | **Rotate password** | 6-step rotation procedure above | `mysql -u root` with new secret |
 | **Full teardown** | `systemctl --user stop` + `podman volume rm` | — |
 

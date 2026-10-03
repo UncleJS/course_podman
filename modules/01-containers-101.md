@@ -470,7 +470,7 @@ Before moving on, confirm you can answer these without referring to notes:
 
 ## Quick Quiz (Answer Without Running Commands)
 
-1. You run `podman run --rm alpine ps aux` and see only two processes. Why does the container not see the hundreds of processes running on the host?
+1. You run `podman run --rm docker.io/library/alpine:latest ps aux` and see only one process line (`ps` itself). Why does the container not see the hundreds of processes running on the host?
 
 2. A coworker says "just run it as root, it's fine, it's in a container." What is the specific risk they are dismissing?
 

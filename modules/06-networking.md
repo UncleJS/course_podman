@@ -16,7 +16,7 @@
 - [5  Container DNS and Service Discovery](#5-container-dns-and-service-discovery)
 - [6  Connecting Containers to Multiple Networks](#6-connecting-containers-to-multiple-networks)
 - [7  Inspecting Network State](#7-inspecting-network-state)
-- [8  Network Drivers — Deeper Look](#8-network-drivers-deeper-look)
+- [8  Network Drivers — Deeper Look](#8-network-drivers--deeper-look)
 - [9  Network Security Patterns](#9-network-security-patterns)
 - [10  Full Lab: Three-Tier Isolated Stack](#10-full-lab-three-tier-isolated-stack)
 - [11  Connecting Containers to Pods on a Network](#11-connecting-containers-to-pods-on-a-network)
@@ -199,13 +199,13 @@ By default `-p 8080:80` listens on all host interfaces (`0.0.0.0`).
 To restrict to loopback only:
 
 ```bash
-podman run -d --name web-lo -p 127.0.0.1:8080:80 docker.io/library/nginx:stable  # run a container
+podman run -d --name web-lo -p 127.0.0.1:8081:80 docker.io/library/nginx:stable  # loopback, different host port from web1
 ```
 
-To listen on a specific network interface IP:
+To listen on a specific network interface IP, use an address this host actually has (`ip -4 -br addr`). Pasta refuses an address that is not on the host.
 
 ```bash
-podman run -d --name web-iface -p 192.168.1.100:8080:80 docker.io/library/nginx:stable  # run a container
+podman run -d --name web-iface -p <host-address>:8082:80 docker.io/library/nginx:stable  # replace <host-address>
 ```
 
 This is important for security: a backend service should never be published to `0.0.0.0` when it only needs to be reachable by a local proxy.
@@ -213,7 +213,7 @@ This is important for security: a backend service should never be published to `
 ### 3.3 Multiple Port Mappings
 
 ```bash
-podman run -d --name multi -p 8080:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
+podman run -d --name multi -p 8083:80 -p 8443:443 docker.io/library/nginx:stable  # run a container
 ```
 
 ### 3.4 UDP Port Mapping
@@ -245,7 +245,7 @@ podman inspect web1 | python3 -m json.tool | grep -A10 '"Ports"'  # inspect cont
 Cleanup:
 
 ```bash
-podman rm -f web1 web-lo web-iface multi rand-port  # cleanup containers
+podman rm -f web1 web-lo web-iface multi rand-port dns-demo  # cleanup containers
 ```
 
 ---
@@ -370,7 +370,10 @@ Expected output: an IP address followed by `server-a`.
 Test TCP connectivity:
 
 ```bash
-podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -zv server-a 80 2>&1 || echo "port not open (expected if alpine)"'  # run a container
+podman run --rm --network testdns docker.io/library/alpine:latest sh -lc 'nc -w 1 server-a 80 || echo "port not open (expected)"'  # BusyBox nc has no -z
+
+podman rm -f server-a
+podman network rm testdns
 ```
 
 ### 5.3 Network Aliases
@@ -387,6 +390,9 @@ podman run -d --name primary-db --network alias-demo --network-alias db docker.i
 
 # Resolve by alias
 podman run --rm --network alias-demo docker.io/library/alpine:latest sh -lc 'getent hosts db'  # run a container
+
+podman rm -f primary-db
+podman network rm alias-demo
 ```
 
 Both the container name (`primary-db`) and the alias (`db`) resolve to the same IP.
@@ -490,13 +496,11 @@ podman exec frontend sh -lc 'getent hosts db || echo "NOT REACHABLE"'  # run a c
 
 # Verify: app CAN reach db
 podman exec app sh -lc 'getent hosts db'  # run a command in a running container
-
-# Cleanup
-podman rm -f db app frontend               # stop and remove containers
-podman network rm frontend-net backend-net # remove networks
 ```
 
 ### 6.2 Disconnect from a Network Without Stopping
+
+Do this while `app` and `backend-net` from section 6.1 are still running.
 
 ```bash
 podman network disconnect backend-net app  # detach a container from a network
@@ -512,6 +516,13 @@ Reconnect:
 
 ```bash
 podman network connect backend-net app  # attach a container to a network
+```
+
+Cleanup from section 6.1:
+
+```bash
+podman rm -f db app frontend               # stop and remove containers
+podman network rm frontend-net backend-net # remove networks
 ```
 
 ---
@@ -687,6 +698,12 @@ podman run -d --name postgres --network private-db \
 ```
 
 This DB can never initiate outbound connections. It cannot call home, exfiltrate data to an external server, or participate in an outbound botnet.
+
+```bash
+podman rm -f postgres
+podman network rm private-db
+podman secret rm pg_password
+```
 
 ### 9.4 Use `--network-alias` for Service Contracts
 

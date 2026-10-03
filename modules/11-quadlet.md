@@ -290,16 +290,11 @@ systemctl --user start hello-nginx.service                                     #
 systemctl --user status hello-nginx.service                                    # show status
 ```
 
-**Verify HTTP response:**
+**Verify HTTP response** from the host. The unit publishes `8081:80`. `nginx:stable` has no `wget`.
 
 ```bash
-podman exec -it systemd-hello-nginx sh -lc 'wget -qO- http://127.0.0.1:80 | head -5'  # verify nginx responds
-```
-
-Or from the host (if PublishPort=8081:80):
-
-```bash
-podman port systemd-hello-nginx  # show published ports
+curl -fsS http://127.0.0.1:8081/ | head  # verify nginx responds
+podman port systemd-hello-nginx          # show published ports
 ```
 
 **View logs:**

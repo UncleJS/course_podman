@@ -277,15 +277,15 @@ sequenceDiagram
     participant systemd
     participant App
 
-    Note over App: Running with db_password_v1
+    Note over App: Running with db_password
     Ops->>Podman: secret create db_password_v2 (new value)
-    Ops->>Ops: Edit unit: Secret=db_password_v1 → Secret=db_password_v2
+    Ops->>Ops: Edit unit: Secret=db_password to Secret=db_password_v2
     Ops->>systemd: daemon-reload
     Ops->>systemd: restart example-app.service
     systemd->>App: New container starts<br/>mounts /run/secrets/db_password_v2
     Ops->>App: Verify healthy (check logs, test endpoint)
     Note over Ops: Rollback window open — keep v1 secret
-    Ops->>Podman: secret rm db_password_v1 (only after verification)
+    Ops->>Podman: secret rm db_password (only after verification)
 ```
 
 ### Rotation Procedure
@@ -301,7 +301,7 @@ podman secret create db_password_v2 ./db_password_v2.txt
 rm -f ./db_password_v2.txt
 ```
 
-**Step 2: Update the Quadlet file** — change `Secret=db_password_v1` to `Secret=db_password_v2`.
+**Step 2: Update the Quadlet file** — change `Secret=db_password` to `Secret=db_password_v2`.
 
 **Step 3: Reload and restart:**
 
@@ -321,7 +321,7 @@ podman exec systemd-example-app sh -lc 'wc -c /run/secrets/db_password_v2'  # co
 **Step 5: Remove old secret only after rollback window closes:**
 
 ```bash
-podman secret rm db_password_v1  # delete old secret — rollback no longer possible after this
+podman secret rm db_password  # delete old secret — rollback no longer possible after this
 ```
 
 **Rule**: never remove the old secret before the new deployment is verified and the rollback window has passed.

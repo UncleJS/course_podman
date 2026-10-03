@@ -38,6 +38,8 @@ podman tag localhost/<name>:<tag> <registry>/<ns>/<name>:<tag>  # add another na
 podman push <registry>/<ns>/<name>:<tag>             # upload to a registry
 podman image history <image>                         # show layer history
 podman images                                       # list local images
+podman images --digests                             # show the registry digest for each image
+podman pull <image>@sha256:<digest>                 # pull that exact image; do not add a second sha256:
 podman inspect <image-or-container>                 # show JSON metadata
 podman rmi <image>                                   # remove an image from local storage
 

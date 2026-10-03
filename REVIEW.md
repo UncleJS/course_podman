@@ -37,9 +37,22 @@ The Podman 5 and Quadlet fixes above were left in place. This pass closed what t
 
 `dist/` and `slides/` were regenerated after the Module 9 edit.
 
+## Follow-through (same day)
+
+Labs that failed when followed in order, and slides that disagreed with those labs.
+
+| # | Severity | Area | Finding | Status |
+|---|----------|------|---------|--------|
+| 15 | Medium | Module 6 | Later port demos reused host port 8080 while `web1` was still up, section 6.2 disconnected a container section 6.1 had already removed, and the section 8 TOC slug dropped a hyphen | Resolved |
+| 16 | Medium | Module 7 | The log sidecar mounts nginx's log directory. That image symlinks an empty dir to stdout, so the sidecar never sees an access log | Resolved. Symlinks are replaced with files. `:Z` is omitted on the named volume |
+| 17 | Medium | Modules 11, 11a, 14, 80 | nginx verify used `wget` inside an image that has none. Rotation deleted a secret the lab never created. The auto-update intro still described a late healthcheck and `AutoUpdatePolicy=`. The capstone runbook used system `systemctl` and queried MariaDB before it was ready | Resolved |
+| 18 | Low | Exams, slides, cheat sheets | Exam A scored a no-container failure its fixture does not create. Exam B said the stack was given. Several slide bullets and three cheat-sheet gaps disagreed with the modules | Resolved |
+
+`dist/` and `slides/` were regenerated after this pass.
+
 ## Left as written
 
-`examples/stack/stack.sh`, the tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten. The rest of Module 9 was left as it was.
+The tags-vs-digests lesson, the secret threat model, the Quadlet generator explanation, and the Module 13 debug loop were already accurate. They were not rewritten. The rest of Module 9 was left as it was. `examples/stack/stack.sh` only changed its non-interactive hint, which now uses `read -rs`.
 
 ---
 

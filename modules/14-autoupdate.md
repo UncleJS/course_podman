@@ -56,9 +56,9 @@ flowchart TD
     E -->|"Yes"| F["systemctl restart <unit>"]
     E -->|"No"| G["No-op — already up to date"]
     C -->|"local"| H["Check if local image changed<br/>(e.g., after manual build)"]
-    F --> I{"Healthcheck passes?"}
+    F --> I{"systemd start reaches ready?<br/>Notify=healthy"}
     I -->|"Yes"| J["Update complete"]
-    I -->|"No + --rollback"| K["Revert to previous image<br/>restart unit"]
+    I -->|"No, and --rollback"| K["Revert to previous image<br/>restart unit"]
 ```
 
 What it **cannot** do by itself:
@@ -77,8 +77,8 @@ When `podman auto-update` detects a new image and restarts a unit:
 
 1. It pulls the new image and records the old image digest.
 2. It calls `systemctl restart <unit>` — the unit stops the old container and starts a new one with the new image.
-3. If the container has a healthcheck and the `--rollback` flag was passed (or the unit has `AutoUpdatePolicy=registry` with rollback configured), Podman waits for the healthcheck to pass.
-4. If the healthcheck fails, it reverts to the old image and restarts.
+3. If the unit has `Notify=healthy` and you passed `--rollback`, systemd stays in `starting` until the healthcheck passes.
+4. If the healthcheck never passes, the start fails and auto-update reverts to the old image and restarts. Without `Notify=healthy`, systemd marks the unit started and nothing rolls back.
 
 The unit must be a Quadlet-generated service for this to work. Auto-update does not manage containers started with bare `podman run`.
 
@@ -97,11 +97,12 @@ sequenceDiagram
     AU->>systemd: systemctl restart myapp.service
     systemd->>Container: stop old container
     systemd->>Container: start new container (new image)
-    Container->>AU: healthcheck status
+    Note over systemd: Notify=healthy keeps the unit starting
     alt healthcheck passes
+        systemd->>AU: unit is ready
         AU->>AU: update complete
-    else healthcheck fails
-        AU->>systemd: systemctl restart (with old image)
+    else start fails
+        AU->>systemd: restart with the previous image
         AU->>AU: log rollback event
     end
 ```
@@ -411,7 +412,7 @@ podman system df  # show disk usage by images, containers, volumes
 
 3) You have `Image=docker.io/library/nginx@sha256:abc123` in your Quadlet unit. Will `podman auto-update` do anything? Why?
 
-4) Auto-update runs but the new container immediately fails its healthcheck. What happens if you passed `--rollback`?
+4) Auto-update restarts the unit. The new container's healthcheck never passes, and you passed `--rollback`. What happens if the unit has `Notify=healthy`? What happens if it does not?
 
 5) What is the difference between `podman image prune -f` and `podman image prune -a -f`?
 

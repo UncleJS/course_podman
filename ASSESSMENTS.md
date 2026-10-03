@@ -30,12 +30,12 @@ Each module ends with a checkpoint. Treat it as "must be able to do without note
 
 ## Practical Exam A (Mid-Course)
 
-Sit this after Module 10. It covers the debug loop from Modules 02 and 13, plus the rule that a fix does not require a new image.
+Sit this after Module 10. It uses `podman ps -a`, `podman logs`, and `podman inspect` from Module 02, plus the rule that a fix does not require a new image. Module 13 Drill 1 is the case where `podman run` fails before a container exists. This exam is not that case.
 
 Scenario:
 
 - Run `examples/exams/exam-a.sh`. It starts a named container that exits.
-- Apply the four-step loop from Modules 02 and 13.
+- Diagnose that container with `podman ps -a`, `podman logs`, and `podman inspect`.
 
 Requirements:
 
@@ -46,7 +46,7 @@ Requirements:
 | Points | What an A+ runbook shows |
 |---|---|
 | 4 | State first: `podman ps -a` and the exit code, named (0, 125, 126, 127, 137, or 143) |
-| 4 | Logs next: `podman logs`, including the case where the error was the `podman run` client and no container exists |
+| 4 | Logs next: `podman logs` on the container this fixture created |
 | 4 | Inspect next: the field that explains the failure (command, mounts, or ports) |
 | 4 | One change that makes the container stay up, without `podman build` |
 | 4 | No secret value printed in the runbook or the terminal transcript |
@@ -59,7 +59,7 @@ Sit this after Module 80. It is the capstone checklist, graded. Module 90 is out
 
 Scenario:
 
-- You are given a two-service stack: web + db.
+- Demonstrate the Module 80 stack: web + db, built from the capstone units.
 - The stack must survive reboot.
 
 Requirements:

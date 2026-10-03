@@ -11,6 +11,7 @@
 - [Useful Checks](#useful-checks)
 - [Common Paths](#common-paths)
 - [Boot Start for systemd User Services](#boot-start-for-systemd-user-services)
+- [Gotchas](#gotchas)
 
 ## Key Idea
 
@@ -44,6 +45,13 @@ podman info --format '{{.Host.RootlessNetworkCmd}}'  # pasta on Podman 5
 ```bash
 sudo loginctl enable-linger "$USER"  # allow user services to start at boot
 ```
+
+[↑ Go to TOC](#table-of-contents)
+
+## Gotchas
+
+- Host ports below 1024 fail for a rootless user. Publish a high port.
+- `:Z` on a bind mount is private to one container. `podman unshare` shows ownership from the container's user namespace.
 
 [↑ Go to TOC](#table-of-contents)
 

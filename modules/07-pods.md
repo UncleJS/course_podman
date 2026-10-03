@@ -292,15 +292,21 @@ podman pod create --name logpod -p 8081:80  # create the pod
 
 ```bash
 podman run -d --pod logpod --name app \
-  -v logvol:/var/log/nginx:Z \
-  docker.io/library/nginx:stable  # run nginx with log volume
+  -v logvol:/var/log/nginx \
+  docker.io/library/nginx:stable  # named volume; no :Z (that label is private)
+```
+
+The image turns an empty log directory into symlinks to stdout and stderr. Replace them with real files so the sidecar can see access lines:
+
+```bash
+podman exec app sh -lc 'rm -f /var/log/nginx/access.log /var/log/nginx/error.log && touch /var/log/nginx/access.log /var/log/nginx/error.log && nginx -s reopen'
 ```
 
 **Step 3 — Start the "log shipper" sidecar**
 
 ```bash
 podman run -d --pod logpod --name log-shipper \
-  -v logvol:/logs:Z \
+  -v logvol:/logs \
   docker.io/library/alpine:latest \
   sh -lc 'while true; do echo "--- log snapshot ---"; ls -la /logs/; sleep 5; done'  # run a log-reading sidecar
 ```
